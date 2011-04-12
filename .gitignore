@@ -1,7 +1,2 @@
-/objs
 /debug
 /release
-/Makefile.Release
-/Makefile.Debug
-/Makefile
-/.cproject
