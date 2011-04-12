@@ -3,7 +3,10 @@
 #include <QtSql>
 #include <QFile>
 
+#include "qglobal.h"
+
 const QString SQLDatabase::CONN_NAME = "TheraSQL";
+const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
 const QString SQLDatabase::DB_TYPE = "QSQLITE";
 const QString SQLDatabase::DB_HOST = "localhost";
 
@@ -14,56 +17,98 @@ SQLDatabase::SQLDatabase(const QString& dbFilename) {
 	if (dbFile.exists()) {
 		qDebug() << "Database file exists, attempting to load";
 
-		// initialize
+		load(dbFilename);
 	}
 	else {
 		// if not create an empty .db file
 		qDebug() << "No existing file found, creating new one";
 
-		setupDB(dbFilename);
+		setup(dbFilename, SCHEMA_FILE);
 	}
 }
 
 SQLDatabase::~SQLDatabase() {
-	/*
-	if (mDb != NULL) {
-		mDb->close();
-	}
-	*/
+	QSqlDatabase db = QSqlDatabase::database(CONN_NAME);
+
+	db.close();
 }
 
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
 
 }
 
-void SQLDatabase::resetDB() {
-	/*
-	if (mDb != NULL) {
-		// TODO: clean house
-
-		mDb->close();
-	}
-	*/
+void SQLDatabase::reset() {
+	// disconnect and unlink db file + call setup
 }
 
-void SQLDatabase::setupDB(const QString& file) {
-	resetDB();
+void SQLDatabase::setup(const QString& databaseFile, const QString& schemaFile) {
+	QSqlDatabase db = open(databaseFile);
 
-	qDebug() << "Attempting to make a DB file";
+	QString schemaQuery = readSqlFile(schemaFile);
 
+	if (db.transaction()) {
+		//qDebug() << "Preparing to execute query:\n" << schemaQuery;
+
+		QStringList queries = schemaQuery.split(";");
+
+		QSqlQuery query(db);
+		foreach (const QString &q, queries) {
+			query.exec(q);
+			qDebug() << "Executed query:" << q;
+		}
+
+		//query.exec("CREATE TABLE matches (id int primary key, name varchar(20), address varchar(200), typeid int)");
+
+		if (!db.commit()) {
+			qDebug() << "Could not commit to database even though transaction was started" << db.lastError();
+		}
+		else {
+			qDebug() << "Successfully created database, tables:\n" << db.tables();
+		}
+	}
+	else {
+		qDebug() << "Was unable to start transaction to build database: " << db.lastError();
+	}
+}
+
+void SQLDatabase::load(const QString& file) {
+	QSqlDatabase db = open(file);
+
+	if (db.isValid()) {
+		qDebug() << "Tables:" << db.tables();
+	}
+	else {
+		qDebug() << "Invalid DB file encountered";
+	}
+}
+
+QSqlDatabase SQLDatabase::open(const QString& file) {
 	QSqlDatabase db = QSqlDatabase::addDatabase(DB_TYPE, CONN_NAME);
 	db.setHostName(DB_HOST);
 	db.setDatabaseName(file);
 
-	qDebug() << db.tables();
-
 	if (!db.open()) {
-		qDebug() << "Unable to open a database file for setup";
-		return;
+		qDebug() << "Unable to open a database file for setup, error: " << db.lastError();
 	}
 
-	QSqlQuery query(db);
-	query.exec("create table person (id int primary key, name varchar(20), address varchar(200), typeid int)");
-
-	db.close();
+	return db;
 }
+
+const QString SQLDatabase::readSqlFile(const QString& schemaFilename) const {
+	QFile file(schemaFilename);
+
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		qDebug() << "Schema file '" << schemaFilename << "' could not be opened, aborting";
+
+		return QString();
+	}
+
+	QByteArray data(file.readAll());
+
+	file.close();
+
+	return QString(data);
+}
+
+
+

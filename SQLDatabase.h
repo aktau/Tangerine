@@ -11,10 +11,15 @@ class SQLDatabase {
 		void loadFromXML(const QString& XMLFile);
 
 	private:
-		void resetDB();
-		void setupDB(const QString& file);
+		void reset();
+		void load(const QString& file);
+		void setup(const QString& databaseFile, const QString& schemaFile);
+
+		QSqlDatabase open(const QString& file);
+		const QString readSqlFile(const QString& schemaFilename) const;
 
 		static const QString CONN_NAME;
+		static const QString SCHEMA_FILE;
 		static const QString DB_TYPE;
 		static const QString DB_HOST;
 };
