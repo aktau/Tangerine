@@ -1,5 +1,7 @@
 #include "Tangerine.h"
 
+#include "SQLDatabase.h"
+
 #include <QtGui>
 #include <QApplication>
 

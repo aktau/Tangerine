@@ -10,6 +10,7 @@ CONFIG   -= app_bundle
 #QT += core gui
 QT += opengl
 QT += xml
+QT += sql
 
 SOURCES     = *.cc
 HEADERS     = *.h
