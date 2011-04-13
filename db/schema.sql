@@ -13,9 +13,9 @@ CREATE TABLE `matchinfo` (
 CREATE TABLE `matches` (
 	`match_id` INTEGER,
 	`fragment_id` INTEGER,
-	`transformation` BLOB
+	`transformation` TEXT
 );
 CREATE TABLE `conflicts` (
-	`id` INTEGER,
-	`other_id` INTEGER
+	`match_id` INTEGER,
+	`other_match_id` INTEGER
 );

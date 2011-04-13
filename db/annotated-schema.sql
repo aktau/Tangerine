@@ -18,11 +18,11 @@ NOTE: we might need to look out for NULL characters in the blob...
 CREATE TABLE `matches` (
 	`match_id` INTEGER,
 	`fragment_id` INTEGER,
-	`transformation` BLOB
+	`transformation` TEXT /* for now text seems easier, although it might be worse than BLOB, we'll look into it later */
 );
 CREATE TABLE `conflicts` (
-	`id` INTEGER,
-	`other_id` INTEGER
+	`match_id` INTEGER,
+	`other_match_id` INTEGER
 );
 
 /*

@@ -14,6 +14,7 @@ QT += sql
 
 SOURCES     = *.cc
 HEADERS     = *.h
+#DEPENDPATH += E:/Thesis/thera/src/theratypes
 DEPENDPATH += $${INCLUDEPATH}
 DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}
 
