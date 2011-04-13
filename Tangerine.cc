@@ -10,10 +10,14 @@ const int Tangerine::MIN_HEIGHT = 786;
 Tangerine::Tangerine(QWidget *parent) : QMainWindow(parent) {
 	setupWindow();
 
-	QString fileName = QFileDialog::getSaveFileName(NULL, tr("Open Database"));
-	qDebug() << "Selected: " << fileName;
+	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
+	qDebug() << "Selected:" << fileName;
 
 	SQLDatabase db(fileName);
+
+	if (db.isOpen()) {
+		db.loadFromXML("db/matches.xml");
+	}
 }
 
 Tangerine::~Tangerine() {

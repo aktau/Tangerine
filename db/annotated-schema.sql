@@ -2,10 +2,10 @@ CREATE TABLE `fragments` (
 	`id` INTEGER PRIMARY KEY,
 	`name` TEXT
 );
+/* note: maybe we should add AUTOINCREMENT to the id field. If not, it's possible id's are reused if/when we delete a match: http://www.sqlite.org/faq.html#q1 */
 CREATE TABLE `matchinfo` (
 	`id` INTEGER PRIMARY KEY, /* NOTE: NOT "INT", INTEGER increases performance twofold on SQLite: http://www.sqlite.org/lang_createtable.html */
 	`status` INTEGER, 
-	`address` varchar(200),
 	`overlap` REAL,
 	`error` REAL,
 	`volume` REAL,

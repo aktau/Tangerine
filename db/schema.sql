@@ -4,8 +4,7 @@ CREATE TABLE `fragments` (
 );
 CREATE TABLE `matchinfo` (
 	`id` INTEGER PRIMARY KEY,
-	`status` INTEGER, 
-	`address` varchar(200),
+	`status` INTEGER,
 	`overlap` REAL,
 	`error` REAL,
 	`volume` REAL,
