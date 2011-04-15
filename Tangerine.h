@@ -4,10 +4,13 @@
 #include <QMainWindow>
 #include <QScrollArea>
 #include <QFrame>
+#include <QMenu>
+#include <QToolbar>
+#include <QAction>
 
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0
-#define MIN_VERSION 1
+#define MIN_VERSION 2
 
 class Tangerine : public QMainWindow {
 	Q_OBJECT
@@ -18,10 +21,18 @@ class Tangerine : public QMainWindow {
 
 	private:
 		void setupWindow();
+		void createActions();
+
+	private slots:
+		void loadDatabase();
 
 	private:
 		QFrame *mFrame;
 		QScrollArea *mScrollArea;
+
+		QMenu *mFileMenu;
+		QToolBar *mFileToolbar;
+		QAction *mLoadDbAct;
 
 		static const int MIN_WIDTH;
 		static const int MIN_HEIGHT;
