@@ -5,7 +5,6 @@
 #include <QTextStream>
 
 #include "XF.h"
-#include "TabletopModel.h"
 
 using namespace thera;
 
@@ -15,6 +14,9 @@ const QString SQLDatabase::DB_TYPE = "QSQLITE";
 const QString SQLDatabase::DB_HOST = "localhost";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
+const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
+const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
+const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
 SQLDatabase::SQLDatabase(const QString& dbFilename) {
 	if (dbFilename != "") {
@@ -84,6 +86,22 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 	else {
 		qDebug() << "Could not open"  << XMLFile;
 	}
+}
+
+QString SQLDatabase::toXML() const {
+	if (!isOpen()) {
+		qDebug() << "Database wasn't open, couldn't convert to XML";
+
+		return QString();
+	}
+
+	QDomDocument doc(MATCHES_DOCTYPE);
+	QDomElement matches = doc.createElement(MATCHES_ROOTTAG);
+	matches.setAttribute("version", MATCHES_VERSION);
+
+	doc.appendChild(matches);
+
+	return doc.toString();
 }
 
 /**

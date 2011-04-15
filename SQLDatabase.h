@@ -12,6 +12,7 @@ class SQLDatabase {
 		bool isOpen() const;
 
 		void loadFromXML(const QString& XMLFile);
+		QString toXML() const;
 
 	private:
 		void reset();
@@ -30,6 +31,9 @@ class SQLDatabase {
 		static const QString DB_HOST;
 
 		static const QString MATCHES_ROOTTAG;
+		static const QString MATCHES_DOCTYPE;
+		static const QString OLD_MATCHES_VERSION;
+		static const QString MATCHES_VERSION;
 };
 
 #endif /* SQLDATABASE_H_ */
