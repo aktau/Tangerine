@@ -84,8 +84,6 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 		if (!isOpen()) {
 			QFileInfo fi(file);
 
-			qDebug() << "ATTENTION: " << fi.absolutePath() << "|" << fi.baseName() << "|" << fi.absolutePath() + fi.baseName() + ".db";
-
 			loadFile(fi.absolutePath() + "/" + fi.baseName() + ".db");
 		}
 
@@ -146,6 +144,22 @@ QDomDocument SQLDatabase::toXML() const {
 	return doc;
 }
 
+int SQLDatabase::matchCount() const {
+	if (!isOpen()) {
+		return 0;
+	}
+
+	QSqlDatabase db(database());
+	QSqlQuery query(db);
+
+	if (query.exec("SELECT Count(*) FROM matches") && query.first()) {
+		return query.value(0).toInt();
+	}
+	else {
+		return 0;
+	}
+}
+
 /**
  * TODO: batch queries (make VariantList's)
  * TODO: more sanity-checking for corrupt matches.xml
@@ -176,7 +190,6 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 	register int i = 1;
 
 	QSqlDatabase db(database());
-	QSqlQuery query(db);
 
 	// check if the current database supports feature QSqlDriver::LastInsertId, we're going to use it
 	if (!db.driver()->hasFeature(QSqlDriver::LastInsertId)) {
@@ -190,6 +203,49 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 
 		return;
 	}
+
+	// prepare queries
+	QSqlQuery matchesQuery(db);
+	matchesQuery.prepare(
+		"INSERT INTO matches (match_id, source_id, source_name, target_id, target_name, transformation) "
+		"VALUES (:match_id, :source_id, :source_name, :target_id, :target_name, :transformation)"
+	);
+
+	QSqlQuery conflictsQuery(db);
+	conflictsQuery.prepare(
+		"INSERT INTO conflicts (match_id, other_match_id) "
+		"VALUES (:match_id, :other_match_id)"
+	);
+
+	QSqlQuery statusQuery(db);
+	statusQuery.prepare(
+		"INSERT INTO status (match_id, status) "
+		"VALUES (:match_id, :status)"
+	);
+
+	QSqlQuery errorQuery(db);
+	errorQuery.prepare(
+		"INSERT INTO error (match_id, error) "
+		"VALUES (:match_id, :error)"
+	);
+
+	QSqlQuery overlapQuery(db);
+	overlapQuery.prepare(
+		"INSERT INTO overlap (match_id, overlap) "
+		"VALUES (:match_id, :overlap)"
+	);
+
+	QSqlQuery volumeQuery(db);
+	volumeQuery.prepare(
+		"INSERT INTO volume (match_id, volume) "
+		"VALUES (:match_id, :volume)"
+	);
+
+	QSqlQuery old_volumeQuery(db);
+	old_volumeQuery.prepare(
+		"INSERT INTO old_volume (match_id, old_volume) "
+		"VALUES (:match_id, :old_volume)"
+	);
 
 	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
 
@@ -206,50 +262,55 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		QString debug = QString("item %1: source = %2, target = %3 || (id = %4)").arg(i).arg(match.attribute("src")).arg(match.attribute("tgt")).arg(matchId);
 		//qDebug() << debug;
 
-		// update matchinfo table
-		query.prepare(
-			"INSERT INTO matchinfo (id, status, overlap, error, volume, old_volume) "
-			"VALUES (:id, :status, :overlap, :error, :volume, :old_volume)"
-		);
-		query.bindValue(":id", matchId);
-		query.bindValue(":status", match.attribute("status", "0").toInt());
-		query.bindValue(":overlap", match.attribute("overlap", "0.0").toDouble());
-		query.bindValue(":error", match.attribute("error", "NaN").toDouble());
-		query.bindValue(":volume", match.attribute("volume", "0.0").toDouble());
-		query.bindValue(":old_volume", match.attribute("old_volume", "0.0").toDouble());
-		query.exec();
-
-		//query.finish();
-
 		// update matches table
 
 		//XF transformation;
 		QString rawTransformation(match.attribute("xf", "1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1").toAscii()); // should be QTextStream if we want the real XF
 		//rawTransformation >> transformation;
 
-		query.prepare(
-			"INSERT INTO matches (match_id, fragment_id, transformation) "
-			"VALUES (:match_id, :fragment_id, :transformation)"
-		);
-		query.bindValue(":match_id", matchId);
-		query.bindValue(":fragment_id", 0); // TODO: not use dummy value
-		query.bindValue(":transformation", rawTransformation);
-		query.exec();
-		//query.finish();
+		matchesQuery.bindValue(":match_id", matchId);
+		matchesQuery.bindValue(":source_id", 0); // TODO: not use dummy value
+		matchesQuery.bindValue(":source_name", match.attribute("src"));
+		matchesQuery.bindValue(":target_id", 0); // TODO: not use dummy value
+		matchesQuery.bindValue(":target_name", match.attribute("tgt"));
+		matchesQuery.bindValue(":transformation", rawTransformation);
+		matchesQuery.exec();
+
+		// update attribute tables
+		statusQuery.bindValue(":match_id", matchId);
+		statusQuery.bindValue(":status", match.attribute("status", "0").toInt());
+		statusQuery.exec();
+
+		errorQuery.bindValue(":match_id", matchId);
+		errorQuery.bindValue(":error", match.attribute("error", "NaN").toDouble());
+		errorQuery.exec();
+
+		overlapQuery.bindValue(":match_id", matchId);
+		overlapQuery.bindValue(":overlap", match.attribute("overlap", "0.0").toDouble());
+		overlapQuery.exec();
+
+		volumeQuery.bindValue(":match_id", matchId);
+		volumeQuery.bindValue(":volume", match.attribute("volume", "0.0").toDouble());
+		volumeQuery.exec();
+
+		old_volumeQuery.bindValue(":match_id", matchId);
+		old_volumeQuery.bindValue(":old_volume", match.attribute("old_volume", "0.0").toDouble());
+		old_volumeQuery.exec();
 
 		// update conflicts table
 		QString conflictString = match.attribute("conflict", "");
 		QStringList conflicts = conflictString.split(" ");
 
 		foreach (const QString &c, conflicts) {
+			/*
 			query.prepare(
 				"INSERT INTO conflicts (match_id, other_match_id) "
 				"VALUES (:match_id, :other_match_id)"
 			);
-			query.bindValue(":match_id", matchId);
-			query.bindValue(":other_match_id", c.toInt());
-			query.exec();
-			//query.finish();
+			*/
+			conflictsQuery.bindValue(":match_id", matchId);
+			conflictsQuery.bindValue(":other_match_id", c.toInt());
+			conflictsQuery.exec();
 		}
 
 		emit databaseOpStepDone(i);
@@ -262,7 +323,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 	}
 
 	emit databaseOpEnded();
-
+	emit matchCountChanged();
 }
 
 void SQLDatabase::reset() {
@@ -270,32 +331,40 @@ void SQLDatabase::reset() {
 }
 
 void SQLDatabase::setup(const QString& schemaFile) {
+	// get database
 	QSqlDatabase db = database();
 
-	QString schemaQuery = readSqlFile(schemaFile);
+	// read schema file
+	QFile file(schemaFile);
 
-	if (db.transaction()) {
-		//qDebug() << "Preparing to execute query:\n" << schemaQuery;
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		qDebug() << "Schema file '" << schemaFile << "' could not be opened, aborting";
 
-		QStringList queries = schemaQuery.split(";");
-
-		QSqlQuery query(db);
-		foreach (const QString &q, queries) {
-			query.exec(q);
-			qDebug() << "Executed query:" << q;
-		}
-
-		//query.exec("CREATE TABLE matches (id int primary key, name varchar(20), address varchar(200), typeid int)");
-
-		if (!db.commit()) {
-			qDebug() << "Could not commit to database even though transaction was started" << db.lastError();
-		}
-		else {
-			qDebug() << "Successfully created database, tables:\n" << db.tables();
-		}
+		return;
 	}
-	else {
-		qDebug() << "Was unable to start transaction to build database: " << db.lastError();
+
+	QByteArray data(file.readAll());
+	file.close();
+
+	QString schemaQuery = QString(data);
+
+	//start transatcion
+	if (!db.transaction()) {
+		qDebug() << "Couldn't start transaction";
+
+		return;
+	}
+
+	QStringList queries = schemaQuery.split(";");
+	QSqlQuery query(db);
+
+	foreach (const QString &q, queries) {
+		query.exec(q);
+		qDebug() << "Executed query:" << q;
+	}
+
+	if (!db.commit()) {
+		qDebug() << "Could not commit to database even though transaction was started" << db.lastError();
 	}
 }
 
@@ -308,10 +377,24 @@ QSqlDatabase SQLDatabase::open(const QString& file) {
 		qDebug() << "Unable to open a database file for setup, error: " << db.lastError();
 	}
 	else {
-		if (db.isValid()) emit databaseOpened();
+		if (db.isValid()) {
+			/* a tiny bit of performance tuning */
+			setPragmas();
+
+			emit databaseOpened();
+			emit matchCountChanged();
+		}
+		else {
+			qDebug() << "Somehow database was opened but it wasn't valid: " << db.lastError();
+		}
 	}
 
 	return db;
+}
+
+void SQLDatabase::setPragmas() {
+	database().exec("PRAGMA synchronous = OFF");
+	database().exec("PRAGMA journal_mode = MEMORY");
 }
 
 void SQLDatabase::close() {
@@ -320,20 +403,4 @@ void SQLDatabase::close() {
 
 		emit databaseClosed();
 	}
-}
-
-const QString SQLDatabase::readSqlFile(const QString& schemaFilename) const {
-	QFile file(schemaFilename);
-
-	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-		qDebug() << "Schema file '" << schemaFilename << "' could not be opened, aborting";
-
-		return QString();
-	}
-
-	QByteArray data(file.readAll());
-
-	file.close();
-
-	return QString(data);
 }

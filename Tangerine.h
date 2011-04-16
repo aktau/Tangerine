@@ -8,6 +8,7 @@
 #include <QToolbar>
 #include <QAction>
 #include <QProgressDialog>
+#include <QLabel>
 
 #include "SQLDatabase.h"
 
@@ -40,6 +41,8 @@ class Tangerine : public QMainWindow {
 		void databaseOpStepDone(int step);
 		void databaseOpEnded();
 
+		void updateStatusBar();
+
 		void about();
 
 	private:
@@ -48,6 +51,8 @@ class Tangerine : public QMainWindow {
 		QFrame *mFrame;
 		QScrollArea *mScrollArea;
 		QProgressDialog *mProgress;
+
+		QLabel *mNumberOfMatchesLabel;
 
 		QMenu *mFileMenu;
 		QMenu *mHelpMenu;
@@ -61,6 +66,8 @@ class Tangerine : public QMainWindow {
 
 		static const int MIN_WIDTH;
 		static const int MIN_HEIGHT;
+
+		static const QString MATCH_COUNT_TEXT;
 };
 
 #endif /* TANGERINE_H_ */

@@ -4,23 +4,26 @@
 #include <QDebug>
 #include <QProgressBar>
 
+#include <assert.h>
+
+const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
+
 const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
-Tangerine::Tangerine(QWidget *parent) : QMainWindow(parent), mDb(NULL), mProgress(NULL) {
-	setWindowIcon(QIcon("tangerine.ico"));
-	setToolButtonStyle(Qt::ToolButtonIconOnly);
+Tangerine::Tangerine(QWidget *parent) : QMainWindow(parent), mDb(NULL), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+	mDb = new SQLDatabase();
 
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
-	mDb = new SQLDatabase();
 
 	connect(mDb, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
 	connect(mDb, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
 	connect(mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
 	connect(mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
 	connect(mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
+	connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
 
 	databaseClosed();
 }
@@ -30,7 +33,11 @@ Tangerine::~Tangerine() {
 }
 
 void Tangerine::setupWindow() {
+	/* window configuration */
+
+	setWindowIcon(QIcon("tangerine.ico"));
 	setWindowTitle(QString("Tangerine %1 %2.%3").arg(DEV_PHASE).arg(MAJ_VERSION).arg(MIN_VERSION));
+	setToolButtonStyle(Qt::ToolButtonIconOnly);
 
 	/* central widget */
 
@@ -82,6 +89,13 @@ void Tangerine::setupWindow() {
 
 	setStatusBar(new QStatusBar());
 
+	mNumberOfMatchesLabel = new QLabel();
+	//mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(0));
+
+	statusBar()->addPermanentWidget(mNumberOfMatchesLabel);
+
+	updateStatusBar();
+
 	/* window size */
 
 	resize(MIN_WIDTH, MIN_HEIGHT);
@@ -128,6 +142,13 @@ void Tangerine::closeDatabase() {
 	}
 }
 
+void Tangerine::updateStatusBar() {
+	assert(mDb != NULL);
+
+	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb->matchCount()));
+}
+
+
 void Tangerine::loadDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
 
@@ -157,7 +178,7 @@ void Tangerine::importDatabase() {
 }
 
 void Tangerine::exportDatabase() {
-	QString fileName = QFileDialog::getSaveFileName(this, tr("To which file do you want to export?"), QString(), tr("XML files (*.xml)"), 0, QFileDialog::DontConfirmOverwrite);
+	QString fileName = QFileDialog::getSaveFileName(this, tr("To which file do you want to export?"), QString(), tr("XML files (*.xml)"), 0);
 
 	if (fileName != "") {
 		mDb->saveToXML(fileName);

@@ -2,27 +2,40 @@ CREATE TABLE `fragments` (
 	`id` INTEGER PRIMARY KEY,
 	`name` TEXT
 );
-/* note: maybe we should add AUTOINCREMENT to the id field. If not, it's possible id's are reused if/when we delete a match: http://www.sqlite.org/faq.html#q1 */
-CREATE TABLE `matchinfo` (
-	`id` INTEGER PRIMARY KEY, /* NOTE: NOT "INT", INTEGER increases performance twofold on SQLite: http://www.sqlite.org/lang_createtable.html */
-	`status` INTEGER, 
-	`overlap` REAL,
-	`error` REAL,
-	`volume` REAL,
-	`old_volume` REAL
-);
-/* 
-with the 'matches' table we can support multiple fragment matches , we might need to install triggers to ensure correctness of the 'transformation' attribute
-NOTE: we might need to look out for NULL characters in the blob...
-*/
+-- with the 'matches' table we can support multiple fragment matches , we might need to install triggers to ensure correctness of the 'transformation' attribute
+-- NOTE: we might need to look out for NULL characters in the blob...
+-- NOTE: maybe we should add AUTOINCREMENT to the id field. If not, it's possible id's are reused if/when we delete a match: http://www.sqlite.org/faq.html#q1 
 CREATE TABLE `matches` (
-	`match_id` INTEGER,
-	`fragment_id` INTEGER,
-	`transformation` TEXT /* for now text seems easier, although it might be worse than BLOB, we'll look into it later */
+	`match_id` INTEGER PRIMARY KEY, -- NOTE: NOT "INT", INTEGER increases performance twofold on SQLite: http://www.sqlite.org/lang_createtable.html
+	`source_id` INTEGER,
+	`source_name` TEXT,
+	`target_id` INTEGER,
+	`target_name` TEXT,
+	`transformation` TEXT -- for now text seems easier, although it might be worse than BLOB, we'll look into it later
 );
 CREATE TABLE `conflicts` (
 	`match_id` INTEGER,
 	`other_match_id` INTEGER
+);
+CREATE TABLE `status` (
+	`match_id` INTEGER PRIMARY KEY,
+	`status` INTEGER
+);
+CREATE TABLE `error` (
+	`match_id` INTEGER PRIMARY KEY,
+	`error` REAL
+);
+CREATE TABLE `overlap` (
+	`match_id` INTEGER PRIMARY KEY,
+	`overlap` REAL
+);
+CREATE TABLE `volume` (
+	`match_id` INTEGER PRIMARY KEY,
+	`volume` REAL
+);
+CREATE TABLE `old_volume` (
+	`match_id` INTEGER PRIMARY KEY,
+	`old_volume` REAL
 );
 
 /*

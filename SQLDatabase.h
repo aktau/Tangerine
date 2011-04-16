@@ -20,6 +20,10 @@ class SQLDatabase : public QObject {
 		void saveToXML(const QString& XMLFile) const;
 		QDomDocument toXML() const;
 
+		/* matches */
+
+		int matchCount() const;
+
 	signals:
 		void databaseOpened();
 		void databaseClosed();
@@ -27,17 +31,18 @@ class SQLDatabase : public QObject {
 		void databaseOpStepDone(int step);
 		void databaseOpEnded();
 
+		void matchCountChanged();
+
 	private:
+		QSqlDatabase open(const QString& file);
+		void close();
 		void reset();
+		void parseXML(const QDomElement &root);
 		void setup(const QString& schemaFile);
 
 		QSqlDatabase database() const;
-		QSqlDatabase open(const QString& file);
-		void close();
 
-		const QString readSqlFile(const QString& schemaFilename) const;
-
-		void parseXML(const QDomElement &root);
+		void setPragmas();
 
 	private:
 		static const QString CONN_NAME;
