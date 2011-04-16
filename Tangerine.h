@@ -7,6 +7,9 @@
 #include <QMenu>
 #include <QToolbar>
 #include <QAction>
+#include <QProgressDialog>
+
+#include "SQLDatabase.h"
 
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0
@@ -22,17 +25,39 @@ class Tangerine : public QMainWindow {
 	private:
 		void setupWindow();
 		void createActions();
+		void closeDatabase();
 
 	private slots:
 		void loadDatabase();
+		void saveDatabase();
+		void importDatabase();
+		void exportDatabase();
+
+		void databaseOpened();
+		void databaseClosed();
+
+		void databaseOpStarted(const QString& operation, int steps);
+		void databaseOpStepDone(int step);
+		void databaseOpEnded();
+
+		void about();
 
 	private:
+		SQLDatabase *mDb;
+
 		QFrame *mFrame;
 		QScrollArea *mScrollArea;
+		QProgressDialog *mProgress;
 
 		QMenu *mFileMenu;
+		QMenu *mHelpMenu;
 		QToolBar *mFileToolbar;
+
 		QAction *mLoadDbAct;
+		QAction *mSaveDbAct;
+		QAction *mImportXMLAct;
+		QAction *mSaveXMLAct;
+		QAction *mHelpAboutAct;
 
 		static const int MIN_WIDTH;
 		static const int MIN_HEIGHT;

@@ -6,11 +6,10 @@
 #include <QApplication>
 
 #include <QDebug>
-#include <QLocale>
-#include <QTranslator>
 
 int main(int argc, char *argv[]) {
     Q_INIT_RESOURCE(theragui);
+    Q_INIT_RESOURCE(tangerine);
 
 #ifdef Q_WS_MAX
     QCoreApplication::setOrganizationName("princeton.edu"); // Mac OS X requires URL instead of name

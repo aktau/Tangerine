@@ -1,18 +1,31 @@
 #ifndef SQLDATABASE_H_
 #define SQLDATABASE_H_
 
+#include <QObject>
 #include <QtSql>
 #include <QDomDocument>
 
-class SQLDatabase {
+class SQLDatabase : public QObject {
+		Q_OBJECT
+
 	public:
-		SQLDatabase(const QString& dbFilename);
+		SQLDatabase();
 		virtual ~SQLDatabase();
 
 		bool isOpen() const;
 
+		void loadFile(const QString& dbFilename);
+
 		void loadFromXML(const QString& XMLFile);
-		QString toXML() const;
+		void saveToXML(const QString& XMLFile) const;
+		QDomDocument toXML() const;
+
+	signals:
+		void databaseOpened();
+		void databaseClosed();
+		void databaseOpStarted(const QString& operation, int steps);
+		void databaseOpStepDone(int step);
+		void databaseOpEnded();
 
 	private:
 		void reset();
@@ -20,6 +33,8 @@ class SQLDatabase {
 
 		QSqlDatabase database() const;
 		QSqlDatabase open(const QString& file);
+		void close();
+
 		const QString readSqlFile(const QString& schemaFilename) const;
 
 		void parseXML(const QDomElement &root);

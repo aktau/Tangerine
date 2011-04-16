@@ -18,7 +18,26 @@ const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
-SQLDatabase::SQLDatabase(const QString& dbFilename) {
+SQLDatabase::SQLDatabase() {
+	/* nothing */
+}
+
+SQLDatabase::~SQLDatabase() {
+	close();
+}
+
+bool SQLDatabase::isOpen() const {
+	return database().isValid() && database().isOpen();
+}
+
+QSqlDatabase SQLDatabase::database() const {
+	return QSqlDatabase::database(CONN_NAME);
+}
+
+void SQLDatabase::loadFile(const QString& dbFilename) {
+	// if there is already a database opened, close it
+	close();
+
 	if (dbFilename != "") {
 		QFile dbFile(dbFilename);
 
@@ -50,24 +69,26 @@ SQLDatabase::SQLDatabase(const QString& dbFilename) {
 	}
 }
 
-SQLDatabase::~SQLDatabase() {
-	QSqlDatabase db = database();
-
-	db.close();
-}
-
-bool SQLDatabase::isOpen() const {
-	return database().isOpen();
-}
-
-QSqlDatabase SQLDatabase::database() const {
-	return QSqlDatabase::database(CONN_NAME);
-}
-
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
+	if (XMLFile == "") {
+		qDebug("SQLDatabase::loadFromXML: filename was empty, aborting...");
+
+		return;
+	}
+
 	QFile file(XMLFile);
 
+	// open the file in read-only mode
 	if (file.open(QIODevice::ReadOnly)) {
+		// check if there is a database loaded, if not we'll make one on the fly and just use the same filename with .db extensions
+		if (!isOpen()) {
+			QFileInfo fi(file);
+
+			qDebug() << "ATTENTION: " << fi.absolutePath() << "|" << fi.baseName() << "|" << fi.absolutePath() + fi.baseName() + ".db";
+
+			loadFile(fi.absolutePath() + "/" + fi.baseName() + ".db");
+		}
+
 		QDomDocument doc;
 
 		bool succes = doc.setContent(&file);
@@ -88,11 +109,32 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 	}
 }
 
-QString SQLDatabase::toXML() const {
+void SQLDatabase::saveToXML(const QString& XMLFile) const {
+	if (XMLFile == "") {
+		qDebug("SQLDatabase::saveToXML: filename was empty, aborting...");
+
+		return;
+	}
+
+	QFile file(XMLFile);
+
+	if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+		QTextStream out(&file);
+		QDomDocument doc(toXML());
+
+		doc.save(out, 1);
+		file.close();
+	}
+	else {
+		qDebug() << "SQLDatabase::saveToXML: Could not open"  << XMLFile;
+	}
+}
+
+QDomDocument SQLDatabase::toXML() const {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";
 
-		return QString();
+		return QDomDocument();
 	}
 
 	QDomDocument doc(MATCHES_DOCTYPE);
@@ -101,7 +143,7 @@ QString SQLDatabase::toXML() const {
 
 	doc.appendChild(matches);
 
-	return doc.toString();
+	return doc;
 }
 
 /**
@@ -133,7 +175,7 @@ CREATE TABLE `conflicts` (
 void SQLDatabase::parseXML(const QDomElement &root) {
 	register int i = 1;
 
-	QSqlDatabase db = database();
+	QSqlDatabase db(database());
 	QSqlQuery query(db);
 
 	// check if the current database supports feature QSqlDriver::LastInsertId, we're going to use it
@@ -149,6 +191,8 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		return;
 	}
 
+	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
+
 	for (QDomElement match = root.firstChildElement("match"); !match.isNull(); match = match.nextSiblingElement()) {
 		// update fragments table (we're going to go after fragments as we need them
 		// probably an addFragment method is best
@@ -160,7 +204,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		//int matchId = query.lastInsertId().toInt();
 
 		QString debug = QString("item %1: source = %2, target = %3 || (id = %4)").arg(i).arg(match.attribute("src")).arg(match.attribute("tgt")).arg(matchId);
-		qDebug() << debug;
+		//qDebug() << debug;
 
 		// update matchinfo table
 		query.prepare(
@@ -208,12 +252,16 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 			//query.finish();
 		}
 
+		emit databaseOpStepDone(i);
+
 		++i;
 	}
 
 	if (!db.commit()) {
 		qDebug() << "Was unable to commit transaction to fill tables";
 	}
+
+	emit databaseOpEnded();
 
 }
 
@@ -259,8 +307,19 @@ QSqlDatabase SQLDatabase::open(const QString& file) {
 	if (!db.open()) {
 		qDebug() << "Unable to open a database file for setup, error: " << db.lastError();
 	}
+	else {
+		if (db.isValid()) emit databaseOpened();
+	}
 
 	return db;
+}
+
+void SQLDatabase::close() {
+	if (isOpen()) {
+		database().close();
+
+		emit databaseClosed();
+	}
 }
 
 const QString SQLDatabase::readSqlFile(const QString& schemaFilename) const {
@@ -278,6 +337,3 @@ const QString SQLDatabase::readSqlFile(const QString& schemaFilename) const {
 
 	return QString(data);
 }
-
-
-

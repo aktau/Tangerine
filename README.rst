@@ -12,12 +12,15 @@ You can get ``Tangerine`` via ``git`` by saying::
 Setting up
 ==========
 
-Requirements: 
+Requirements::
+
 - a relatively recent checkout of the full Thera project (libs used: theratypes, theracore, theragui)
 - Qt 4.7+
 
 Place the project in a subfolder of the ``/src`` directory, as such:
 
-thera/src/Tangerine/... 
+	thera/src/Tangerine/... 
+
+Note that this project is developed as an ``Eclipse`` project with the ``MingW-GCC`` compiler
 
 Have fun!

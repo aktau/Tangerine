@@ -14,7 +14,10 @@ QT += sql
 
 SOURCES     = *.cc
 HEADERS     = *.h
-#DEPENDPATH += E:/Thesis/thera/src/theratypes
+
+RESOURCES = tangerine.qrc
+RC_FILE = tangerine.rc
+
 DEPENDPATH += $${INCLUDEPATH}
 DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}
 
