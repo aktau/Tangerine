@@ -6,13 +6,15 @@
 
 #include <assert.h>
 
+#include "SQLiteDatabase.h"
+
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
 
 const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
 Tangerine::Tangerine(QWidget *parent) : QMainWindow(parent), mDb(NULL), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
-	mDb = new SQLDatabase();
+	mDb = new SQLiteDatabase();
 
 	setupWindow();
 
@@ -153,12 +155,10 @@ void Tangerine::loadDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (fileName != "") {
-		mDb->loadFile(fileName);
+		mDb->connect(fileName);
 
 		if (!mDb->isOpen()) {
 			QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
-
-			delete mDb;
 		}
 	}
 }

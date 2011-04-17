@@ -34,44 +34,31 @@ QSqlDatabase SQLDatabase::database() const {
 	return QSqlDatabase::database(CONN_NAME);
 }
 
-void SQLDatabase::loadFile(const QString& dbFilename) {
-	// if there is already a database opened, close it
-	close();
+/**
+ * This will allow us to do with a little bit less error-checking at the individual methodlevel
+ * It would actually still be advisable to do checks such as:
+ * 		if (!db.transaction()) { ... }
+ * because there are other things that can go wrong, but we'll leave it for code clarity, for now
+ */
+bool SQLDatabase::hasCorrectCapabilities() const {
+	const QSqlDriver *driver = database().driver();
 
-	if (dbFilename != "") {
-		QFile dbFile(dbFilename);
+	if (!driver->hasFeature(QSqlDriver::LastInsertId)) qDebug() << "database doesn't support LastInsertId";
+	if (!driver->hasFeature(QSqlDriver::Transactions)) qDebug() << "database doesn't support Transactions";
+	if (!(driver->hasFeature(QSqlDriver::NamedPlaceholders) || driver->hasFeature(QSqlDriver::PositionalPlaceholders))) qDebug() << "database doesn't support NamedPlaceholders or PositionalPlaceholders";
+	if (!driver->hasFeature(QSqlDriver::PreparedQueries)) qDebug() << "database doesn't support PreparedQueries";
 
-		// check if the given file is a valid SQLite file
-		if (dbFile.exists()) {
-			qDebug() << "Database file exists, attempting to load";
-
-			open(dbFilename);
-
-			if (isOpen()) {
-				qDebug() << "Succesfully opened database, tables:" << database().tables();
-			}
-		}
-		else {
-			// if not create an empty .db file
-			qDebug() << "No existing database found, creating new one";
-
-			open(dbFilename);
-
-			if (isOpen()) {
-				setup(SCHEMA_FILE);
-
-				qDebug() << "Setup new database, tables:" << database().tables();
-			}
-		}
-	}
-	else {
-		qDebug("Did not receive valid database filename");
-	}
+	return (
+		driver->hasFeature(QSqlDriver::LastInsertId) &&
+		driver->hasFeature(QSqlDriver::Transactions) &&
+		(driver->hasFeature(QSqlDriver::NamedPlaceholders) || driver->hasFeature(QSqlDriver::PositionalPlaceholders)) &&
+		driver->hasFeature(QSqlDriver::PreparedQueries)
+	);
 }
 
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
-	if (XMLFile == "") {
-		qDebug("SQLDatabase::loadFromXML: filename was empty, aborting...");
+	if (XMLFile == "" || !isOpen()) {
+		qDebug("SQLDatabase::loadFromXML: filename was empty or database is not open, aborting...");
 
 		return;
 	}
@@ -80,13 +67,6 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 
 	// open the file in read-only mode
 	if (file.open(QIODevice::ReadOnly)) {
-		// check if there is a database loaded, if not we'll make one on the fly and just use the same filename with .db extensions
-		if (!isOpen()) {
-			QFileInfo fi(file);
-
-			loadFile(fi.absolutePath() + "/" + fi.baseName() + ".db");
-		}
-
 		QDomDocument doc;
 
 		bool succes = doc.setContent(&file);
@@ -128,6 +108,9 @@ void SQLDatabase::saveToXML(const QString& XMLFile) const {
 	}
 }
 
+/**
+ * TODO: implement
+ */
 QDomDocument SQLDatabase::toXML() const {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";
@@ -164,45 +147,13 @@ int SQLDatabase::matchCount() const {
  * TODO: batch queries (make VariantList's)
  * TODO: more sanity-checking for corrupt matches.xml
  * TODO: decide if we use the preset matches.xml id, or a new one
- *
- * Schemas for quick reference:
-
- CREATE TABLE `matchinfo` (
-	`id` INTEGER PRIMARY KEY,
-	`status` INTEGER,
-	`overlap` REAL,
-	`error` REAL,
-	`volume` REAL,
-	`old_volume` REAL
-);
-
-CREATE TABLE `matches` (
-	`match_id` INTEGER,
-	`fragment_id` INTEGER,
-	`transformation` BLOB
-);
-CREATE TABLE `conflicts` (
-	`match_id` INTEGER,
-	`other_match_id` INTEGER
-);
  */
 void SQLDatabase::parseXML(const QDomElement &root) {
 	register int i = 1;
 
 	QSqlDatabase db(database());
 
-	// check if the current database supports feature QSqlDriver::LastInsertId, we're going to use it
-	if (!db.driver()->hasFeature(QSqlDriver::LastInsertId)) {
-		qDebug() << "Database says it doesn't support LastInsertId, aborting";
-
-		return;
-	}
-
-	if (!db.transaction()) {
-		qDebug() << "Was unable to start transaction to fill tables";
-
-		return;
-	}
+	db.transaction();
 
 	// prepare queries
 	QSqlQuery matchesQuery(db);
@@ -250,16 +201,12 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
 
 	for (QDomElement match = root.firstChildElement("match"); !match.isNull(); match = match.nextSiblingElement()) {
-		// update fragments table (we're going to go after fragments as we need them
-		// probably an addFragment method is best
-		// note that in reality this info should come from the old Database class, and not ad-hoc
-		// as we are doing now
 		// TODO: how can we check that this isn't already in the table? for now assume clean table
 
 		int matchId = match.attribute("id").toInt();
 		//int matchId = query.lastInsertId().toInt();
 
-		QString debug = QString("item %1: source = %2, target = %3 || (id = %4)").arg(i).arg(match.attribute("src")).arg(match.attribute("tgt")).arg(matchId);
+		//QString debug = QString("item %1: source = %2, target = %3 || (id = %4)").arg(i).arg(match.attribute("src")).arg(match.attribute("tgt")).arg(matchId);
 		//qDebug() << debug;
 
 		// update matches table
@@ -318,16 +265,14 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		++i;
 	}
 
-	if (!db.commit()) {
-		qDebug() << "Was unable to commit transaction to fill tables";
-	}
+	db.commit();
 
 	emit databaseOpEnded();
 	emit matchCountChanged();
 }
 
 void SQLDatabase::reset() {
-	// disconnect and unlink db file + call setup
+	// TODO: disconnect and unlink db file + call setup
 }
 
 void SQLDatabase::setup(const QString& schemaFile) {
@@ -344,57 +289,18 @@ void SQLDatabase::setup(const QString& schemaFile) {
 	}
 
 	QByteArray data(file.readAll());
-	file.close();
-
 	QString schemaQuery = QString(data);
-
-	//start transatcion
-	if (!db.transaction()) {
-		qDebug() << "Couldn't start transaction";
-
-		return;
-	}
-
 	QStringList queries = schemaQuery.split(";");
 	QSqlQuery query(db);
 
+	db.transaction();
 	foreach (const QString &q, queries) {
 		query.exec(q);
 		qDebug() << "Executed query:" << q;
 	}
+	db.commit();
 
-	if (!db.commit()) {
-		qDebug() << "Could not commit to database even though transaction was started" << db.lastError();
-	}
-}
-
-QSqlDatabase SQLDatabase::open(const QString& file) {
-	QSqlDatabase db = QSqlDatabase::addDatabase(DB_TYPE, CONN_NAME);
-	db.setHostName(DB_HOST);
-	db.setDatabaseName(file);
-
-	if (!db.open()) {
-		qDebug() << "Unable to open a database file for setup, error: " << db.lastError();
-	}
-	else {
-		if (db.isValid()) {
-			/* a tiny bit of performance tuning */
-			setPragmas();
-
-			emit databaseOpened();
-			emit matchCountChanged();
-		}
-		else {
-			qDebug() << "Somehow database was opened but it wasn't valid: " << db.lastError();
-		}
-	}
-
-	return db;
-}
-
-void SQLDatabase::setPragmas() {
-	database().exec("PRAGMA synchronous = OFF");
-	database().exec("PRAGMA journal_mode = MEMORY");
+	file.close();
 }
 
 void SQLDatabase::close() {
