@@ -1,5 +1,7 @@
 #include "SQLiteDatabase.h"
 
+const QString SQLiteDatabase::DB_TYPE = "QSQLITE";
+
 SQLiteDatabase::SQLiteDatabase() {
 	// TODO Auto-generated constructor stub
 

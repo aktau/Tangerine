@@ -2,32 +2,39 @@
 
 #include <QtGui>
 #include <QDebug>
-#include <QProgressBar>
 
 #include <assert.h>
 
-#include "SQLiteDatabase.h"
+#include "SQLFragmentConf.h"
+
+#include "Database.h"
+
+using namespace thera;
 
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
 
 const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
-Tangerine::Tangerine(QWidget *parent) : QMainWindow(parent), mDb(NULL), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
-	mDb = new SQLiteDatabase();
+Tangerine::Tangerine(SQLDatabase& db, QWidget *parent) : QMainWindow(parent), mDb(db), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+	//mDb = new SQLiteDatabase();
 
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
 
-	connect(mDb, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
-	connect(mDb, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
-	connect(mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
-	connect(mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
-	connect(mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-	connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
+	connect(&mDb, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
+	connect(&mDb, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
+	connect(&mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
+	connect(&mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
+	connect(&mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
+	connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
 
 	databaseClosed();
+
+	mLoadFragDbAct->setEnabled(Database::isValid() ? false : true);
+	mLoadMatchDbAct->setEnabled(Database::isValid() ? true : false);
+	mImportXMLAct->setEnabled(Database::isValid() ? true : false);
 }
 
 Tangerine::~Tangerine() {
@@ -67,7 +74,8 @@ void Tangerine::setupWindow() {
 	/* menu bar */
 
 	mFileMenu = menuBar()->addMenu(tr("&File"));
-	mFileMenu->addAction(mLoadDbAct);
+	mFileMenu->addAction(mLoadFragDbAct);
+	mFileMenu->addAction(mLoadMatchDbAct);
 	mFileMenu->addAction(mSaveDbAct);
 	mFileMenu->addSeparator();
 	mFileMenu->addAction(mImportXMLAct);
@@ -79,7 +87,8 @@ void Tangerine::setupWindow() {
 	/* toolbar */
 
 	mFileToolbar = addToolBar(tr("File"));
-	mFileToolbar->addAction(mLoadDbAct);
+	mFileToolbar->addAction(mLoadFragDbAct);
+	mFileToolbar->addAction(mLoadMatchDbAct);
 	mFileToolbar->addAction(mSaveDbAct);
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mImportXMLAct);
@@ -112,10 +121,14 @@ void Tangerine::setupWindow() {
 }
 
 void Tangerine::createActions() {
-	mLoadDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("&Load database"), this);
-	mLoadDbAct->setShortcuts(QKeySequence::Open);
-	mLoadDbAct->setStatusTip(tr("Select and load a database"));
-    connect(mLoadDbAct, SIGNAL(triggered()), this, SLOT(loadDatabase()));
+	mLoadFragDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_table.png"), tr("&Load fragment database"), this);
+	mLoadFragDbAct->setStatusTip(tr("Select and load a fragment database"));
+	connect(mLoadFragDbAct, SIGNAL(triggered()), this, SLOT(loadFragmentDatabase()));
+
+	mLoadMatchDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("&Load match database"), this);
+	mLoadMatchDbAct->setShortcuts(QKeySequence::Open);
+	mLoadMatchDbAct->setStatusTip(tr("Select and load a match database"));
+    connect(mLoadMatchDbAct, SIGNAL(triggered()), this, SLOT(loadMatchDatabase()));
 
     mSaveDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/database_save.png"), tr("&Save database"), this);
     mSaveDbAct->setShortcuts(QKeySequence::Save);
@@ -131,33 +144,55 @@ void Tangerine::createActions() {
 	mSaveXMLAct->setStatusTip(tr("Export the current database to an XML file"));
 	connect(mSaveXMLAct, SIGNAL(triggered()), this, SLOT(exportDatabase()));
 
-    mHelpAboutAct = new QAction(tr("&About"), this);
+    mHelpAboutAct = new QAction(QIcon(":/rcc/fatcow/32x32/information.png"), tr("&About"), this);
     mHelpAboutAct->setStatusTip(tr("Show the about dialog"));
 	connect(mHelpAboutAct, SIGNAL(triggered()), this, SLOT(about()));
 }
 
+/**
+ * TODO: fill in
+ */
 void Tangerine::closeDatabase() {
+	/*
 	if (mDb != NULL) {
-		delete mDb;
+		//delete mDb;
 
 		mDb = NULL;
 	}
+	*/
 }
 
 void Tangerine::updateStatusBar() {
-	assert(mDb != NULL);
+	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb.matchCount()));
+}
 
-	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb->matchCount()));
+void Tangerine::loadFragmentDatabase() {
+	QSettings settings;
+
+	QString dbDir = QFileDialog::getExistingDirectory(
+		this,
+		QObject::tr("Choose the fragment database root directory"),
+		QString(),
+		QFileDialog::ShowDirsOnly |
+		QFileDialog::DontResolveSymlinks |
+		QFileDialog::DontConfirmOverwrite
+	);
+
+	if (!dbDir.isEmpty() && Database::init(dbDir, Database::FRAGMENT, true)) {
+		settings.setValue(SETTINGS_DB_ROOT_KEY, dbDir);
+
+		emit fragmentDatabaseOpened();
+	}
 }
 
 
-void Tangerine::loadDatabase() {
+void Tangerine::loadMatchDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (fileName != "") {
-		mDb->connect(fileName);
+		mDb.connect(fileName);
 
-		if (!mDb->isOpen()) {
+		if (!mDb.isOpen()) {
 			QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
 		}
 	}
@@ -173,7 +208,7 @@ void Tangerine::importDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Choose an XML file to import"), QString(), tr("XML files (*.xml)"), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (fileName != "") {
-		mDb->loadFromXML(fileName);
+		mDb.loadFromXML(fileName);
 	}
 }
 
@@ -181,23 +216,33 @@ void Tangerine::exportDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("To which file do you want to export?"), QString(), tr("XML files (*.xml)"), 0);
 
 	if (fileName != "") {
-		mDb->saveToXML(fileName);
+		mDb.saveToXML(fileName);
 	}
+}
+
+void Tangerine::fragmentDatabaseOpened() {
+	mLoadFragDbAct->setEnabled(false);
+	mLoadMatchDbAct->setEnabled(true);
+	mImportXMLAct->setEnabled(true);
 }
 
 void Tangerine::databaseOpened() {
 	mSaveDbAct->setEnabled(true);
 	mSaveXMLAct->setEnabled(true);
+
+	mFc = mDb.getAllMatches();
+
+	qDebug() << "Got all matches! There are" << mFc.size();
+
+	SQLFragmentConf fc = mFc.back();
+
+	qDebug() << "This matches error was" << fc.getDouble("error", 0.9999);
 }
 
 void Tangerine::databaseClosed() {
 	mSaveDbAct->setEnabled(false);
 	mSaveXMLAct->setEnabled(false);
 }
-
-void databaseOpStarted(int steps);
-		void databaseOpStepDone();
-		void databaseOpEnded();
 
 void Tangerine::databaseOpStarted(const QString& operation, int steps) {
 	if (mProgress != NULL) {

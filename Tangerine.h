@@ -12,6 +12,8 @@
 
 #include "SQLDatabase.h"
 
+#define SETTINGS_DB_ROOT_KEY "db/root"
+
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0
 #define MIN_VERSION 2
@@ -20,7 +22,7 @@ class Tangerine : public QMainWindow {
 	Q_OBJECT
 
 	public:
-		Tangerine(QWidget *parent = 0);
+		Tangerine(SQLDatabase& db, QWidget *parent = 0);
 		virtual ~Tangerine();
 
 	private:
@@ -29,11 +31,13 @@ class Tangerine : public QMainWindow {
 		void closeDatabase();
 
 	private slots:
-		void loadDatabase();
+		void loadFragmentDatabase();
+		void loadMatchDatabase();
 		void saveDatabase();
 		void importDatabase();
 		void exportDatabase();
 
+		void fragmentDatabaseOpened();
 		void databaseOpened();
 		void databaseClosed();
 
@@ -46,7 +50,9 @@ class Tangerine : public QMainWindow {
 		void about();
 
 	private:
-		SQLDatabase *mDb;
+		SQLDatabase& mDb;
+
+		QList<thera::SQLFragmentConf> mFc;
 
 		QFrame *mFrame;
 		QScrollArea *mScrollArea;
@@ -58,7 +64,8 @@ class Tangerine : public QMainWindow {
 		QMenu *mHelpMenu;
 		QToolBar *mFileToolbar;
 
-		QAction *mLoadDbAct;
+		QAction *mLoadFragDbAct;
+		QAction *mLoadMatchDbAct;
 		QAction *mSaveDbAct;
 		QAction *mImportXMLAct;
 		QAction *mSaveXMLAct;

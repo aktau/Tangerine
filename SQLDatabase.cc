@@ -10,13 +10,14 @@ using namespace thera;
 
 const QString SQLDatabase::CONN_NAME = "TheraSQL";
 const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
-const QString SQLDatabase::DB_TYPE = "QSQLITE";
 const QString SQLDatabase::DB_HOST = "localhost";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
 const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
+
+QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
 
 SQLDatabase::SQLDatabase() {
 	/* nothing */
@@ -28,10 +29,6 @@ SQLDatabase::~SQLDatabase() {
 
 bool SQLDatabase::isOpen() const {
 	return database().isValid() && database().isOpen();
-}
-
-QSqlDatabase SQLDatabase::database() const {
-	return QSqlDatabase::database(CONN_NAME);
 }
 
 /**
@@ -108,10 +105,58 @@ void SQLDatabase::saveToXML(const QString& XMLFile) const {
 	}
 }
 
+QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
+	QList<SQLFragmentConf> list;
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+	if (query.exec(
+		"SELECT matches.match_id, source_name, target_name, transformation "
+		"FROM matches"
+	)) {
+		QSqlRecord record = query.record();
+		int columns = record.count();
+		//int row = 0;
+
+		qDebug() << "Query executed succesfully," << columns << "columns";
+
+		while (query.next()) {
+			SQLFragmentConf fc(this, query.value(0).toInt());
+
+			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
+
+			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
+
+			XF xf;
+			QTextStream ts(query.value(2).toString().toAscii());
+			ts >> xf;
+
+			list.append(fc);
+
+			/*
+			QString fields;
+
+			for (int i = 0; i < columns; ++i) {
+				fields.append(", " + query.value(i).toString());
+			}
+
+			qDebug() << "Row" << ++row << ":" << fields;
+			*/
+		}
+	}
+	else {
+		qDebug() << "Query failed:" << query.lastError();
+	}
+
+	return list;
+}
+
 /**
  * TODO: implement
  */
-QDomDocument SQLDatabase::toXML() const {
+const QDomDocument SQLDatabase::toXML() const {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";
 
@@ -309,4 +354,8 @@ void SQLDatabase::close() {
 
 		emit databaseClosed();
 	}
+}
+
+bool SQLDatabase::matchHasField(const QString& field) const {
+	return FIELDS.contains(field, Qt::CaseInsensitive);
 }

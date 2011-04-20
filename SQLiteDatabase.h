@@ -4,6 +4,8 @@
 #include "SQLDatabase.h"
 
 class SQLiteDatabase : public SQLDatabase {
+		Q_OBJECT
+
 	public:
 		SQLiteDatabase();
 		virtual ~SQLiteDatabase();
@@ -14,6 +16,14 @@ class SQLiteDatabase : public SQLDatabase {
 	protected:
 		virtual QSqlDatabase open(const QString& file);
 		virtual void setPragmas();
+
+	private:
+		// disabling copy-constructor and copy-assignment for now
+		SQLiteDatabase(const SQLiteDatabase&);
+		SQLiteDatabase& operator=(const SQLiteDatabase&);
+
+	private:
+		static const QString DB_TYPE;
 };
 
 #endif /* SQLITEDATABASE_H_ */
