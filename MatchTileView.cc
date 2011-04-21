@@ -75,9 +75,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	s().tindices[tidx] = fcidx;
 
 	if (fcidx < 0 || fcidx >= mModel->size()) {
-		qDebug() << "Updating [INVALID] thumbnail" << tidx << "to model index" << fcidx;
-
-		qDebug() << "branch 1" << fcidx << "| mModel->size()" << mModel->size();
+		//qDebug() << "Updating [INVALID] thumbnail" << tidx << "to model index" << fcidx;
 
 		QPixmap p(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
 		p.fill(Qt::blue);
@@ -110,7 +108,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 			tooltip += "\n<b>Comment</b>: " + comment;
 		}
 
-		qDebug() << "Updating [VALID] thumbnail" << tidx << "to model index" << fcidx << "| thumb = " << thumbFile;
+		//qDebug() << "Updating [VALID] thumbnail" << tidx << "to model index" << fcidx << "| thumb = " << thumbFile;
 
 		mThumbs[tidx]->setToolTip(tooltip);
 	}
@@ -151,7 +149,7 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 }
 
 void MatchTileView::modelChanged() {
-	qDebug() << "Model changed!";
+	qDebug() << "MatchTileView::modelChanged: called";
 
 	s().cur_pos = 0;
 	refresh();

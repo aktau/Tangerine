@@ -110,16 +110,7 @@ QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
-	if (query.exec(
-		"SELECT matches.match_id, source_name, target_name, transformation "
-		"FROM matches"
-	)) {
-		QSqlRecord record = query.record();
-		int columns = record.count();
-		//int row = 0;
-
-		qDebug() << "Query executed succesfully," << columns << "columns";
-
+	if (query.exec("SELECT matches.match_id, source_name, target_name, transformation FROM matches")) {
 		while (query.next()) {
 			SQLFragmentConf fc(this, query.value(0).toInt());
 
@@ -134,16 +125,6 @@ QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
 			ts >> xf;
 
 			list.append(fc);
-
-			/*
-			QString fields;
-
-			for (int i = 0; i < columns; ++i) {
-				fields.append(", " + query.value(i).toString());
-			}
-
-			qDebug() << "Row" << ++row << ":" << fields;
-			*/
 		}
 	}
 	else {

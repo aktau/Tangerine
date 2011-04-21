@@ -265,12 +265,6 @@ void Tangerine::matchCountChanged() {
 
 	qDebug() << "Got all matches! There are" << mModel.size();
 
-	if (mModel.size() > 0) {
-		SQLFragmentConf fc = mModel.last();
-
-		qDebug() << "This matches error was" << fc.getDouble("error", 0.9999);
-	}
-
 	updateStatusBar();
 }
 
