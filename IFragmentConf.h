@@ -27,12 +27,18 @@ namespace thera {
 				mRelev(that.mRelev),
 				mXF(that.mXF),
 				mCP(that.mCP),
-				mCPRadius(that.mCPRadius) { }
+				mCPRadius(that.mCPRadius) {
+				for (int i = 0; i < MAX_FRAGMENTS; ++i)
+					mFragments[i] = that.mFragments[i];
+			}
 			virtual IFragmentConf& operator=(const IFragmentConf& that) {
 				mRelev = that.mRelev;
 				mXF = that.mXF;
 				mCP = that.mCP;
 				mCPRadius = that.mCPRadius;
+
+				for (int i = 0; i < MAX_FRAGMENTS; ++i)
+					mFragments[i] = that.mFragments[i];
 
 				return *this;
 			}; // leave it to the compiler, for now...

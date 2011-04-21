@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="/" >
+  	<file>rcc/stylesheet.qss</file>
+  
     <file>rcc/icons/tangerine.ico</file>
     <file>rcc/icons/tangerine.png</file>
     <file>rcc/fatcow/32x32/folder_table.png</file>
@@ -7,6 +9,9 @@
     <file>rcc/fatcow/32x32/database_save.png</file>
     <file>rcc/fatcow/32x32/page_go.png</file>
     <file>rcc/fatcow/32x32/page_save.png</file>
+    <file>rcc/fatcow/32x32/data_chooser.png</file>
+    <file>rcc/fatcow/32x32/things_digital.png</file>
+    <file>rcc/fatcow/32x32/bubblechart.png</file>
     <file>rcc/fatcow/32x32/information.png</file>
   </qresource>
 </RCC>

@@ -28,7 +28,8 @@ Tangerine::Tangerine(SQLDatabase& db, QWidget *parent) : QMainWindow(parent), mD
 	connect(&mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
 	connect(&mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
 	connect(&mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-	connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
+	//connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
+	connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
 
 	databaseClosed();
 
@@ -50,22 +51,17 @@ void Tangerine::setupWindow() {
 
 	/* central widget */
 
-	mScrollArea = new QScrollArea(NULL);
-	mScrollArea->setFrameShape(QFrame::NoFrame);
-	mScrollArea->setObjectName("MainScrollArea");
-	mScrollArea->setFocusPolicy(Qt::NoFocus);
-	mScrollArea->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
-	mScrollArea->setWidgetResizable(true);
+	//mTileView = new MatchTileView(QDir("E:\\Thesis\\tongeren_vrijthof_db\\cache\\ribbonmatcher\\dump-sw50_3_16-20100606"));
+	mTileView = new MatchTileView(QDir("C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606"));
+	mTileView->setModel(&mModel);
 
-	mFrame = new QFrame(NULL);
-	mFrame->setFrameShape(QFrame::NoFrame);
-	mFrame->setMinimumSize(800, 600);
-	mFrame->setObjectName("MainFrame");
-	mFrame->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
-	mFrame->setStyleSheet("QFrame#MainFrame { background-color: black; }");
+	mCentralWidget = new QStackedWidget;
+	mCentralWidget->addWidget(mTileView);
+	mCentralWidget->addWidget(new QWidget);
 
-	mScrollArea->setWidget(mFrame);
-	setCentralWidget(mScrollArea);
+	setCentralWidget(mCentralWidget);
+
+	normalView();
 
 	/* create actions */
 
@@ -81,6 +77,10 @@ void Tangerine::setupWindow() {
 	mFileMenu->addAction(mImportXMLAct);
 	mFileMenu->addAction(mSaveXMLAct);
 
+	mViewMenu = menuBar()->addMenu(tr("&View"));
+	mViewMenu->addAction(mNormalViewAct);
+	mViewMenu->addAction(mNodeViewAct);
+
 	mHelpMenu = menuBar()->addMenu(tr("&Help"));
 	mHelpMenu->addAction(mHelpAboutAct);
 
@@ -93,6 +93,9 @@ void Tangerine::setupWindow() {
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mImportXMLAct);
 	mFileToolbar->addAction(mSaveXMLAct);
+	mFileToolbar->addSeparator();
+	mFileToolbar->addAction(mNormalViewAct);
+	mFileToolbar->addAction(mNodeViewAct);
 
 	mFileToolbar->setMovable(false);
 
@@ -106,6 +109,14 @@ void Tangerine::setupWindow() {
 	statusBar()->addPermanentWidget(mNumberOfMatchesLabel);
 
 	updateStatusBar();
+
+	/* styles */
+	QFile file(":/rcc/stylesheet.qss");
+	file.open(QFile::ReadOnly);
+	QString styleSheet = QLatin1String(file.readAll());
+	file.close();
+
+	setStyleSheet(styleSheet);
 
 	/* window size */
 
@@ -121,11 +132,11 @@ void Tangerine::setupWindow() {
 }
 
 void Tangerine::createActions() {
-	mLoadFragDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_table.png"), tr("&Load fragment database"), this);
+	mLoadFragDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_table.png"), tr("Load &fragment database"), this);
 	mLoadFragDbAct->setStatusTip(tr("Select and load a fragment database"));
 	connect(mLoadFragDbAct, SIGNAL(triggered()), this, SLOT(loadFragmentDatabase()));
 
-	mLoadMatchDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("&Load match database"), this);
+	mLoadMatchDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("Load &match database"), this);
 	mLoadMatchDbAct->setShortcuts(QKeySequence::Open);
 	mLoadMatchDbAct->setStatusTip(tr("Select and load a match database"));
     connect(mLoadMatchDbAct, SIGNAL(triggered()), this, SLOT(loadMatchDatabase()));
@@ -143,6 +154,21 @@ void Tangerine::createActions() {
 	mSaveXMLAct->setShortcuts(QKeySequence::SaveAs);
 	mSaveXMLAct->setStatusTip(tr("Export the current database to an XML file"));
 	connect(mSaveXMLAct, SIGNAL(triggered()), this, SLOT(exportDatabase()));
+
+	mNormalViewAct = new QAction(QIcon(":/rcc/fatcow/32x32/things_digital.png"), tr("Switch to &normal view"), this);
+	mNormalViewAct->setCheckable(true);
+	mNormalViewAct->setStatusTip(tr("Switch to normal view"));
+	connect(mNormalViewAct, SIGNAL(triggered()), this, SLOT(normalView()));
+
+	mNodeViewAct = new QAction(QIcon(":/rcc/fatcow/32x32/bubblechart.png"), tr("Switch to n&ode view"), this);
+	mNodeViewAct->setCheckable(true);
+	mNodeViewAct->setStatusTip(tr("Switch to node view"));
+	connect(mNodeViewAct, SIGNAL(triggered()), this, SLOT(nodeView()));
+
+	mViewGroup = new QActionGroup(this);
+	mViewGroup->addAction(mNormalViewAct);
+	mViewGroup->addAction(mNodeViewAct);
+	mNormalViewAct->setChecked(true);
 
     mHelpAboutAct = new QAction(QIcon(":/rcc/fatcow/32x32/information.png"), tr("&About"), this);
     mHelpAboutAct->setStatusTip(tr("Show the about dialog"));
@@ -220,23 +246,37 @@ void Tangerine::exportDatabase() {
 	}
 }
 
+void Tangerine::normalView() {
+	mCentralWidget->setCurrentIndex(0);
+}
+
+void Tangerine::nodeView() {
+	mCentralWidget->setCurrentIndex(1);
+}
+
 void Tangerine::fragmentDatabaseOpened() {
 	mLoadFragDbAct->setEnabled(false);
 	mLoadMatchDbAct->setEnabled(true);
 	mImportXMLAct->setEnabled(true);
 }
 
+void Tangerine::matchCountChanged() {
+	mModel.setMatches(mDb.getAllMatches());
+
+	qDebug() << "Got all matches! There are" << mModel.size();
+
+	if (mModel.size() > 0) {
+		SQLFragmentConf fc = mModel.last();
+
+		qDebug() << "This matches error was" << fc.getDouble("error", 0.9999);
+	}
+
+	updateStatusBar();
+}
+
 void Tangerine::databaseOpened() {
 	mSaveDbAct->setEnabled(true);
 	mSaveXMLAct->setEnabled(true);
-
-	mFc = mDb.getAllMatches();
-
-	qDebug() << "Got all matches! There are" << mFc.size();
-
-	SQLFragmentConf fc = mFc.back();
-
-	qDebug() << "This matches error was" << fc.getDouble("error", 0.9999);
 }
 
 void Tangerine::databaseClosed() {

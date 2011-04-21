@@ -8,9 +8,12 @@
 #include <QToolbar>
 #include <QAction>
 #include <QProgressDialog>
+#include <QStackedWidget>
 #include <QLabel>
 
 #include "SQLDatabase.h"
+#include "MatchModel.h"
+#include "MatchTileView.h"
 
 #define SETTINGS_DB_ROOT_KEY "db/root"
 
@@ -32,10 +35,18 @@ class Tangerine : public QMainWindow {
 
 	private slots:
 		void loadFragmentDatabase();
+		void matchCountChanged();
 		void loadMatchDatabase();
 		void saveDatabase();
 		void importDatabase();
 		void exportDatabase();
+
+		void normalView();
+		void nodeView();
+
+		void about();
+
+		void updateStatusBar();
 
 		void fragmentDatabaseOpened();
 		void databaseOpened();
@@ -45,30 +56,38 @@ class Tangerine : public QMainWindow {
 		void databaseOpStepDone(int step);
 		void databaseOpEnded();
 
-		void updateStatusBar();
-
-		void about();
-
 	private:
 		SQLDatabase& mDb;
 
-		QList<thera::SQLFragmentConf> mFc;
+		MatchModel mModel;
+		//QList<thera::SQLFragmentConf> mFc;
 
-		QFrame *mFrame;
-		QScrollArea *mScrollArea;
+		QStackedWidget *mCentralWidget;
+
+		//QFrame *mFrame;
+		//QScrollArea *mScrollArea;
+		MatchTileView *mTileView;
+
 		QProgressDialog *mProgress;
 
 		QLabel *mNumberOfMatchesLabel;
 
 		QMenu *mFileMenu;
+		QMenu *mViewMenu;
 		QMenu *mHelpMenu;
 		QToolBar *mFileToolbar;
 
 		QAction *mLoadFragDbAct;
 		QAction *mLoadMatchDbAct;
 		QAction *mSaveDbAct;
+
 		QAction *mImportXMLAct;
 		QAction *mSaveXMLAct;
+
+		QActionGroup *mViewGroup;
+		QAction *mNormalViewAct;
+		QAction *mNodeViewAct;
+
 		QAction *mHelpAboutAct;
 
 		static const int MIN_WIDTH;

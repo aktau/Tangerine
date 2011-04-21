@@ -103,7 +103,9 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 		}
 	}
 	else {
-		qDebug() << "SQLDatabase::matchGetValue: Query failed:" << query.lastError();
+		qDebug()
+				<< "SQLDatabase::matchGetValue: Query failed:" << query.lastError()
+				<< "\nQuery used:" << query.lastQuery();
 	}
 
 	return QVariant(0).value<T>();
