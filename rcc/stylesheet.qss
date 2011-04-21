@@ -1,3 +1,9 @@
+ThumbLabel QToolTip {
+	border: 1px solid black;
+	background: #aaaaaa;
+	color: black;
+}
+
 QMenuBar {
 	background-color: #aaaaaa;
 }

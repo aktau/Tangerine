@@ -98,16 +98,16 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 
 		mThumbs[tidx]->setPixmap(p);
 
-		QString tooltip =
-			Database::fragment(match.mFragments[IFragmentConf::TARGET])->id()
-			+ " -> " + Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id()
-			+ " | " + match.getString("error", "")
-			+ " | " + match.getString("volume", "");
+		QString tooltip = QString("<b>Target</b>: %1\n<b>Source</b>: %2\n<b>Error</b>: %3\n<b>Volume</b>: %4\n")
+				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
+				.arg(Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id())
+				.arg(match.getString("error", ""))
+				.arg(match.getString("volume", ""));
 
 		QString comment = match.getString("comment", "");
 
 		if (!comment.isEmpty()) {
-			tooltip += "\n" + comment;
+			tooltip += "\n<b>Comment</b>: " + comment;
 		}
 
 		qDebug() << "Updating [VALID] thumbnail" << tidx << "to model index" << fcidx << "| thumb = " << thumbFile;
