@@ -24,7 +24,10 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 
 	mFrame = new QFrame(NULL);
 	mFrame->setFrameShape(QFrame::NoFrame);
-	mFrame->setMinimumSize(800, 600);
+	mFrame->setMinimumSize(
+		columns * THUMB_WIDTH  * scale + (columns - 1) * THUMB_GUTTER,
+		rows * THUMB_HEIGHT * scale + (rows - 1) * THUMB_GUTTER
+	);
 	mFrame->setObjectName("MainFrame");
 	mFrame->setSizePolicy(QSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding));
 	mFrame->setStyleSheet("QFrame#MainFrame { background-color: black; }");
@@ -136,10 +139,14 @@ QString MatchTileView::thumbName(IFragmentConf &conf) {
 }
 
 void MatchTileView::clicked(int idx, QMouseEvent *event) {
+	Q_UNUSED(event);
+
 	qDebug() << "Clicked!" << idx;
 }
 
 void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
+	Q_UNUSED(event);
+
 	qDebug() << "Double Clicked!" << idx;
 }
 
@@ -150,12 +157,11 @@ void MatchTileView::modelChanged() {
 	refresh();
 }
 
-void MatchTileView::mousePressEvent(QMouseEvent *event) {
-	//qDebug("\nMouse in board");
-    //setFocus();
-
-    QScrollArea::mousePressEvent(event);
+/*
+void MatchTileView::resizeEvent(QResizeEvent *event) {
+	refresh();
 }
+*/
 
 void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
