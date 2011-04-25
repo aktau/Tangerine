@@ -6,8 +6,11 @@
 #include <assert.h>
 
 #include "SQLFragmentConf.h"
-
 #include "Database.h"
+
+#ifdef WITH_GRAPH
+#include "graph/GraphView.h"
+#endif
 
 using namespace thera;
 
@@ -57,7 +60,12 @@ void Tangerine::setupWindow() {
 
 	mCentralWidget = new QStackedWidget;
 	mCentralWidget->addWidget(mTileView);
+#ifdef WITH_GRAPH
+	mCentralWidget->addWidget(new GraphView);
+#else
 	mCentralWidget->addWidget(new QWidget);
+#endif
+
 
 	setCentralWidget(mCentralWidget);
 

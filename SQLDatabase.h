@@ -18,7 +18,7 @@ class SQLDatabase : public QObject {
 
 		bool isOpen() const;
 
-		// TODO: we could probably deliver a base implementation for general SQL databases and overrie ind SQLite
+		// we could probably provide a base implementation fo all non-SQLite db's
 		virtual void connect(const QString& name) = 0;
 
 		virtual void loadFromXML(const QString& XMLFile);

@@ -7,6 +7,9 @@ TARGET    = tangerine
 CONFIG   += qt
 CONFIG   -= app_bundle
 
+# if you want graph support...
+CONFIG += graphviz
+
 #QT += core gui
 QT += opengl
 QT += xml
@@ -37,3 +40,18 @@ win32-g++: LIBS += -lglu32 -lopengl32
 TRANSLATIONS = lcl_theraprocess_de.ts lcl_theraprocess_el.ts
 
 win32-g++: CONFIG += console
+
+graphviz {
+	message(Tangerine: Graphviz support was added)
+
+	DEFINES += WITH_GRAPH
+
+	SOURCES += graph/*.cc
+	HEADERS += graph/*.h
+	
+	QMAKE_LIBDIR += graph/lib
+	#LIBPATH += graph/lib
+	INCLUDEPATH += graph/include
+	
+	LIBS += -lgraph -lgvc
+}
