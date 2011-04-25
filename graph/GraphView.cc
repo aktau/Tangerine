@@ -18,7 +18,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
 	/* view attributes */
 	setDragMode(QGraphicsView::ScrollHandDrag);
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-	//view.setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
 	scale(2,2);
 
@@ -49,12 +49,9 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
     QPen nodePen(nodeColor, 0, Qt::SolidLine);
     QPen edgePen(nodeColor, 2, Qt::SolidLine);
 
-	//scene.addText("Hello, world!");
+	//scene->addText("Hello, world!");
 
-	//scene.setSceneRect(graph.boundingRect());
-
-    scene->addItem(new GraphNode(0,0,20,20));
-    scene->addItem(new GraphNode(-10,-10,20,20));
+	scene->setSceneRect(mGraph->boundingRect());
 
 	foreach (const GVNode& node, mGraph->nodes()) {
 		QAbstractGraphicsShapeItem *item = new GraphNode(node.rect());
@@ -94,7 +91,7 @@ GraphView::GraphView(QGraphicsScene *scene, QWidget *parent) : QGraphicsView(sce
 */
 
 GraphView::~GraphView() {
-	// TODO Auto-generated destructor stub
+	delete mGraph;
 }
 
 void GraphView::wheelEvent(QWheelEvent *event) {

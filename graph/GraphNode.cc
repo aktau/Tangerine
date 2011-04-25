@@ -15,7 +15,7 @@ GraphNode::~GraphNode() {
 }
 
 void GraphNode::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-	qDebug() << "CLICKED on " << this << ": position" << pos() << "scenePos:" << scenePos() << "event pos" << event->pos();
+	qDebug() << "CLICKED on: position" << pos() << "scenePos:" << scenePos() << "event pos" << event->pos();
 
 	//resetTransform();
 
