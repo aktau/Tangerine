@@ -10,6 +10,7 @@
 #include <QProgressDialog>
 #include <QStackedWidget>
 #include <QLabel>
+#include <QDir>
 
 #include "SQLDatabase.h"
 #include "MatchModel.h"
@@ -29,7 +30,7 @@ class Tangerine : public QMainWindow {
 	Q_OBJECT
 
 	public:
-		Tangerine(SQLDatabase& db, QWidget *parent = 0);
+		Tangerine(SQLDatabase& db, const QDir& thumbDir, QWidget *parent = 0);
 		virtual ~Tangerine();
 
 	private:
@@ -65,6 +66,9 @@ class Tangerine : public QMainWindow {
 
 		MatchModel mModel;
 
+		QDir mThumbDir;
+
+		/* GUI ELEMENTS */
 		QStackedWidget *mCentralWidget;
 
 		MatchTileView *mTileView;

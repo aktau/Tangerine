@@ -15,7 +15,7 @@ const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
 const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
-Tangerine::Tangerine(SQLDatabase& db, QWidget *parent) : QMainWindow(parent), mDb(db), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+Tangerine::Tangerine(SQLDatabase& db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(db), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
@@ -48,7 +48,7 @@ void Tangerine::setupWindow() {
 	/* central widget */
 
 	//mTileView = new MatchTileView(QDir("E:\\Thesis\\tongeren_vrijthof_db\\cache\\ribbonmatcher\\dump-sw50_3_16-20100606"));
-	mTileView = new MatchTileView(QDir("C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606"));
+	mTileView = new MatchTileView(mThumbDir);
 	mTileView->setModel(&mModel);
 
 	mCentralWidget = new QStackedWidget;

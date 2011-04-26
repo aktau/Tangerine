@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QSettings>
+#include <QDir>
 
 #include "Tangerine.h"
 #include "SQLiteDatabase.h"
@@ -25,7 +26,8 @@ void initializeFragmentDb() {
 		}
 	}
 
-	char *env = getenv("THERA_DB");
+	const char *env = getenv("THERA_DB");
+
 	if (env) {
 		dbDir = env;
 
@@ -37,6 +39,19 @@ void initializeFragmentDb() {
 
 	if (!dbDir.isEmpty()) {
 		settings.setValue(SETTINGS_DB_ROOT_KEY, dbDir);
+	}
+}
+
+void parseCommandLine(int argc, char *argv[], QDir& thumbDir) {
+    for (int i = 1; i < argc; ++i) {
+    	const QString argument = argv[i];
+
+    	if (argument == "--thumbDir" || argument == "-t") {
+    		if (i + 1 < argc) {
+    			// set thumbdir to cmdline argument AND advance pointers
+    			thumbDir = QDir(argv[++i]);
+    		}
+    	}
 	}
 }
 
@@ -53,14 +68,15 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setApplicationName("browsematches");
 
     QSettings settings;
-
     QApplication application(argc, argv);
+    QDir thumbDir("C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606");
 
     initializeFragmentDb();
+    parseCommandLine(argc, argv, thumbDir);
 
     SQLiteDatabase db;
 
-    Tangerine window(db);
+    Tangerine window(db, thumbDir);
     window.show();
 
     return application.exec();
