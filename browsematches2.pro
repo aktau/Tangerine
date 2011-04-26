@@ -10,16 +10,15 @@ CONFIG   -= app_bundle
 # if you want graph support...
 CONFIG += graphviz
 
-#QT += core gui
-QT += opengl
-QT += xml
-QT += sql
+QT += opengl xml sql
 
 SOURCES     = *.cc
 HEADERS     = *.h
 
 RESOURCES = tangerine.qrc
 RC_FILE = tangerine.rc
+
+INCLUDEPATH += ../nicolash
 
 DEPENDPATH += $${INCLUDEPATH}
 DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}
@@ -51,7 +50,7 @@ graphviz {
 	
 	QMAKE_LIBDIR += graph/lib
 	#LIBPATH += graph/lib
-	INCLUDEPATH += graph/include
+	INCLUDEPATH += graph graph/include
 	
 	LIBS += -lgraph -lgvc
 }

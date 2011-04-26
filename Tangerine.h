@@ -16,7 +16,7 @@
 #include "MatchTileView.h"
 
 #ifdef WITH_GRAPH
-#include "graph/GraphView.h"
+#include "GraphView.h"
 #endif
 
 #define SETTINGS_DB_ROOT_KEY "db/root"

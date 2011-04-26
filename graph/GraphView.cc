@@ -10,10 +10,10 @@
 #include "GVGraph.h"
 #include "GraphNode.h"
 
-#include "../SQLFragmentConf.h"
-#include "../MatchModel.h"
+#include "SQLFragmentConf.h"
+#include "MatchModel.h"
 
-#define MAXNODES 2000
+#define MAXNODES 4000
 
 using namespace thera;
 
@@ -30,7 +30,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	//scale(2,2);
 
     /* Create graph */
-	mGraph = new GVGraph("Tangerine", "fdp", AGRAPH);
+	mGraph = new GVGraph("Tangerine", "sfdp", AGRAPH);
 
 	/*
     QStringList names = QStringList() << "A" << "B" << "C" << "D" << "E" << "F" << "G";
@@ -104,8 +104,6 @@ void GraphView::scaleView(qreal scaleFactor) {
 void GraphView::generate() {
 	mGraph->clearNodes();
 
-	qDebug() << "1 H";
-
 	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
 		const SQLFragmentConf& conf = mModel->get(i);
 
@@ -115,15 +113,9 @@ void GraphView::generate() {
 		mGraph->addEdge(conf.getSourceId(), conf.getTargetId());
 	}
 
-	qDebug() << "2 H";
-
 	mGraph->applyLayout();
 
-	qDebug() << "3 H";
-
 	drawGraph();
-
-	qDebug() << "4 H";
 }
 
 void GraphView::drawGraph() {
@@ -131,11 +123,15 @@ void GraphView::drawGraph() {
 
     QColor nodeColor = Qt::black;
     QPen nodePen(nodeColor, 0, Qt::SolidLine);
-    QPen edgePen(nodeColor, 2, Qt::SolidLine);
+    QPen edgePen(QColor(0, 0, 0, 127), 2, Qt::SolidLine);
 
 	//scene->addText("Hello, world!");
 
-	scene()->setSceneRect(mGraph->boundingRect());
+	//scene()->setSceneRect(mGraph->boundingRect());
+
+	foreach (const GVEdge& edge, mGraph->edges()) {
+		scene()->addPath(edge.path, edgePen);
+	}
 
 	foreach (const GVNode& node, mGraph->nodes()) {
 		QAbstractGraphicsShapeItem *item = new GraphNode(node.rect());
@@ -152,7 +148,7 @@ void GraphView::drawGraph() {
 
 		item->setBrush(QBrush(gradient));
 
-		//item->setPos(node.topLeftPos()); //
+		//item->setPos(node.topLeftPos());
 
 		scene()->addItem(item);
 
@@ -160,10 +156,6 @@ void GraphView::drawGraph() {
 
 		//QString msg = QString("[%1,%2] -> [width: %3, height: %4]").arg(node.topLeftPos().x()).arg(node.topLeftPos().y()).arg(node.width).arg(node.height);
 		//QMessageBox::about(NULL, QString("Wut?"), msg);
-	}
-
-	foreach (const GVEdge& edge, mGraph->edges()) {
-		scene()->addPath(edge.path, edgePen);
 	}
 }
 
