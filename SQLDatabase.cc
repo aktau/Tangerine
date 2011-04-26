@@ -128,7 +128,7 @@ QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
 		}
 	}
 	else {
-		qDebug() << "Query failed:" << query.lastError();
+		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError();
 	}
 
 	return list;
@@ -331,9 +331,14 @@ void SQLDatabase::setup(const QString& schemaFile) {
 
 void SQLDatabase::close() {
 	if (isOpen()) {
+		qDebug() << "SQLDatabase::close: Closing database";
+
 		database().close();
 
 		emit databaseClosed();
+	}
+	else {
+		qDebug() << "SQLDatabase::close: Couldn't close current database because it wasn't open to begin with";
 	}
 }
 

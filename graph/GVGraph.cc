@@ -11,11 +11,11 @@ const double GVGraph::DotDefaultDPI = 72.0;
 GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double node_size) :
 	mContext(gvContext()), mGraph(_agopen(name, type)), mLayoutAlgorithm(layout) {
 	//Set graph attributes
-	//_agset(_graph, "overlap", "prism");
-	//_agset(_graph, "splines", "true");
-	//_agset(_graph, "pad", "0.2");
+	_agset(mGraph, "overlap", "prism"); // the prism algorithm for node/edge overlap reduction is state of the art, recommended.
+	//_agset(mGraph, "splines", "true"); // this will only work for very very small graphs, it produces app crashes on bigger ones, disabled
+	//_agset(mGraph, "pad", "0.2");
 	_agset(mGraph, "dpi", "96.0");
-	//_agset(_graph, "nodesep", "0.25");
+	_agset(mGraph, "nodesep", "0.2");
 
 	//Set default attributes for the future nodes
 	//_agnodeattr(_graph, "fixedsize", "true");
@@ -24,8 +24,6 @@ GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double node
 
 	//Divide the wanted width by the DPI to get the value in points
 	QString nodePtsWidth = QString("%1").arg(node_size / _agget(mGraph, "dpi", "96,0").toDouble());
-
-	qDebug() << "DPI:" << _agget(mGraph, "dpi", "96,0");
 
 	//GV uses , instead of . for the separator in floats
 	_agnodeattr(mGraph, "width", nodePtsWidth.replace('.', ","));
@@ -123,9 +121,7 @@ void GVGraph::setFont(QFont font) {
 }
 
 void GVGraph::applyLayout() {
-	qDebug() << "moo";
     gvFreeLayout(mContext, mGraph);
-    qDebug() << "wa";
     _gvLayout(mContext, mGraph, mLayoutAlgorithm);
 }
 

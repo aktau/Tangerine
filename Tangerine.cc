@@ -25,7 +25,6 @@ Tangerine::Tangerine(SQLDatabase& db, QWidget *parent) : QMainWindow(parent), mD
 	connect(&mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
 	connect(&mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
 	connect(&mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-	//connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(updateStatusBar()));
 	connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
 
 	databaseClosed();
@@ -116,12 +115,14 @@ void Tangerine::setupWindow() {
 	updateStatusBar();
 
 	/* styles */
+	/*
 	QFile file(":/rcc/stylesheet.qss");
 	file.open(QFile::ReadOnly);
 	QString styleSheet = QLatin1String(file.readAll());
 	file.close();
 
 	setStyleSheet(styleSheet);
+	*/
 
 	/* window size */
 
@@ -267,8 +268,6 @@ void Tangerine::fragmentDatabaseOpened() {
 
 void Tangerine::matchCountChanged() {
 	mModel.setMatches(mDb.getAllMatches());
-
-	qDebug() << "Got all matches! There are" << mModel.size();
 
 	updateStatusBar();
 }

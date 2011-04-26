@@ -13,7 +13,7 @@
 #include "SQLFragmentConf.h"
 #include "MatchModel.h"
 
-#define MAXNODES 4000
+#define MAXNODES 600
 
 using namespace thera;
 
@@ -30,7 +30,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	//scale(2,2);
 
     /* Create graph */
-	mGraph = new GVGraph("Tangerine", "sfdp", AGRAPH);
+	mGraph = new GVGraph("Tangerine", "fdp", AGRAPH);
 
 	/*
     QStringList names = QStringList() << "A" << "B" << "C" << "D" << "E" << "F" << "G";
