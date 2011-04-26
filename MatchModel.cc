@@ -1,6 +1,21 @@
 #include "MatchModel.h"
 
+#include <QtAlgorithms>
+
 using namespace thera;
+
+struct MatchCompare {
+	const QString field;
+	const bool ascending;
+
+	MatchCompare(QString field_, bool ascending_) : field(field_), ascending(ascending_) {}
+	inline bool operator ()(const thera::IFragmentConf &fc1, const thera::IFragmentConf &fc2) {
+		const double d1 = fc1.getDouble(field);
+		const double d2 = fc2.getDouble(field);
+
+		return ascending ? d1 < d2 : d1 > d2;
+	}
+};
 
 MatchModel MatchModel::EMPTY;
 
@@ -17,4 +32,11 @@ void MatchModel::setMatches(QList<SQLFragmentConf> matches) {
 	mMatches = matches;
 
 	emit modelChanged();
+}
+
+void MatchModel::sortMatches(const QString& field, bool ascending) {
+	MatchCompare mc(field, ascending);
+	qSort(mMatches.begin(), mMatches.end(), mc);
+
+	emit orderChanged();
 }

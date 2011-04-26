@@ -45,6 +45,7 @@ class MatchTileView : public QScrollArea {
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
 	    void modelChanged();
+	    void modelOrderChanged();
 
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);

@@ -268,6 +268,7 @@ void Tangerine::fragmentDatabaseOpened() {
 
 void Tangerine::matchCountChanged() {
 	mModel.setMatches(mDb.getAllMatches());
+	mModel.sortMatches("error", true);
 
 	updateStatusBar();
 }

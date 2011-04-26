@@ -17,6 +17,8 @@ class MatchModel : public QObject {
 		// but we should, this is actually just dummy functionality!
 		// TODO: dummy
 		void setMatches(QList<thera::SQLFragmentConf> matches);
+		void sortMatches(const QString& field, bool ascending = false);
+		template <typename LessThan> void sortMatches(LessThan lessThan);
 
 		int size() const;
 		thera::SQLFragmentConf& get(int index);
@@ -24,6 +26,7 @@ class MatchModel : public QObject {
 
 	signals:
 		void modelChanged();
+		void orderChanged();
 
 	public:
 		static MatchModel EMPTY;
@@ -32,6 +35,12 @@ class MatchModel : public QObject {
 		QList<thera::SQLFragmentConf> mMatches;
 
 };
+
+template <typename LessThan> inline void MatchModel::sortMatches(LessThan lessThan) {
+	qSort(mMatches.begin(), mMatches.end(), lessThan);
+
+	emit orderChanged();
+}
 
 inline int MatchModel::size() const {
 	return mMatches.size();

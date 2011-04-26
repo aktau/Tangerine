@@ -63,6 +63,7 @@ void MatchTileView::setModel(MatchModel *model) {
 		mModel = model;
 
 		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
+		connect(mModel, SIGNAL(orderChanged()), this, SLOT(modelOrderChanged()));
 
 		modelChanged();
 	}
@@ -150,6 +151,13 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 
 void MatchTileView::modelChanged() {
 	qDebug() << "MatchTileView::modelChanged: called";
+
+	s().cur_pos = 0;
+	refresh();
+}
+
+void MatchTileView::modelOrderChanged() {
+	qDebug() << "MatchTileView::modelOrderChanged: called";
 
 	s().cur_pos = 0;
 	refresh();
