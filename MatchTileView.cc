@@ -84,7 +84,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		mThumbs[tidx]->setToolTip(QString());
 	}
 	else {
-		IFragmentConf& match = mModel->getMatch(fcidx);
+		IFragmentConf& match = mModel->get(fcidx);
 
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
 		QPixmap p = QPixmap(thumbFile).scaledToWidth(THUMB_WIDTH * mScale, Qt::SmoothTransformation);
@@ -272,7 +272,7 @@ void MatchTileView::currentValidIndices(QVector<int>& valid) {
 		for (int i = 0, ii = mModel->size(); i < ii; ++i) {
 			//qDebug() << "index = " << i << "| size =" << ii;
 
-			IFragmentConf& match = mModel->getMatch(i);
+			IFragmentConf& match = mModel->get(i);
 
 			int status = match.getString("status", "0").toInt();
 

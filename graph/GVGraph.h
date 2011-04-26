@@ -10,8 +10,17 @@
 #include <QPainterPath>
 #include <QList>
 
-#include "gvc.h"
-#include "graph.h"
+// a type in this library conflicts with one we already had and this caused a lot of problems
+namespace gv {
+	#include "gvc.h"
+	#include "graph.h"
+};
+
+//struct GVC_s;
+//typedef struct GVC_s GVC_t;
+//struct Agedge_t;
+//struct Agnode_t;
+//struct Agraph_t;
 
 /// A struct containing the information for a GVGraph's node
 struct GVNode {
@@ -89,11 +98,11 @@ class GVGraph {
 		QList<GVEdge> edges() const;
 
 	private:
-		typedef QMap<QPair<QString, QString> , Agedge_t*> EdgeMap;
-		typedef QMap<QString, Agnode_t*> NodeMap;
+		typedef QMap<QPair<QString, QString> , gv::Agedge_t*> EdgeMap;
+		typedef QMap<QString, gv::Agnode_t*> NodeMap;
 
-		GVC_t *mContext;
-		Agraph_t *mGraph;
+		gv::GVC_t *mContext;
+		gv::Agraph_t *mGraph;
 		QFont mFont;
 		NodeMap mNodes;
 		EdgeMap mEdges;
@@ -102,13 +111,13 @@ class GVGraph {
 };
 
 /// The agopen method for opening a graph
-static inline Agraph_t* _agopen(QString name, int kind) {
-	return agopen(const_cast<char *> (qPrintable(name)), kind);
+static inline gv::Agraph_t* _agopen(QString name, int kind) {
+	return gv::agopen(const_cast<char *> (qPrintable(name)), kind);
 }
 
 /// Add an alternative value parameter to the method for getting an object's attribute
 static inline QString _agget(void *object, QString attr, QString alt = QString()) {
-	QString str = agget(object, const_cast<char *> (qPrintable(attr)));
+	QString str = gv::agget(object, const_cast<char *> (qPrintable(attr)));
 
 	if (str.isEmpty()) {
 		return alt;
@@ -120,7 +129,7 @@ static inline QString _agget(void *object, QString attr, QString alt = QString()
 
 /// Directly use agsafeset which always works, contrarily to agset
 static inline int _agset(void *object, QString attr, QString value) {
-	return agsafeset(
+	return gv::agsafeset(
 		object,
 		const_cast<char *> (qPrintable(attr)),
 		const_cast<char *> (qPrintable(value)),
@@ -128,32 +137,32 @@ static inline int _agset(void *object, QString attr, QString value) {
 	);
 }
 
-static inline Agsym_t * _agnodeattr(Agraph_t *graph, QString name, QString value) {
-	return agnodeattr(
+static inline gv::Agsym_t * _agnodeattr(gv::Agraph_t *graph, QString name, QString value) {
+	return gv::agnodeattr(
 		graph,
 		const_cast<char *> (qPrintable(name)),
 		const_cast<char *> (qPrintable(value))
 	);
 }
 
-static inline Agsym_t * _agedgeattr(Agraph_t *graph, QString name, QString value) {
-	return agedgeattr(
+static inline gv::Agsym_t * _agedgeattr(gv::Agraph_t *graph, QString name, QString value) {
+	return gv::agedgeattr(
 		graph,
 		const_cast<char *> (qPrintable(name)),
 		const_cast<char *> (qPrintable(value))
 	);
 }
 
-static inline int _gvLayout(GVC_t *gvc, graph_t *graph, QString engine) {
-	return gvLayout(
+static inline int _gvLayout(gv::GVC_t *gvc, gv::Agraph_t *graph, QString engine) {
+	return gv::gvLayout(
 		gvc,
 		graph,
 		const_cast<char *> (qPrintable(engine))
 	);
 }
 
-static inline Agnode_t * _agnode(Agraph_t *graph, QString name) {
-	return agnode(
+static inline gv::Agnode_t * _agnode(gv::Agraph_t *graph, QString name) {
+	return gv::agnode(
 		graph,
 		const_cast<char *> (qPrintable(name))
 	);

@@ -2,6 +2,8 @@
 
 #include <QDebug>
 
+using namespace gv;
+
 /*! Dot uses a 72 DPI value for converting it's position coordinates from points to pixels
  while we display at 96 DPI on most operating systems. */
 const double GVGraph::DotDefaultDPI = 72.0;
@@ -38,11 +40,9 @@ GVGraph::~GVGraph() {
 }
 
 void GVGraph::addNode(const QString& name) {
-	if (mNodes.contains(name)) {
-		removeNode(name);
+	if (!mNodes.contains(name)) {
+		mNodes.insert(name, _agnode(mGraph, name));
 	}
-
-	mNodes.insert(name, _agnode(mGraph, name));
 }
 
 void GVGraph::addNodes(const QStringList& names) {
@@ -59,14 +59,18 @@ void GVGraph::removeNode(const QString& name) {
 
 		QList<QPair<QString, QString> > keys = mEdges.keys();
 
-		for (int i = 0; i < keys.size(); ++i)
-			if (keys.at(i).first == name || keys.at(i).second == name)
+		for (int i = 0; i < keys.size(); ++i) {
+			if (keys.at(i).first == name || keys.at(i).second == name) {
 				removeEdge(keys.at(i));
+			}
+		}
 	}
 }
 
 void GVGraph::clearNodes() {
 	QList<QString> keys = mNodes.keys();
+
+	gvFreeLayout(mContext, mGraph);
 
 	for (int i = 0; i < keys.size(); ++i) {
 		removeNode(keys.at(i));
@@ -119,7 +123,9 @@ void GVGraph::setFont(QFont font) {
 }
 
 void GVGraph::applyLayout() {
+	qDebug() << "moo";
     gvFreeLayout(mContext, mGraph);
+    qDebug() << "wa";
     _gvLayout(mContext, mGraph, mLayoutAlgorithm);
 }
 

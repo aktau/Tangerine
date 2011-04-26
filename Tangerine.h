@@ -15,6 +15,10 @@
 #include "MatchModel.h"
 #include "MatchTileView.h"
 
+#ifdef WITH_GRAPH
+#include "graph/GraphView.h"
+#endif
+
 #define SETTINGS_DB_ROOT_KEY "db/root"
 
 #define DEV_PHASE "Alpha"
@@ -60,13 +64,13 @@ class Tangerine : public QMainWindow {
 		SQLDatabase& mDb;
 
 		MatchModel mModel;
-		//QList<thera::SQLFragmentConf> mFc;
 
 		QStackedWidget *mCentralWidget;
 
-		//QFrame *mFrame;
-		//QScrollArea *mScrollArea;
 		MatchTileView *mTileView;
+#ifdef WITH_GRAPH
+		GraphView *mGraphView;
+#endif
 
 		QProgressDialog *mProgress;
 

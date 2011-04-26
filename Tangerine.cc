@@ -8,10 +8,6 @@
 #include "SQLFragmentConf.h"
 #include "Database.h"
 
-#ifdef WITH_GRAPH
-#include "graph/GraphView.h"
-#endif
-
 using namespace thera;
 
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
@@ -20,8 +16,6 @@ const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
 Tangerine::Tangerine(SQLDatabase& db, QWidget *parent) : QMainWindow(parent), mDb(db), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
-	//mDb = new SQLiteDatabase();
-
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
@@ -61,7 +55,10 @@ void Tangerine::setupWindow() {
 	mCentralWidget = new QStackedWidget;
 	mCentralWidget->addWidget(mTileView);
 #ifdef WITH_GRAPH
-	mCentralWidget->addWidget(new GraphView);
+	mGraphView = new GraphView;
+	mGraphView->setModel(&mModel);
+
+	mCentralWidget->addWidget(mGraphView);
 #else
 	mCentralWidget->addWidget(new QWidget);
 #endif

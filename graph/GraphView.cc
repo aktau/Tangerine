@@ -10,7 +10,14 @@
 #include "GVGraph.h"
 #include "GraphNode.h"
 
-GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
+#include "../SQLFragmentConf.h"
+#include "../MatchModel.h"
+
+#define MAXNODES 2000
+
+using namespace thera;
+
+GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mModel(NULL) {
 	/* Create and set scene + attributes */
 	QGraphicsScene *scene = new QGraphicsScene(this);
 	setScene(scene);
@@ -20,11 +27,12 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	scale(2,2);
+	//scale(2,2);
 
     /* Create graph */
-	mGraph = new GVGraph("Tangerine", "circo", AGRAPH);
+	mGraph = new GVGraph("Tangerine", "fdp", AGRAPH);
 
+	/*
     QStringList names = QStringList() << "A" << "B" << "C" << "D" << "E" << "F" << "G";
 
     mGraph->addNodes(names);
@@ -42,8 +50,84 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
     //mGraph->addEdge(names[6], names[0]);
 
     mGraph->applyLayout();
+    */
 
     /* Create graphicsview */
+
+    drawGraph();
+
+	setModel(&MatchModel::EMPTY);
+}
+
+/*
+GraphView::GraphView(QGraphicsScene *scene, QWidget *parent) : QGraphicsView(scene, parent) {
+	setDragMode(QGraphicsView::ScrollHandDrag);
+}
+*/
+
+GraphView::~GraphView() {
+	delete mGraph;
+}
+
+void GraphView::setModel(MatchModel *model) {
+	if (model != NULL) {
+		mModel = model;
+
+		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
+
+		modelChanged();
+	}
+	else {
+		qDebug() << "GraphView::setModel: Invalid model";
+	}
+}
+
+void GraphView::modelChanged() {
+	qDebug() << "GraphView::setModel: called";
+
+	generate();
+}
+
+void GraphView::wheelEvent(QWheelEvent *event) {
+    scaleView(pow((double)2, -event->delta() / (240.0 * 2)));
+}
+
+void GraphView::scaleView(qreal scaleFactor) {
+	qreal factor = transform().scale(scaleFactor, scaleFactor).mapRect(QRectF(0, 0, 1, 1)).width();
+
+	if (factor < 0.07 || factor > 100)
+		return;
+
+	scale(scaleFactor, scaleFactor);
+}
+
+void GraphView::generate() {
+	mGraph->clearNodes();
+
+	qDebug() << "1 H";
+
+	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
+		const SQLFragmentConf& conf = mModel->get(i);
+
+		mGraph->addNode(conf.getSourceId());
+		mGraph->addNode(conf.getTargetId());
+
+		mGraph->addEdge(conf.getSourceId(), conf.getTargetId());
+	}
+
+	qDebug() << "2 H";
+
+	mGraph->applyLayout();
+
+	qDebug() << "3 H";
+
+	drawGraph();
+
+	qDebug() << "4 H";
+}
+
+void GraphView::drawGraph() {
+	scene()->clear();
 
     QColor nodeColor = Qt::black;
     QPen nodePen(nodeColor, 0, Qt::SolidLine);
@@ -51,7 +135,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
 
 	//scene->addText("Hello, world!");
 
-	scene->setSceneRect(mGraph->boundingRect());
+	scene()->setSceneRect(mGraph->boundingRect());
 
 	foreach (const GVNode& node, mGraph->nodes()) {
 		QAbstractGraphicsShapeItem *item = new GraphNode(node.rect());
@@ -70,43 +154,18 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL) {
 
 		//item->setPos(node.topLeftPos()); //
 
-		scene->addItem(item);
-		qDebug() << "centerPos:" << node.centerPos << "| rect:" << node.rect();
+		scene()->addItem(item);
+
+		//qDebug() << "centerPos:" << node.centerPos << "| rect:" << node.rect();
 
 		//QString msg = QString("[%1,%2] -> [width: %3, height: %4]").arg(node.topLeftPos().x()).arg(node.topLeftPos().y()).arg(node.width).arg(node.height);
 		//QMessageBox::about(NULL, QString("Wut?"), msg);
 	}
 
 	foreach (const GVEdge& edge, mGraph->edges()) {
-		scene->addPath(edge.path, edgePen);
-
-		//qDebug() << "Path:" << edge.path;
+		scene()->addPath(edge.path, edgePen);
 	}
 }
-
-/*
-GraphView::GraphView(QGraphicsScene *scene, QWidget *parent) : QGraphicsView(scene, parent) {
-	setDragMode(QGraphicsView::ScrollHandDrag);
-}
-*/
-
-GraphView::~GraphView() {
-	delete mGraph;
-}
-
-void GraphView::wheelEvent(QWheelEvent *event) {
-    scaleView(pow((double)2, -event->delta() / (240.0 * 2)));
-}
-
-void GraphView::scaleView(qreal scaleFactor) {
-	qreal factor = transform().scale(scaleFactor, scaleFactor).mapRect(QRectF(0, 0, 1, 1)).width();
-
-	if (factor < 0.07 || factor > 100)
-		return;
-
-	scale(scaleFactor, scaleFactor);
-}
-
 
 /*
 void GraphView::mousePressEvent(QMouseEvent *event) {

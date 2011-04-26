@@ -19,7 +19,7 @@ class MatchModel : public QObject {
 		void setMatches(QList<thera::SQLFragmentConf> matches);
 
 		int size() const;
-		thera::SQLFragmentConf& getMatch(int index);
+		thera::SQLFragmentConf& get(int index);
 		thera::SQLFragmentConf& last();
 
 	signals:
@@ -37,7 +37,7 @@ inline int MatchModel::size() const {
 	return mMatches.size();
 }
 
-inline thera::SQLFragmentConf& MatchModel::getMatch(int index) {
+inline thera::SQLFragmentConf& MatchModel::get(int index) {
 	return mMatches[index];
 }
 
