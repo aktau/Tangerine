@@ -271,6 +271,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		old_volumeQuery.exec();
 
 		// update conflicts table
+		/*
 		QString conflictString = match.attribute("conflict", "");
 		QStringList conflicts = conflictString.split(" ");
 
@@ -279,6 +280,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 			conflictsQuery.bindValue(":other_match_id", c.toInt());
 			conflictsQuery.exec();
 		}
+		*/
 
 		emit databaseOpStepDone(i);
 

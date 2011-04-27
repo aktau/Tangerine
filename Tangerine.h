@@ -24,7 +24,7 @@
 
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0
-#define MIN_VERSION 3
+#define MIN_VERSION 4
 
 class Tangerine : public QMainWindow {
 	Q_OBJECT
