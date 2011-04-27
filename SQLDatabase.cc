@@ -339,9 +339,13 @@ void SQLDatabase::close() {
 }
 
 void SQLDatabase::resetQueries() {
+	/*
 	for (FieldQueryMap::iterator it = mFieldQueryMap.begin(), end = mFieldQueryMap.end(); it != end; ++it) {
 		delete it.value();
 	}
+	*/
+
+	qDeleteAll(mFieldQueryMap);
 
 	mFieldQueryMap.clear();
 

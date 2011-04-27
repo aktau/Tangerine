@@ -102,10 +102,14 @@ void GraphView::scaleView(qreal scaleFactor) {
 }
 
 void GraphView::generate() {
+	qDebug() << "GraphView::generate: clearing nodes";
+
 	mGraph->clearNodes();
 
 	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
 		const SQLFragmentConf& conf = mModel->get(i);
+
+		qDebug() << "GraphView::generate: adding new nodes";
 
 		mGraph->addNode(conf.getSourceId());
 		mGraph->addNode(conf.getTargetId());
@@ -113,7 +117,11 @@ void GraphView::generate() {
 		mGraph->addEdge(conf.getSourceId(), conf.getTargetId());
 	}
 
+	qDebug() << "GraphView::generate: applying layout";
+
 	mGraph->applyLayout();
+
+	qDebug() << "GraphView::generate: drawing graph";
 
 	drawGraph();
 }

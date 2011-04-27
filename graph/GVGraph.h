@@ -81,8 +81,8 @@ class GVGraph {
 
 		/// Add and remove edges
 		void addEdge(const QString& source, const QString& target);
-		void removeEdge(const QString& source, const QString& target);
-		void removeEdge(const QPair<QString, QString>& key);
+		void removeEdges(const QString& source, const QString& target);
+		void removeEdges(const QPair<QString, QString>& key);
 
 		/// Set the font to use in all the labels
 		void setFont(QFont font);

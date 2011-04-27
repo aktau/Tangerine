@@ -51,17 +51,18 @@ void GVGraph::addNodes(const QStringList& names) {
 
 void GVGraph::removeNode(const QString& name) {
 	if (mNodes.contains(name)) {
-		agdelete(mGraph, mNodes[name]);
-
-		mNodes.remove(name);
-
-		QList<QPair<QString, QString> > keys = mEdges.keys();
+		// delete the edges this node is connected to
+		QList< QPair<QString, QString> > keys = mEdges.uniqueKeys();
 
 		for (int i = 0; i < keys.size(); ++i) {
 			if (keys.at(i).first == name || keys.at(i).second == name) {
-				removeEdge(keys.at(i));
+				removeEdges(keys.at(i));
 			}
 		}
+
+		agdelete(mGraph, mNodes[name]);
+
+		mNodes.remove(name);
 	}
 }
 
@@ -95,13 +96,17 @@ void GVGraph::addEdge(const QString &source, const QString &target) {
 	}
 }
 
-void GVGraph::removeEdge(const QString &source, const QString &target) {
-	removeEdge(QPair<QString, QString> (source, target));
+void GVGraph::removeEdges(const QString &source, const QString &target) {
+	removeEdges(QPair<QString, QString> (source, target));
 }
 
-void GVGraph::removeEdge(const QPair<QString, QString>& key) {
+void GVGraph::removeEdges(const QPair<QString, QString>& key) {
 	if (mEdges.contains(key)) {
-		agdelete(mGraph, mEdges[key]);
+		foreach (Agedge_t *edge, mEdges.values(key)) {
+			agdelete(mGraph, edge);
+		}
+
+		//agdelete(mGraph, mEdges[key]);
 
 		mEdges.remove(key);
 	}

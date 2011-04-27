@@ -88,13 +88,16 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		IFragmentConf& match = mModel->get(fcidx);
 
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		QPixmap p = QPixmap(thumbFile).scaledToWidth(THUMB_WIDTH * mScale, Qt::SmoothTransformation);
+		QPixmap p = QPixmap(thumbFile);
 
 		if (p.isNull()) {
-			qDebug() << "MatchTileView::updateThumbnail: thumb was null" << thumbFile;
+			qDebug() << "MatchTileView::updateThumbnail: non-existing thumbnail encountered, path:" << thumbFile;
 
 			p = QPixmap(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
 			p.fill(Qt::lightGray);
+		}
+		else {
+			p = p.scaledToWidth(THUMB_WIDTH * mScale, Qt::SmoothTransformation);
 		}
 
 		mThumbs[tidx]->setPixmap(p);

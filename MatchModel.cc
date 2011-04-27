@@ -40,12 +40,6 @@ void MatchModel::sortMatches(const QString& field, bool ascending) {
 	QElapsedTimer timer;
 	timer.start();
 
-	foreach(const IFragmentConf& conf, mMatches) {
-		conf.getDouble("error", 0.0);
-	}
-
-	qDebug() << "MatchModel::sortMatches: Iterating took" << timer.restart() << "milliseconds";
-
 	MatchCompare mc(field, ascending);
 	qSort(mMatches.begin(), mMatches.end(), mc);
 
