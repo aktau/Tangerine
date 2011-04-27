@@ -6,6 +6,7 @@
 #include <QDomDocument>
 #include <QList>
 #include <QStringList>
+#include <QMap>
 
 #include "SQLFragmentConf.h"
 
@@ -53,17 +54,16 @@ class SQLDatabase : public QObject {
 		void reset();
 		void setup(const QString& schemaFile);
 
+	protected slots:
+		virtual void resetQueries();
+
 	private:
 		void parseXML(const QDomElement &root);
 		const QDomDocument toXML() const;
 
 		bool matchHasField(const QString& field) const;
-		//void matchSetData(int mId, const QString& field, const QString& value);
-		//void matchSetData(int mId, const QString& field, const double value);
-		//QString matchGetData(int mId, const QString& field) const;
-		//double matchGetData(int mId, const QString& field) const;
-		template<typename T> void matchSetValue(int id, const QString& field, const T& value) const;
-		template<typename T> T matchGetValue(int id, const QString& field) const;
+		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
+		template<typename T> T matchGetValue(int id, const QString& field);
 
 	private:
 		// disabling copy-constructor and copy-assignment for now
@@ -71,6 +71,9 @@ class SQLDatabase : public QObject {
 		SQLDatabase& operator=(const SQLDatabase&);
 
 	protected:
+		typedef QMap<QString, QSqlQuery *> FieldQueryMap;
+		FieldQueryMap mFieldQueryMap;
+
 		static const QString CONN_NAME;
 		static const QString SCHEMA_FILE;
 		static const QString DB_HOST;
@@ -87,14 +90,25 @@ class SQLDatabase : public QObject {
 		friend class thera::SQLFragmentConf;
 };
 
-template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) const {
+template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
 
 }
 
-template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field) const {
-	QSqlQuery query(database());
+template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field) {
+	if (!mFieldQueryMap.contains(field)) {
+		// doesn't exist yet, make and insert
+		QSqlQuery *q = new QSqlQuery(database());
 
-	if (query.exec(QString("SELECT %1 FROM %1 WHERE match_id = %2").arg(field).arg(id))) {
+		q->prepare(QString("SELECT %1 FROM %1 WHERE match_id = :match_id").arg(field));
+
+		mFieldQueryMap.insert(field, q);
+	}
+
+	QSqlQuery &query = *mFieldQueryMap.value(field);
+
+	query.bindValue(":match_id", id);
+
+	if (query.exec()) {
 		if (query.next()) {
 			return query.value(0).value<T>();
 		}
@@ -104,8 +118,9 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 	}
 	else {
 		qDebug()
-				<< "SQLDatabase::matchGetValue: Query failed:" << query.lastError()
-				<< "\nQuery used:" << query.lastQuery();
+			<< "SQLDatabase::matchGetValue: Query failed:" << query.lastError()
+			<< "\nQuery executed: " << query.executedQuery();
+			//<< "\nBound values:" <<query.boundValues();
 	}
 
 	return QVariant(0).value<T>();

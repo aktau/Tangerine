@@ -83,7 +83,7 @@ void GraphView::setModel(MatchModel *model) {
 }
 
 void GraphView::modelChanged() {
-	qDebug() << "GraphView::setModel: called";
+	qDebug() << "GraphView::modelChanged: called";
 
 	generate();
 }

@@ -1,6 +1,8 @@
 #include "MatchModel.h"
 
 #include <QtAlgorithms>
+#include <QDebug>
+#include <QElapsedTimer>
 
 using namespace thera;
 
@@ -35,8 +37,19 @@ void MatchModel::setMatches(QList<SQLFragmentConf> matches) {
 }
 
 void MatchModel::sortMatches(const QString& field, bool ascending) {
+	QElapsedTimer timer;
+	timer.start();
+
+	foreach(const IFragmentConf& conf, mMatches) {
+		conf.getDouble("error", 0.0);
+	}
+
+	qDebug() << "MatchModel::sortMatches: Iterating took" << timer.restart() << "milliseconds";
+
 	MatchCompare mc(field, ascending);
 	qSort(mMatches.begin(), mMatches.end(), mc);
+
+	qDebug() << "MatchModel::sortMatches: Sorting took" << timer.elapsed() << "milliseconds";
 
 	emit orderChanged();
 }

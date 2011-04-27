@@ -41,7 +41,7 @@ namespace thera {
 					mFragments[i] = that.mFragments[i];
 
 				return *this;
-			}; // leave it to the compiler, for now...
+			};
 
 		// FIELDS
 		public:

@@ -91,6 +91,8 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		QPixmap p = QPixmap(thumbFile).scaledToWidth(THUMB_WIDTH * mScale, Qt::SmoothTransformation);
 
 		if (p.isNull()) {
+			qDebug() << "MatchTileView::updateThumbnail: thumb was null" << thumbFile;
+
 			p = QPixmap(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
 			p.fill(Qt::lightGray);
 		}

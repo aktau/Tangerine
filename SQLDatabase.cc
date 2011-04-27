@@ -20,7 +20,7 @@ const QString SQLDatabase::MATCHES_VERSION = "1.0";
 QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
 
 SQLDatabase::SQLDatabase() {
-	/* nothing */
+	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 }
 
 SQLDatabase::~SQLDatabase() {
@@ -275,12 +275,6 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		QStringList conflicts = conflictString.split(" ");
 
 		foreach (const QString &c, conflicts) {
-			/*
-			query.prepare(
-				"INSERT INTO conflicts (match_id, other_match_id) "
-				"VALUES (:match_id, :other_match_id)"
-			);
-			*/
 			conflictsQuery.bindValue(":match_id", matchId);
 			conflictsQuery.bindValue(":other_match_id", c.toInt());
 			conflictsQuery.exec();
@@ -340,6 +334,16 @@ void SQLDatabase::close() {
 	else {
 		qDebug() << "SQLDatabase::close: Couldn't close current database because it wasn't open to begin with";
 	}
+}
+
+void SQLDatabase::resetQueries() {
+	for (FieldQueryMap::iterator it = mFieldQueryMap.begin(), end = mFieldQueryMap.end(); it != end; ++it) {
+		delete it.value();
+	}
+
+	mFieldQueryMap.clear();
+
+	qDebug() << "SQLDatabase::resetQueries: reset queries";
 }
 
 bool SQLDatabase::matchHasField(const QString& field) const {
