@@ -14,8 +14,10 @@
 
 #include "SQLDatabase.h"
 #include "MatchModel.h"
-#include "MatchTileView.h"
 
+#ifdef WITH_TILEVIEW
+#include "MatchTileView.h"
+#endif
 #ifdef WITH_GRAPH
 #include "GraphView.h"
 #endif
@@ -71,7 +73,9 @@ class Tangerine : public QMainWindow {
 		/* GUI ELEMENTS */
 		QStackedWidget *mCentralWidget;
 
+#ifdef WITH_TILEVIEW
 		MatchTileView *mTileView;
+#endif
 #ifdef WITH_GRAPH
 		GraphView *mGraphView;
 #endif

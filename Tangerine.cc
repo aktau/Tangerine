@@ -47,21 +47,23 @@ void Tangerine::setupWindow() {
 
 	/* central widget */
 
-	//mTileView = new MatchTileView(QDir("E:\\Thesis\\tongeren_vrijthof_db\\cache\\ribbonmatcher\\dump-sw50_3_16-20100606"));
+	mCentralWidget = new QStackedWidget;
+
+#ifdef WITH_TILEVIEW
 	mTileView = new MatchTileView(mThumbDir);
 	mTileView->setModel(&mModel);
-
-	mCentralWidget = new QStackedWidget;
 	mCentralWidget->addWidget(mTileView);
-#ifdef WITH_GRAPH
-	mGraphView = new GraphView;
-	mGraphView->setModel(&mModel);
-
-	mCentralWidget->addWidget(mGraphView);
 #else
 	mCentralWidget->addWidget(new QWidget);
 #endif
 
+#ifdef WITH_GRAPH
+	mGraphView = new GraphView;
+	mGraphView->setModel(&mModel);
+	mCentralWidget->addWidget(mGraphView);
+#else
+	mCentralWidget->addWidget(new QWidget);
+#endif
 
 	setCentralWidget(mCentralWidget);
 

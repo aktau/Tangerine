@@ -7,8 +7,9 @@ TARGET    = tangerine
 CONFIG   += qt
 CONFIG   -= app_bundle
 
-# if you want graph support...
+# compile-time modules support
 CONFIG += graphviz
+CONFIG += tileview
 
 QT += opengl xml sql
 
@@ -39,6 +40,17 @@ win32-g++: LIBS += -lglu32 -lopengl32
 TRANSLATIONS = lcl_theraprocess_de.ts lcl_theraprocess_el.ts
 
 win32-g++: CONFIG += console
+
+tileview {
+	message(Tangerine: Tileview support was added)
+
+	DEFINES += WITH_TILEVIEW
+
+	SOURCES += tileview/*.cc
+	HEADERS += tileview/*.h
+
+	INCLUDEPATH += tileview
+}
 
 graphviz {
 	message(Tangerine: Graphviz support was added)
