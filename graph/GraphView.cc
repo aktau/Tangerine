@@ -20,6 +20,7 @@ using namespace thera;
 GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mModel(NULL) {
 	/* Create and set scene + attributes */
 	QGraphicsScene *scene = new QGraphicsScene(this);
+	scene->setBackgroundBrush(QBrush(QColor("#4f4f4f"), Qt::SolidPattern));
 	setScene(scene);
 
 	/* view attributes */
@@ -27,34 +28,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	//scale(2,2);
-
-    /* Create graph */
-	mGraph = new GVGraph("Tangerine", "fdp", AGRAPH);
-
-	/*
-    QStringList names = QStringList() << "A" << "B" << "C" << "D" << "E" << "F" << "G";
-
-    mGraph->addNodes(names);
-    mGraph->addEdge(names[0], names[1]);
-    mGraph->addEdge(names[1], names[2]);
-
-    mGraph->addEdge(names[0], names[3]);
-    mGraph->addEdge(names[0], names[4]);
-    mGraph->addEdge(names[4], names[3]);
-    mGraph->addEdge(names[4], names[5]);
-    mGraph->addEdge(names[0], names[5]);
-    mGraph->addEdge(names[0], names[5]);
-    mGraph->addEdge(names[0], names[5]);
-    mGraph->addEdge(names[0], names[6]);
-    //mGraph->addEdge(names[6], names[0]);
-
-    mGraph->applyLayout();
-    */
-
-    /* Create graphicsview */
-
-    drawGraph();
+	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 5);
 
 	setModel(&MatchModel::EMPTY);
 }
@@ -67,6 +41,8 @@ GraphView::GraphView(QGraphicsScene *scene, QWidget *parent) : QGraphicsView(sce
 
 GraphView::~GraphView() {
 	delete mGraph;
+
+	qDebug() << "GraphView::~GraphView: ran";
 }
 
 void GraphView::setModel(MatchModel *model) {
@@ -109,7 +85,7 @@ void GraphView::generate() {
 	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
 		const SQLFragmentConf& conf = mModel->get(i);
 
-		qDebug() << "GraphView::generate: adding new nodes";
+		//qDebug() << "GraphView::generate: adding new nodes";
 
 		mGraph->addNode(conf.getSourceId());
 		mGraph->addNode(conf.getTargetId());
@@ -129,9 +105,16 @@ void GraphView::generate() {
 void GraphView::drawGraph() {
 	scene()->clear();
 
-    QColor nodeColor = Qt::black;
-    QPen nodePen(nodeColor, 0, Qt::SolidLine);
-    QPen edgePen(QColor(0, 0, 0, 127), 2, Qt::SolidLine);
+	const QColor nodeStrokeColor = QColor("#8eb650");
+    const QColor nodeColor = QColor("#cfe8a7");
+
+    QColor edgeColor = QColor(nodeColor);
+    edgeColor.setAlpha(127);
+
+    const QBrush nodeBrush = QColor(nodeColor);
+    const QPen nodePen(nodeStrokeColor, 5, Qt::SolidLine);
+    const QPen edgePen(edgeColor, 2, Qt::SolidLine);
+    //QPen edgePen(QColor(0, 0, 0, 127), 2, Qt::SolidLine);
 
 	//scene->addText("Hello, world!");
 
@@ -145,16 +128,13 @@ void GraphView::drawGraph() {
 		QAbstractGraphicsShapeItem *item = new GraphNode(node.rect());
 
 		item->setPen(nodePen);
+		item->setBrush(nodeBrush);
 
-		///QRadialGradient gradient(node.centerPos, node.width / 2, node.centerPos + QPointF(node.width / 4, - node.height / 4));
+		//QRadialGradient gradient(QPointF(), node.width / 2, QPointF() + QPointF(node.width / 4, - node.height / 4));
 		//gradient.setColorAt(0, Qt::white);
 		//gradient.setColorAt(1, Qt::black);
 
-		QRadialGradient gradient(QPointF(), node.width / 2, QPointF() + QPointF(node.width / 4, - node.height / 4));
-		gradient.setColorAt(0, Qt::white);
-		gradient.setColorAt(1, Qt::black);
-
-		item->setBrush(QBrush(gradient));
+		//item->setBrush(QBrush(gradient));
 
 		//item->setPos(node.topLeftPos());
 

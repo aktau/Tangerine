@@ -35,6 +35,8 @@ GVGraph::~GVGraph() {
 	gvFreeLayout(mContext, mGraph);
 	agclose(mGraph);
 	gvFreeContext(mContext);
+
+	qDebug() << "GVGraph::~GVGraph: ran";
 }
 
 void GVGraph::addNode(const QString& name) {

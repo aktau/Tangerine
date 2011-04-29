@@ -36,6 +36,8 @@ Tangerine::Tangerine(SQLDatabase& db, const QDir& thumbDir, QWidget *parent) : Q
 
 Tangerine::~Tangerine() {
 	closeDatabase();
+
+	qDebug() << "Tangerine::~Tangerine: ran";
 }
 
 void Tangerine::setupWindow() {
@@ -270,7 +272,7 @@ void Tangerine::fragmentDatabaseOpened() {
 
 void Tangerine::matchCountChanged() {
 	mModel.setMatches(mDb.getAllMatches());
-	mModel.sortMatches("error", true);
+	//mModel.sortMatches("error", true);
 
 	updateStatusBar();
 }
