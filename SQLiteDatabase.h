@@ -7,7 +7,7 @@ class SQLiteDatabase : public SQLDatabase {
 		Q_OBJECT
 
 	public:
-		SQLiteDatabase();
+		SQLiteDatabase(QObject *parent);
 		virtual ~SQLiteDatabase();
 
 		virtual void connect(const QString& name);

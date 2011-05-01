@@ -9,6 +9,8 @@
 #include "Fragment.h"
 #include "FragmentRef.h"
 
+#include "EmptyMatchModel.h"
+
 using namespace thera;
 
 #define THUMB_WIDTH 722
@@ -52,13 +54,13 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 		}
 	}
 
-	setModel(&MatchModel::EMPTY);
+	setModel(&EmptyMatchModel::EMPTY);
 }
 
 MatchTileView::~MatchTileView() {
 }
 
-void MatchTileView::setModel(MatchModel *model) {
+void MatchTileView::setModel(IMatchModel *model) {
 	if (model != NULL) {
 		mModel = model;
 
@@ -176,13 +178,13 @@ void MatchTileView::resizeEvent(QResizeEvent *event) {
 
 void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
-		case Qt::Key_N:
+		case Qt::Key_S:
 		{
-			QMessageBox::about(
-				this,
-				tr("About Tangerine"),
-				tr("<b>Tangerine</b> is a next-generation proof of concept GUI for the <b>Thera project</b>. It intends to aid the user in finding and confirming fragment matches.")
-			);
+			static bool order = true;
+
+			mModel->sort("error", order ? Qt::AscendingOrder : Qt::DescendingOrder);
+
+			order = !order;
 		}
 		break;
 

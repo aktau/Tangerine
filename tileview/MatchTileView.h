@@ -8,7 +8,7 @@
 #include <QLabel>
 #include <QDir>
 
-#include "MatchModel.h"
+#include "IMatchModel.h"
 #include "IFragmentConf.h"
 
 class ThumbLabel : public QLabel {
@@ -39,7 +39,7 @@ class MatchTileView : public QScrollArea {
 		MatchTileView(const QDir& thumbDir, QWidget *parent = NULL, int rows = 4, int columns = 5, float scale = 0.5f);
 		virtual ~MatchTileView();
 
-		virtual void setModel(MatchModel *model);
+		virtual void setModel(IMatchModel *model);
 
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
@@ -64,7 +64,7 @@ class MatchTileView : public QScrollArea {
 		QFrame *mFrame;
 		QVector<QLabel *> mThumbs;
 
-		MatchModel *mModel;
+		IMatchModel *mModel;
 
 		int mNumThumbs;
 		float mScale;

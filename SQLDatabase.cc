@@ -6,6 +6,8 @@
 
 #include "XF.h"
 
+#include "SQLiteDatabase.h"
+
 using namespace thera;
 
 const QString SQLDatabase::CONN_NAME = "TheraSQL";
@@ -19,13 +21,45 @@ const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
 QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
 
-SQLDatabase::SQLDatabase() {
+SQLDatabase * SQLDatabase::mSingleton = NULL;
+
+/**
+ * TODO: this is _very_ un-threadsafe
+ */
+SQLDatabase* SQLDatabase::getDatabase(QObject *parent) {
+	if (!mSingleton) {
+		mSingleton = new SQLiteDatabase(parent);
+	}
+
+	return mSingleton;
+}
+
+SQLDatabase::SQLDatabase(QObject *parent) : QObject(parent) {
 	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 }
 
 SQLDatabase::~SQLDatabase() {
+	// copying and assigning are allowed now, we'd have to reference count OR rely on some master
+	// object calling close() for us
+	// TODO: re-evaluate this decision
+
 	close();
 }
+
+/*
+SQLDatabase::SQLDatabase(const SQLDatabase& that) {
+	// for now we're not copying anything, not even the mFieldQueryMap, it automatically regenerates anyway
+	// we're not copying that because we don't need too and we're lazy, it would involve free'ing and allocating things!
+}
+
+SQLDatabase& SQLDatabase::operator=(const SQLDatabase& that) {
+	if (this != &that) {
+		// not doing anything in here either,
+	}
+
+	return *this;
+}
+*/
 
 bool SQLDatabase::isOpen() const {
 	return database().isValid() && database().isOpen();
@@ -111,6 +145,47 @@ QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
 	if (query.exec("SELECT matches.match_id, source_name, target_name, transformation FROM matches")) {
+		while (query.next()) {
+			SQLFragmentConf fc(this, query.value(0).toInt());
+
+			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
+
+			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
+
+			XF xf;
+			QTextStream ts(query.value(2).toString().toAscii());
+			ts >> xf;
+
+			list.append(fc);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError();
+	}
+
+	return list;
+}
+
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const QString& filter) {
+	QList<SQLFragmentConf> list;
+
+	QString queryString = "SELECT matches.match_id, source_name, target_name, transformation FROM matches";
+
+	if (!sortField.isEmpty()) {
+		// TODO: sanity check the sort field
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
+
+	if (!filter.isEmpty()) {
+		// TODO: transform wildcards or use GLOB
+		queryString += QString(" WHERE (matches.source_name || matches.target_name) GLOB %1").arg(filter);
+	}
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+	if (query.exec(queryString)) {
 		while (query.next()) {
 			SQLFragmentConf fc(this, query.value(0).toInt());
 
@@ -330,6 +405,7 @@ void SQLDatabase::close() {
 		qDebug() << "SQLDatabase::close: Closing database";
 
 		database().close();
+		QSqlDatabase::removeDatabase(CONN_NAME);
 
 		emit databaseClosed();
 	}

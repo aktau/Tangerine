@@ -15,7 +15,7 @@ const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
 const int Tangerine::MIN_WIDTH = 1024;
 const int Tangerine::MIN_HEIGHT = 786;
 
-Tangerine::Tangerine(SQLDatabase& db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(db), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(*db), mModel(db), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
@@ -271,7 +271,7 @@ void Tangerine::fragmentDatabaseOpened() {
 }
 
 void Tangerine::matchCountChanged() {
-	mModel.setMatches(mDb.getAllMatches());
+	//mModel.setMatches(mDb.getAllMatches());
 	//mModel.sortMatches("error", true);
 
 	updateStatusBar();

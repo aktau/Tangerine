@@ -14,9 +14,13 @@ class SQLDatabase : public QObject {
 		Q_OBJECT
 
 	public:
-		SQLDatabase();
+		static SQLDatabase* getDatabase(QObject *parent = QCoreApplication::instance());
+
+	protected:
+		SQLDatabase(QObject *parent);
 		virtual ~SQLDatabase();
 
+	public:
 		bool isOpen() const;
 
 		// we could probably provide a base implementation fo all non-SQLite db's
@@ -31,6 +35,7 @@ class SQLDatabase : public QObject {
 		// 2) ...
 		// 3) Profit, I think
 		QList<thera::SQLFragmentConf> getAllMatches();
+		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
 
 		/* matches */
 
@@ -85,6 +90,8 @@ class SQLDatabase : public QObject {
 		static const QString MATCHES_VERSION;
 
 		static QStringList FIELDS;
+
+		static SQLDatabase *mSingleton;
 
 	private:
 		friend class thera::SQLFragmentConf;

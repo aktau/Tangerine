@@ -22,7 +22,7 @@ namespace thera {
 	}
 
 	bool SQLFragmentConf::setMetaData(const QString& field, const QString& value) const {
-		assert(mId != -1);
+		assert(mId != -1 && mDb != NULL);
 
 		// check if "field" is a valid table or one of the basic attributes
 		if (mDb->matchHasField(field)) {
@@ -38,7 +38,7 @@ namespace thera {
 	}
 
 	bool SQLFragmentConf::setMetaData(const QString& field, double value) const {
-		assert(mId != -1);
+		assert(mId != -1 && mDb != NULL);
 
 		if (mDb->matchHasField(field)) {
 			mDb->matchSetValue(mId, field, value);
@@ -51,7 +51,7 @@ namespace thera {
 	}
 
 	QString SQLFragmentConf::getString(const QString& field, const QString& deflt) const {
-		assert(mId != -1);
+		assert(mId != -1 && mDb != NULL);
 
 		if (mDb->matchHasField(field)) {
 			return mDb->matchGetValue<QString>(mId, field);
@@ -61,7 +61,7 @@ namespace thera {
 	}
 
     double SQLFragmentConf::getDouble(const QString& field, double deflt) const {
-    	assert(mId != -1);
+    	assert(mId != -1 && mDb != NULL);
 
 		if (mDb->matchHasField(field)) {
 			return mDb->matchGetValue<double>(mId, field);

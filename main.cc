@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     initializeFragmentDb();
     parseCommandLine(argc, argv, thumbDir);
 
-    SQLiteDatabase db;
+    SQLDatabase *db = SQLDatabase::getDatabase(QCoreApplication::instance());
 
     Tangerine window(db, thumbDir);
     window.show();

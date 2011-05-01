@@ -32,7 +32,7 @@ class Tangerine : public QMainWindow {
 	Q_OBJECT
 
 	public:
-		Tangerine(SQLDatabase& db, const QDir& thumbDir, QWidget *parent = 0);
+		Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent = 0);
 		virtual ~Tangerine();
 
 	private:

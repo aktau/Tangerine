@@ -2,9 +2,8 @@
 
 const QString SQLiteDatabase::DB_TYPE = "QSQLITE";
 
-SQLiteDatabase::SQLiteDatabase() {
+SQLiteDatabase::SQLiteDatabase(QObject *parent) : SQLDatabase(parent) {
 	// TODO Auto-generated constructor stub
-
 }
 
 SQLiteDatabase::~SQLiteDatabase() {

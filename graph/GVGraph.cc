@@ -4,12 +4,19 @@
 
 using namespace gv;
 
+/**
+ * VERY IMPORTANT:
+ *
+ * do NOT ever call the *delete() functions without first calling gvFreeLayout(), it will
+ * cause horrible problems (memory leaks not the least of them)
+ */
+
 /*! Dot uses a 72 DPI value for converting it's position coordinates from points to pixels
  while we display at 96 DPI on most operating systems. */
 const double GVGraph::DotDefaultDPI = 72.0;
 
-GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double node_size) :
-	mContext(gvContext()), mGraph(_agopen(name, type)), mLayoutAlgorithm(layout) {
+GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double nodeSize) :
+	mContext(gvContext()), mGraph(_agopen(name, type)) {
 	//Set graph attributes
 	_agset(mGraph, "overlap", "prism"); // the prism algorithm for node/edge overlap reduction is state of the art, recommended.
 	//_agset(mGraph, "splines", "true"); // this will only work for very very small graphs, it produces app crashes on bigger ones, disabled
@@ -18,16 +25,12 @@ GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double node
 	_agset(mGraph, "nodesep", "0.2");
 
 	//Set default attributes for the future nodes
-	//_agnodeattr(_graph, "fixedsize", "true");
-	//_agnodeattr(_graph, "label", "");
-	_agnodeattr(mGraph, "regular", "true");
+	_agnodeattr(mGraph, "fixedsize", "true");
+	_agnodeattr(mGraph, "label", "");
+	//_agnodeattr(mGraph, "regular", "true");
 
-	//Divide the wanted width by the DPI to get the value in points
-	QString nodePtsWidth = QString("%1").arg(node_size / _agget(mGraph, "dpi", "96,0").toDouble());
-
-	//GV uses , instead of . for the separator in floats
-	_agnodeattr(mGraph, "width", nodePtsWidth.replace('.', ","));
-
+	setGlobalNodeSize(nodeSize);
+	setLayoutAlgorithm(layout);
 	setFont(font);
 }
 
@@ -41,6 +44,9 @@ GVGraph::~GVGraph() {
 
 void GVGraph::addNode(const QString& name) {
 	if (!mNodes.contains(name)) {
+		// example
+		//_agset(node, "width", width);
+
 		mNodes.insert(name, _agnode(mGraph, name));
 	}
 }
@@ -73,9 +79,13 @@ void GVGraph::clearNodes() {
 
 	gvFreeLayout(mContext, mGraph);
 
+	qDebug() << "GVGraph::clearNodes: freed layout";
+
 	for (int i = 0; i < keys.size(); ++i) {
 		removeNode(keys.at(i));
 	}
+
+	assert(mNodes.isEmpty());
 }
 
 void GVGraph::setRootNode(const QString& name) {
@@ -125,6 +135,25 @@ void GVGraph::setFont(QFont font) {
 
     _agedgeattr(mGraph, "fontname", font.family());
     _agedgeattr(mGraph, "fontsize", QString("%1").arg(font.pointSizeF()));
+}
+
+void GVGraph::setLayoutAlgorithm(const QString& algorithm) {
+	mLayoutAlgorithm = algorithm;
+}
+
+void GVGraph::setGlobalNodeSize(double size) {
+	//Divide the wanted width by the DPI to get the value in points
+	QString nodePtsWidth = QString("%1").arg(size / _agget(mGraph, "dpi", "96,0").toDouble());
+
+	//GV uses , instead of . for the separator in floats
+	//_agnodeattr(mGraph, "width", nodePtsWidth.replace('.', ","));
+	Agsym_t *agWidth = _agnodeattr(mGraph, "width", nodePtsWidth);
+	Agsym_t *agHeight = _agnodeattr(mGraph, "height", nodePtsWidth);
+	//Agsym_t *a_width = _agnodeattr(mGraph, "width", "");
+	//_agnodeattr(mGraph, "height", nodePtsWidth);
+
+	//qDebug() << "GVGraph::setGlobalNodeSize: Node size" << size << "(unit unknown) and in points:" << (size / _agget(mGraph, "dpi", "96,0").toDouble()) << "or" << nodePtsWidth;
+	//qDebug() << "GVGraph::setGlobalNodeSize:" << agWidth->name << ":" << agWidth->value << "(" << agWidth->index << ")";
 }
 
 void GVGraph::applyLayout() {

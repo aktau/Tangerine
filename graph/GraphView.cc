@@ -10,14 +10,15 @@
 #include "GVGraph.h"
 #include "GraphNode.h"
 
-#include "SQLFragmentConf.h"
-#include "MatchModel.h"
+#include "IFragmentConf.h"
+#include "IMatchModel.h"
+#include "EmptyMatchModel.h"
 
 #define MAXNODES 600
 
 using namespace thera;
 
-GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mModel(NULL) {
+GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mModel(NULL), mDirty(false) {
 	/* Create and set scene + attributes */
 	QGraphicsScene *scene = new QGraphicsScene(this);
 	scene->setBackgroundBrush(QBrush(QColor("#4f4f4f"), Qt::SolidPattern));
@@ -28,9 +29,9 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 5);
+	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
 
-	setModel(&MatchModel::EMPTY);
+	setModel(&EmptyMatchModel::EMPTY);
 }
 
 /*
@@ -45,7 +46,7 @@ GraphView::~GraphView() {
 	qDebug() << "GraphView::~GraphView: ran";
 }
 
-void GraphView::setModel(MatchModel *model) {
+void GraphView::setModel(IMatchModel *model) {
 	if (model != NULL) {
 		mModel = model;
 
@@ -59,9 +60,14 @@ void GraphView::setModel(MatchModel *model) {
 }
 
 void GraphView::modelChanged() {
-	qDebug() << "GraphView::modelChanged: called";
+	qDebug() << "GraphView::modelChanged: called, active window:" << isActiveWindow() << "| visible:" << isVisible();
 
-	generate();
+	mDirty = true;
+
+	// there's no need to recalculate a lot of stuff if nothing is visible...
+	if (isVisible()) {
+		generate();
+	}
 }
 
 void GraphView::wheelEvent(QWheelEvent *event) {
@@ -82,8 +88,10 @@ void GraphView::generate() {
 
 	mGraph->clearNodes();
 
+	qDebug() << "GraphView::generate: adding nodes";
+
 	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
-		const SQLFragmentConf& conf = mModel->get(i);
+		const IFragmentConf& conf = mModel->get(i);
 
 		//qDebug() << "GraphView::generate: adding new nodes";
 
@@ -99,10 +107,10 @@ void GraphView::generate() {
 
 	qDebug() << "GraphView::generate: drawing graph";
 
-	drawGraph();
+	draw();
 }
 
-void GraphView::drawGraph() {
+void GraphView::draw() {
 	scene()->clear();
 
 	const QColor nodeStrokeColor = QColor("#8eb650");
@@ -144,6 +152,52 @@ void GraphView::drawGraph() {
 
 		//QString msg = QString("[%1,%2] -> [width: %3, height: %4]").arg(node.topLeftPos().x()).arg(node.topLeftPos().y()).arg(node.width).arg(node.height);
 		//QMessageBox::about(NULL, QString("Wut?"), msg);
+	}
+
+	mDirty = false;
+}
+
+void GraphView::keyPressEvent(QKeyEvent *event) {
+    switch (event->key()) {
+		case Qt::Key_Minus:
+		{
+			static double nodeSize = 400;
+
+			nodeSize /= 2.0;
+			mGraph->setGlobalNodeSize(nodeSize);
+
+			generate();
+		}
+		break;
+
+		case Qt::Key_L:
+		{
+			static QStringList layouts = QStringList() << "neato" << "fdp" << "sfdp" << "circo" << "twopi";
+			static int index = 0;
+
+			index = (index + 1) % layouts.size();
+
+			//delete mGraph;
+			//mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
+
+			mGraph->setLayoutAlgorithm(layouts[index]);
+
+			qDebug() << "Switching layout algorithm to:" << layouts[index];
+
+			mGraph->applyLayout();
+			draw();
+			//generate();
+		}
+		break;
+
+		default:
+			QGraphicsView::keyPressEvent(event);
+	}
+}
+
+void GraphView::showEvent(QShowEvent *event) {
+	if (mDirty) {
+		generate();
 	}
 }
 

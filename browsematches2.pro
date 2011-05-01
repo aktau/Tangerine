@@ -21,8 +21,8 @@ RC_FILE = tangerine.rc
 
 INCLUDEPATH += ../nicolash
 
-DEPENDPATH += $${INCLUDEPATH}
-DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}
+#DEPENDPATH += $${INCLUDEPATH}
+#DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}
 
 # UI_DIR    = ui
 # FORMS     = ui/*.ui
@@ -40,6 +40,10 @@ win32-g++: LIBS += -lglu32 -lopengl32
 TRANSLATIONS = lcl_theraprocess_de.ts lcl_theraprocess_el.ts
 
 win32-g++: CONFIG += console
+
+SOURCES += models/*.cc
+HEADERS += models/*.h
+INCLUDEPATH += models
 
 tileview {
 	message(Tangerine: Tileview support was added)
@@ -66,3 +70,6 @@ graphviz {
 	
 	LIBS += -lgraph -lgvc
 }
+
+DEPENDPATH += $${INCLUDEPATH}
+DEPENDPATH += $${REPOSDIR}/lib/$${UNAME}.$${DBGNAME}

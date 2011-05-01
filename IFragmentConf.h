@@ -9,7 +9,7 @@
 
 namespace thera {
 	 // This is an interface class with a few fields here and there (more like a trait)
-	 // known inherits: XmlFragmentConf (to be made), SQLFragmentConf
+	 // known inherits: XmlFragmentConf (to be made), SQLFragmentConf, InvalidFragmentConf
 	class IFragmentConf : public QObject {
 		Q_OBJECT
 
@@ -28,17 +28,21 @@ namespace thera {
 				mXF(that.mXF),
 				mCP(that.mCP),
 				mCPRadius(that.mCPRadius) {
-				for (int i = 0; i < MAX_FRAGMENTS; ++i)
+				for (int i = 0; i < MAX_FRAGMENTS; ++i) {
 					mFragments[i] = that.mFragments[i];
+				}
 			}
 			virtual IFragmentConf& operator=(const IFragmentConf& that) {
-				mRelev = that.mRelev;
-				mXF = that.mXF;
-				mCP = that.mCP;
-				mCPRadius = that.mCPRadius;
+				if (this != &that) {
+					mRelev = that.mRelev;
+					mXF = that.mXF;
+					mCP = that.mCP;
+					mCPRadius = that.mCPRadius;
 
-				for (int i = 0; i < MAX_FRAGMENTS; ++i)
-					mFragments[i] = that.mFragments[i];
+					for (int i = 0; i < MAX_FRAGMENTS; ++i) {
+						mFragments[i] = that.mFragments[i];
+					}
+				}
 
 				return *this;
 			};

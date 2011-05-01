@@ -16,12 +16,6 @@ namespace gv {
 	#include "graph.h"
 };
 
-//struct GVC_s;
-//typedef struct GVC_s GVC_t;
-//struct Agedge_t;
-//struct Agnode_t;
-//struct Agraph_t;
-
 /// A struct containing the information for a GVGraph's node
 struct GVNode {
     /// The unique identifier of the node in the graph
@@ -70,7 +64,7 @@ class GVGraph {
 		 * \param font The font to use for the graph
 		 * \param node_size The size in pixels of each node
 		 */
-		GVGraph(QString name, QString layout = "dot", int type = AGDIGRAPHSTRICT, QFont font = QFont(), double node_size = 50);
+		GVGraph(QString name, QString layout = "dot", int type = AGDIGRAPHSTRICT, QFont font = QFont(), double nodeSize = 50);
 		~GVGraph();
 
 		/// Add and remove nodes
@@ -86,6 +80,8 @@ class GVGraph {
 
 		/// Set the font to use in all the labels
 		void setFont(QFont font);
+		void setLayoutAlgorithm(const QString& algorithm);
+		void setGlobalNodeSize(double size);
 
 		void setRootNode(const QString& name);
 
