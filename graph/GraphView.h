@@ -2,6 +2,8 @@
 #define GRAPHVIEW_H_
 
 #include <QGraphicsView>
+#include <QList>
+#include <QAction>
 
 // we're forward-declaring it to keep information about GVGraph as minimal as possible in the rest of the program
 class GVGraph;
@@ -16,6 +18,8 @@ class GraphView : public QGraphicsView {
 		virtual ~GraphView();
 
 		virtual void setModel(IMatchModel *model);
+
+		QList<QAction *> actions() const;
 
 	public slots:
 		void modelChanged();
@@ -33,6 +37,8 @@ class GraphView : public QGraphicsView {
 		void draw();
 
 	private:
+		QList<QAction *> mActions;
+
 		GVGraph *mGraph;
 		IMatchModel *mModel;
 

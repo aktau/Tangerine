@@ -24,6 +24,8 @@ class EmptyMatchModel : public IMatchModel {
 			return mFc;
 		}
 
+		virtual QString getFilter() const {  qDebug() << "EmptyMatchModel::getFilter: Attempted to get filter"; return QString(); }
+
 	public:
 		// create one default instance that everyone can conveniently use
 		static EmptyMatchModel EMPTY;

@@ -34,10 +34,10 @@ class SQLDatabase : public QObject {
 		// 1) use a pointer (but makes ownership dangerous), advantage would be polymorhpy
 		// 2) ...
 		// 3) Profit, I think
-		QList<thera::SQLFragmentConf> getAllMatches();
+		//QList<thera::SQLFragmentConf> getAllMatches();
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
 
-		/* matches */
+		QStringList fieldList() const;
 
 		int matchCount() const;
 

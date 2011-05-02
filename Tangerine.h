@@ -75,9 +75,13 @@ class Tangerine : public QMainWindow {
 
 #ifdef WITH_TILEVIEW
 		MatchTileView *mTileView;
+		QMenu *mTileViewMenu;
+		QToolBar *mTileViewToolbar;
 #endif
 #ifdef WITH_GRAPH
 		GraphView *mGraphView;
+		QMenu *mGraphViewMenu;
+		QToolBar *mGraphViewToolbar;
 #endif
 
 		QProgressDialog *mProgress;

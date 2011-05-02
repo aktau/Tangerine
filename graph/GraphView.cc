@@ -14,7 +14,7 @@
 #include "IMatchModel.h"
 #include "EmptyMatchModel.h"
 
-#define MAXNODES 600
+#define MAXNODES 5000
 
 using namespace thera;
 
@@ -29,7 +29,8 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
+	//mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
+	mGraph = new GVGraph("Tangerine", "neato", AGRAPHSTRICT, QFont(), 200);
 
 	setModel(&EmptyMatchModel::EMPTY);
 }
@@ -57,6 +58,10 @@ void GraphView::setModel(IMatchModel *model) {
 	else {
 		qDebug() << "GraphView::setModel: Invalid model";
 	}
+}
+
+QList<QAction *> GraphView::actions() const {
+	return mActions;
 }
 
 void GraphView::modelChanged() {

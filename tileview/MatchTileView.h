@@ -5,8 +5,10 @@
 #include <QFrame>
 #include <QList>
 #include <QVector>
+#include <QList>
 #include <QLabel>
 #include <QDir>
+#include <QAction>
 
 #include "IMatchModel.h"
 #include "IFragmentConf.h"
@@ -41,24 +43,35 @@ class MatchTileView : public QScrollArea {
 
 		virtual void setModel(IMatchModel *model);
 
+		QList<QAction *> actions() const;
+
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
 	    void modelChanged();
 	    void modelOrderChanged();
 
+	    void sortAscending();
+	    void sortDescending();
+	    void filter();
+
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);
 		virtual void keyPressEvent(QKeyEvent *event);
 
 	private:
+		void createActions();
+
 		void updateThumbnail(int tidx, int fcidx);
 		QString thumbName(thera::IFragmentConf &conf);
 		void scroll(int amount);
 		void refresh();
+		void sort(Qt::SortOrder order);
 		void currentValidIndices(QVector<int>& valid);
 
 	private:
+		QList<QAction *> mActions;
+
 		QDir mThumbDir;
 
 		QFrame *mFrame;

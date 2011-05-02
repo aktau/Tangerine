@@ -139,35 +139,6 @@ void SQLDatabase::saveToXML(const QString& XMLFile) const {
 	}
 }
 
-QList<SQLFragmentConf> SQLDatabase::getAllMatches() {
-	QList<SQLFragmentConf> list;
-
-	QSqlQuery query(database());
-	query.setForwardOnly(true);
-	if (query.exec("SELECT matches.match_id, source_name, target_name, transformation FROM matches")) {
-		while (query.next()) {
-			SQLFragmentConf fc(this, query.value(0).toInt());
-
-			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
-
-			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
-			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
-			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
-
-			XF xf;
-			QTextStream ts(query.value(2).toString().toAscii());
-			ts >> xf;
-
-			list.append(fc);
-		}
-	}
-	else {
-		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError();
-	}
-
-	return list;
-}
-
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const QString& filter) {
 	QList<SQLFragmentConf> list;
 
@@ -175,12 +146,20 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 
 	if (!sortField.isEmpty()) {
 		// TODO: sanity check the sort field
-		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+		//queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ").arg(sortField);
+
 	}
 
 	if (!filter.isEmpty()) {
+		QString normalizedFilter = QString(filter).replace("*","%").replace("?","_");
+
 		// TODO: transform wildcards or use GLOB
-		queryString += QString(" WHERE (matches.source_name || matches.target_name) GLOB %1").arg(filter);
+		queryString += QString(" WHERE matches.source_name || matches.target_name LIKE '%1' OR matches.target_name || matches.source_name LIKE '%1'").arg(normalizedFilter);
+	}
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
 	}
 
 	QSqlQuery query(database());
@@ -203,10 +182,15 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		}
 	}
 	else {
-		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError();
+		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
 	}
 
 	return list;
+}
+
+QStringList SQLDatabase::fieldList() const {
+	return FIELDS;
 }
 
 /**

@@ -13,5 +13,8 @@
     <file>rcc/fatcow/32x32/things_digital.png</file>
     <file>rcc/fatcow/32x32/bubblechart.png</file>
     <file>rcc/fatcow/32x32/information.png</file>
+    <file>rcc/fatcow/32x32/sort_ascending.png</file>
+    <file>rcc/fatcow/32x32/sort_descending.png</file>
+    <file>rcc/fatcow/32x32/filter.png</file>
   </qresource>
 </RCC>

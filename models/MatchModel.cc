@@ -52,6 +52,14 @@ thera::IFragmentConf& MatchModel::get(int index) {
 	return mMatches[index];
 }
 
+QStringList MatchModel::fieldList() const {
+	return mDb->fieldList();
+}
+
+QString MatchModel::getFilter() const {
+	return mFilter;
+}
+
 void MatchModel::populateModel() {
 	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 }

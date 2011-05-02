@@ -47,30 +47,6 @@ void Tangerine::setupWindow() {
 	setWindowTitle(QString("Tangerine %1 %2.%3").arg(DEV_PHASE).arg(MAJ_VERSION).arg(MIN_VERSION));
 	setToolButtonStyle(Qt::ToolButtonIconOnly);
 
-	/* central widget */
-
-	mCentralWidget = new QStackedWidget;
-
-#ifdef WITH_TILEVIEW
-	mTileView = new MatchTileView(mThumbDir);
-	mTileView->setModel(&mModel);
-	mCentralWidget->addWidget(mTileView);
-#else
-	mCentralWidget->addWidget(new QWidget);
-#endif
-
-#ifdef WITH_GRAPH
-	mGraphView = new GraphView;
-	mGraphView->setModel(&mModel);
-	mCentralWidget->addWidget(mGraphView);
-#else
-	mCentralWidget->addWidget(new QWidget);
-#endif
-
-	setCentralWidget(mCentralWidget);
-
-	normalView();
-
 	/* create actions */
 
 	createActions();
@@ -117,6 +93,44 @@ void Tangerine::setupWindow() {
 	statusBar()->addPermanentWidget(mNumberOfMatchesLabel);
 
 	updateStatusBar();
+
+	/* central widget */
+
+	mCentralWidget = new QStackedWidget;
+
+#ifdef WITH_TILEVIEW
+	mTileView = new MatchTileView(mThumbDir);
+	mTileView->setModel(&mModel);
+	mCentralWidget->addWidget(mTileView);
+
+	mTileViewMenu = menuBar()->addMenu(tr("&Actions"));
+	mTileViewMenu->addActions(mTileView->actions());
+
+	mTileViewToolbar = addToolBar(tr("Tile View"));
+	mTileViewToolbar->addActions(mTileView->actions());
+	mTileViewToolbar->setMovable(false);
+#else
+	mCentralWidget->addWidget(new QWidget);
+#endif
+
+#ifdef WITH_GRAPH
+	mGraphView = new GraphView;
+	mGraphView->setModel(&mModel);
+	mCentralWidget->addWidget(mGraphView);
+
+	mGraphViewMenu = menuBar()->addMenu(tr("&Actions"));
+	mGraphViewMenu->addActions(mGraphView->actions());
+
+	mGraphViewToolbar = addToolBar(tr("Graph View"));
+	mGraphViewToolbar->addActions(mGraphView->actions());
+	mGraphViewToolbar->setMovable(false);
+#else
+	mCentralWidget->addWidget(new QWidget);
+#endif
+
+	setCentralWidget(mCentralWidget);
+
+	normalView();
 
 	/* styles */
 	/*
@@ -257,10 +271,30 @@ void Tangerine::exportDatabase() {
 }
 
 void Tangerine::normalView() {
+#ifdef WITH_TILEVIEW
+	mTileViewMenu->menuAction()->setVisible(true);
+	mTileViewToolbar->setVisible(true);
+#endif
+
+#ifdef WITH_GRAPH
+	mGraphViewMenu->menuAction()->setVisible(false);
+	mGraphViewToolbar->setVisible(false);
+#endif
+
 	mCentralWidget->setCurrentIndex(0);
 }
 
 void Tangerine::nodeView() {
+#ifdef WITH_TILEVIEW
+	mTileViewMenu->menuAction()->setVisible(false);
+	mTileViewToolbar->setVisible(false);
+#endif
+
+#ifdef WITH_GRAPH
+	mGraphViewMenu->menuAction()->setVisible(true);
+	mGraphViewToolbar->setVisible(true);
+#endif
+
 	mCentralWidget->setCurrentIndex(1);
 }
 

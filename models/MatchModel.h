@@ -23,6 +23,9 @@ class MatchModel : public IMatchModel {
 		virtual void filter(const QString& pattern);
 		virtual thera::IFragmentConf& get(int index);
 
+		virtual QStringList fieldList() const;
+		virtual QString getFilter() const;
+
 	private:
 		void populateModel();
 

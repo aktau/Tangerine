@@ -4,6 +4,7 @@
 #include <QKeyEvent>
 #include <QDebug>
 #include <QPixmap>
+#include <QInputDialog>
 
 #include "Database.h"
 #include "Fragment.h"
@@ -55,6 +56,8 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	}
 
 	setModel(&EmptyMatchModel::EMPTY);
+
+	createActions();
 }
 
 MatchTileView::~MatchTileView() {
@@ -74,6 +77,53 @@ void MatchTileView::setModel(IMatchModel *model) {
 	}
 }
 
+QList<QAction *> MatchTileView::actions() const {
+	return mActions;
+}
+
+void MatchTileView::createActions() {
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/sort_ascending.png"), tr("Sort ascending"), this);
+	mActions.last()->setStatusTip(tr("Sort matches ascending"));
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(sortAscending()));
+
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/sort_descending.png"), tr("Sort descending"), this);
+	mActions.last()->setStatusTip(tr("Sort matches descending"));
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(sortDescending()));
+
+	mActions << new QAction(tr("Separator"), this);
+	mActions.last()->setSeparator(true);
+
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/filter.png"), tr("Filter matches"), this);
+	mActions.last()->setStatusTip(tr("Filter matches based on a wildcard string"));
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filter()));
+}
+
+void MatchTileView::sortAscending() {
+	sort(Qt::AscendingOrder);
+}
+
+void MatchTileView::sortDescending() {
+	sort(Qt::DescendingOrder);
+}
+
+void MatchTileView::sort(Qt::SortOrder order) {
+	bool ok = 0;
+	QString field = QInputDialog::getItem(this, "Sort matches", "Choose an attribute to sort by", mModel->fieldList(), 0, false, &ok);
+
+	if (ok && !field.isEmpty()) {
+		mModel->sort(field, order);
+	}
+}
+
+void MatchTileView::filter() {
+	bool ok = false;
+	QString filter = QInputDialog::getText(this, tr("Filter"), tr("Filter in wilcard format, * matches everything, ? matches one character") + ":", QLineEdit::Normal, mModel->getFilter(), &ok);
+
+	if (ok) {
+		mModel->filter(filter);
+	}
+}
+
 void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	s().tindices[tidx] = fcidx;
 
@@ -81,7 +131,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		//qDebug() << "Updating [INVALID] thumbnail" << tidx << "to model index" << fcidx;
 
 		QPixmap p(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
-		p.fill(Qt::blue);
+		p.fill(Qt::black);
 
 		mThumbs[tidx]->setPixmap(p);
 		mThumbs[tidx]->setToolTip(QString());

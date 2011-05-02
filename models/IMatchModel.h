@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QDebug>
+#include <QStringList>
 
 #include "IFragmentConf.h"
 
@@ -18,6 +19,9 @@ class IMatchModel : public QObject {
 		virtual void sort(const QString& field, Qt::SortOrder order = Qt::AscendingOrder) = 0;
 		virtual void filter(const QString& pattern) = 0;
 		virtual thera::IFragmentConf& get(int index) = 0;
+
+		virtual QStringList fieldList() const { return QStringList(); }
+		virtual QString getFilter() const = 0;
 
 	signals:
 		void modelChanged();
