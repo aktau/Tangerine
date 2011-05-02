@@ -11,6 +11,10 @@ class IMatchModel : public QObject {
 		Q_OBJECT
 
 	public:
+		enum Status { UNKNOWN, YES, MAYBE, NO, CONFLICT, NUM_STATUSES };
+		static QStringList STATUS_STRINGS;
+
+	public:
 		IMatchModel() {}
 		virtual ~IMatchModel() { }
 
@@ -20,7 +24,7 @@ class IMatchModel : public QObject {
 		virtual void filter(const QString& pattern) = 0;
 		virtual thera::IFragmentConf& get(int index) = 0;
 
-		virtual QStringList fieldList() const { return QStringList(); }
+		virtual QStringList fieldList() const = 0;
 		virtual QString getFilter() const = 0;
 
 	signals:

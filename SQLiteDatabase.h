@@ -7,13 +7,13 @@ class SQLiteDatabase : public SQLDatabase {
 		Q_OBJECT
 
 	public:
-		SQLiteDatabase(QObject *parent);
-		virtual ~SQLiteDatabase();
-
 		virtual void connect(const QString& name);
 		virtual void loadFromXML(const QString& XMLFile);
 
 	protected:
+		SQLiteDatabase(QObject *parent);
+		virtual ~SQLiteDatabase();
+
 		virtual QSqlDatabase open(const QString& file);
 		virtual void setPragmas();
 
@@ -24,6 +24,9 @@ class SQLiteDatabase : public SQLDatabase {
 
 	private:
 		static const QString DB_TYPE;
+
+	private:
+		friend class SQLDatabase;
 };
 
 #endif /* SQLITEDATABASE_H_ */

@@ -146,7 +146,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 
 	if (!sortField.isEmpty()) {
 		// TODO: sanity check the sort field
-		//queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
 		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ").arg(sortField);
 
 	}
@@ -154,7 +153,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	if (!filter.isEmpty()) {
 		QString normalizedFilter = QString(filter).replace("*","%").replace("?","_");
 
-		// TODO: transform wildcards or use GLOB
 		queryString += QString(" WHERE matches.source_name || matches.target_name LIKE '%1' OR matches.target_name || matches.source_name LIKE '%1'").arg(normalizedFilter);
 	}
 

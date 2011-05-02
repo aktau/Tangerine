@@ -35,9 +35,6 @@ class MatchTileView : public QScrollArea {
 		Q_OBJECT
 
 	public:
-		enum { UNKNOWN, YES, MAYBE, NO, CONFLICT, NUM_STATUSES };
-
-	public:
 		MatchTileView(const QDir& thumbDir, QWidget *parent = NULL, int rows = 4, int columns = 5, float scale = 0.5f);
 		virtual ~MatchTileView();
 
@@ -54,6 +51,7 @@ class MatchTileView : public QScrollArea {
 	    void sortAscending();
 	    void sortDescending();
 	    void filter();
+	    void filterStatuses();
 
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);

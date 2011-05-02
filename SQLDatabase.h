@@ -21,6 +21,7 @@ class SQLDatabase : public QObject {
 		virtual ~SQLDatabase();
 
 	public:
+
 		bool isOpen() const;
 
 		// we could probably provide a base implementation fo all non-SQLite db's
@@ -29,12 +30,11 @@ class SQLDatabase : public QObject {
 		virtual void loadFromXML(const QString& XMLFile);
 		virtual void saveToXML(const QString& XMLFile) const;
 
-		// using QList because QVector require a default constructor, which we _cannot_ over with SQLFragmentConf
+		// using QList because QVector require a default constructor, which we _cannot_ use with SQLFragmentConf
 		// alternative solutions are:
-		// 1) use a pointer (but makes ownership dangerous), advantage would be polymorhpy
+		// 1) use a pointer (but makes ownership dangerous), advantage would be polymorphy
 		// 2) ...
 		// 3) Profit, I think
-		//QList<thera::SQLFragmentConf> getAllMatches();
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
 
 		QStringList fieldList() const;

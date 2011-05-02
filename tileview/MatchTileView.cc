@@ -5,12 +5,14 @@
 #include <QDebug>
 #include <QPixmap>
 #include <QInputDialog>
+#include <QPair>
 
 #include "Database.h"
 #include "Fragment.h"
 #include "FragmentRef.h"
 
 #include "EmptyMatchModel.h"
+#include "ShowStatusDialog.h"
 
 using namespace thera;
 
@@ -94,8 +96,12 @@ void MatchTileView::createActions() {
 	mActions.last()->setSeparator(true);
 
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/filter.png"), tr("Filter matches"), this);
-	mActions.last()->setStatusTip(tr("Filter matches based on a wildcard string"));
+	mActions.last()->setStatusTip(tr("Filter matches by name"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filter()));
+
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/google_custom_search.png"), tr("Visible statuses"), this);
+	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
 }
 
 void MatchTileView::sortAscending() {
@@ -121,6 +127,46 @@ void MatchTileView::filter() {
 
 	if (ok) {
 		mModel->filter(filter);
+	}
+}
+
+void MatchTileView::filterStatuses() {
+	typedef QPair<QString, bool> StringBoolPair;
+
+	QList<StringBoolPair> statuses;
+
+	// this system needs to be redesigned for dynamic statuses anyway so it doesn't have to be too clean
+	// this should all be in the model!!!
+	assert(IMatchModel::NUM_STATUSES == IMatchModel::STATUS_STRINGS.size());
+
+	for (int i = 0; i < IMatchModel::NUM_STATUSES; ++i) {
+		bool activated = false;
+
+		switch (i) {
+			case IMatchModel::CONFLICT: activated = s().show_conflicted; break;
+			case IMatchModel::MAYBE: activated = s().show_maybe; break;
+			case IMatchModel::NO: activated = s().show_rejected; break;
+			case IMatchModel::UNKNOWN: activated = s().show_unknown; break;
+		}
+
+		statuses << StringBoolPair(IMatchModel::STATUS_STRINGS.at(i), activated);
+	}
+
+	ShowStatusDialog dialog(this, statuses);
+
+	int ret = dialog.exec();
+
+	if (!!ret) {
+		statuses = dialog.getStatuses();
+
+		foreach (const StringBoolPair& status, statuses) {
+			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::CONFLICT) == status.first) s().show_conflicted = status.second;
+			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::MAYBE) == status.first) s().show_maybe = status.second;
+			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::NO) == status.first) s().show_rejected = status.second;
+			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::UNKNOWN) == status.first) s().show_unknown = status.second;
+		}
+
+		modelChanged();
 	}
 }
 
@@ -341,13 +387,13 @@ void MatchTileView::currentValidIndices(QVector<int>& valid) {
 
 			int status = match.getString("status", "0").toInt();
 
-			if (!s().show_unknown && status == UNKNOWN)
+			if (!s().show_unknown && status == IMatchModel::UNKNOWN)
 				continue;
-			if (!s().show_rejected && status == NO)
+			if (!s().show_rejected && status == IMatchModel::NO)
 				continue;
-			if (!s().show_conflicted && status == CONFLICT)
+			if (!s().show_conflicted && status == IMatchModel::CONFLICT)
 				continue;
-			if (!s().show_maybe && status == MAYBE)
+			if (!s().show_maybe && status == IMatchModel::MAYBE)
 				continue;
 
 			//qDebug("IFragmentConf::TARGET[%d] = %d", IFragmentConf::TARGET, match.mFragments[IFragmentConf::TARGET]);

@@ -16,5 +16,6 @@
     <file>rcc/fatcow/32x32/sort_ascending.png</file>
     <file>rcc/fatcow/32x32/sort_descending.png</file>
     <file>rcc/fatcow/32x32/filter.png</file>
+    <file>rcc/fatcow/32x32/google_custom_search.png</file>
   </qresource>
 </RCC>
