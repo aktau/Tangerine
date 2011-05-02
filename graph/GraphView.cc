@@ -49,6 +49,10 @@ GraphView::~GraphView() {
 
 void GraphView::setModel(IMatchModel *model) {
 	if (model != NULL) {
+		if (mModel != NULL) {
+			disconnect(mModel, 0, this, 0);
+		}
+
 		mModel = model;
 
 		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
