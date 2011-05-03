@@ -10,10 +10,10 @@
 
 using namespace thera;
 
-const QString Tangerine::MATCH_COUNT_TEXT = "%1 matches loaded";
+const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
 
-const int Tangerine::MIN_WIDTH = 1024;
-const int Tangerine::MIN_HEIGHT = 786;
+const int Tangerine::MIN_WIDTH = 1280;
+const int Tangerine::MIN_HEIGHT = 600;
 
 Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(*db), mModel(db), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
 	setupWindow();

@@ -136,6 +136,11 @@ void MatchTileView::filter() {
 	QString filter = QInputDialog::getText(this, tr("Filter"), tr("Filter in wilcard format, * matches everything, ? matches one character") + ":", QLineEdit::Normal, mModel->getFilter(), &ok);
 
 	if (ok) {
+		filter = filter.trimmed();
+
+		if (!filter.startsWith('*')) filter.prepend("*");
+		if (!filter.endsWith('*')) filter.append("*");
+
 		mModel->filter(filter);
 	}
 }
