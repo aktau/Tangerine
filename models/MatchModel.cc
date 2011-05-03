@@ -65,6 +65,9 @@ void MatchModel::populateModel() {
 }
 
 void MatchModel::databaseModified() {
+	sort();
+	filter();
+
 	populateModel();
 
 	emit modelChanged();

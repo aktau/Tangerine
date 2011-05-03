@@ -20,8 +20,8 @@ class IMatchModel : public QObject {
 
 	public:
 		virtual int size() const = 0;
-		virtual void sort(const QString& field, Qt::SortOrder order = Qt::AscendingOrder) = 0;
-		virtual void filter(const QString& pattern) = 0;
+		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) = 0;
+		virtual void filter(const QString& pattern = QString()) = 0;
 		virtual thera::IFragmentConf& get(int index) = 0;
 
 		virtual QSet<QString> fieldList() const = 0;
