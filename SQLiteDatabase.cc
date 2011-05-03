@@ -63,6 +63,7 @@ QSqlDatabase SQLiteDatabase::open(const QString& file) {
 			setPragmas();
 
 			emit databaseOpened();
+			emit matchFieldsChanged(); // the order is actually important, because for example the models react to matchCountChanged, but matchFieldsChanged needs to have ran by then
 			emit matchCountChanged();
 		}
 		else {
@@ -84,6 +85,29 @@ void SQLiteDatabase::loadFromXML(const QString& XMLFile) {
 }
 
 void SQLiteDatabase::setPragmas() {
-	database().exec("PRAGMA synchronous = OFF");
-	database().exec("PRAGMA journal_mode = MEMORY");
+	QSqlQuery query(database());
+
+	if (!query.exec("PRAGMA synchronous = OFF")) qDebug() << "SQLiteDatabase::setPragmas: setting pragma" << query.lastQuery() << "failed";
+	if (!query.exec("PRAGMA journal_mode = MEMORY")) qDebug() << "SQLiteDatabase::setPragmas: setting pragma" << query.lastQuery() << "failed";
+}
+
+QSet<QString> SQLiteDatabase::tableFields(const QString& tableName) const {
+	QSet<QString> fields;
+
+	QSqlQuery query(database());
+
+	if (query.exec(QString("PRAGMA TABLE_INFO(%1)").arg(tableName))) {
+		QSqlRecord record = query.record();
+
+		int name = record.indexOf("name");
+
+		while (query.next()) {
+			fields << query.value(name).toString();
+		}
+	}
+	else {
+		qDebug() << "SQLiteDatabase::tableFields: error on 'PRAGMA TABLE_INFO':" << query.lastError();
+	}
+
+	return fields;
 }

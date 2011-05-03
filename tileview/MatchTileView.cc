@@ -118,7 +118,12 @@ void MatchTileView::sortDescending() {
 
 void MatchTileView::sort(Qt::SortOrder order) {
 	bool ok = 0;
-	QString field = QInputDialog::getItem(this, "Sort matches", "Choose an attribute to sort by", mModel->fieldList(), 0, false, &ok);
+
+	// we require an actual QStringList and not a set, unfortunately
+	QStringList fieldList = QStringList::fromSet(mModel->fieldList());
+
+
+	QString field = QInputDialog::getItem(this, "Sort matches", "Choose an attribute to sort by", fieldList, 0, false, &ok);
 
 	if (ok && !field.isEmpty()) {
 		mModel->sort(field, order);

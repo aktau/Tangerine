@@ -24,7 +24,7 @@ class EmptyMatchModel : public IMatchModel {
 			return mFc;
 		}
 
-		QStringList fieldList() const {  qDebug() << "EmptyMatchModel::fieldList: Attempted to get field list"; return QStringList(); }
+		QSet<QString> fieldList() const {  qDebug() << "EmptyMatchModel::fieldList: Attempted to get field list"; return QSet<QString>(); }
 		QString getFilter() const {  qDebug() << "EmptyMatchModel::getFilter: Attempted to get filter"; return QString(); }
 
 	public:

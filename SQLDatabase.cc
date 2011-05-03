@@ -19,7 +19,7 @@ const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
-QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
+//QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
 
 SQLDatabase * SQLDatabase::mSingleton = NULL;
 
@@ -36,6 +36,7 @@ SQLDatabase* SQLDatabase::getDatabase(QObject *parent) {
 
 SQLDatabase::SQLDatabase(QObject *parent) : QObject(parent) {
 	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
+	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
 }
 
 SQLDatabase::~SQLDatabase() {
@@ -187,10 +188,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	return list;
 }
 
-QStringList SQLDatabase::fieldList() const {
-	return FIELDS;
-}
-
 /**
  * TODO: implement
  */
@@ -215,13 +212,14 @@ int SQLDatabase::matchCount() const {
 		return 0;
 	}
 
-	QSqlDatabase db(database());
-	QSqlQuery query(db);
+	QSqlQuery query(database());
 
 	if (query.exec("SELECT Count(*) FROM matches") && query.first()) {
 		return query.value(0).toInt();
 	}
 	else {
+		qDebug() << "SQLDatabase::matchCount: problem with query:" << query.lastError();
+
 		return 0;
 	}
 }
@@ -368,6 +366,8 @@ void SQLDatabase::setup(const QString& schemaFile) {
 	}
 
 	QByteArray data(file.readAll());
+	file.close();
+
 	QString schemaQuery = QString(data);
 	QStringList queries = schemaQuery.split(";");
 	QSqlQuery query(db);
@@ -379,7 +379,7 @@ void SQLDatabase::setup(const QString& schemaFile) {
 	}
 	db.commit();
 
-	file.close();
+	emit matchFieldsChanged();
 }
 
 void SQLDatabase::close() {
@@ -397,12 +397,6 @@ void SQLDatabase::close() {
 }
 
 void SQLDatabase::resetQueries() {
-	/*
-	for (FieldQueryMap::iterator it = mFieldQueryMap.begin(), end = mFieldQueryMap.end(); it != end; ++it) {
-		delete it.value();
-	}
-	*/
-
 	qDeleteAll(mFieldQueryMap);
 
 	mFieldQueryMap.clear();
@@ -410,6 +404,27 @@ void SQLDatabase::resetQueries() {
 	qDebug() << "SQLDatabase::resetQueries: reset queries";
 }
 
-bool SQLDatabase::matchHasField(const QString& field) const {
-	return FIELDS.contains(field, Qt::CaseInsensitive);
+void SQLDatabase::makeFieldsSet() {
+	if (!isOpen()) {
+		return;
+	}
+
+	// clear just in case
+	mMatchFields.clear();
+
+	QSqlDatabase db = database();
+	QSqlQuery query(db);
+
+	foreach (const QString& table, db.tables()) {
+		// check if the tables name is not the 'matches' table itself
+		if (table != "matches") {
+			// check if the table contains a match_id attribute
+			if (tableFields(table).contains("match_id")) {
+				mMatchFields << table;
+			}
+		}
+	}
+
+	// add the default attributs that are special and always there (their "special" status may dissapear later though)
+	mMatchFields << "source_id" << "source_name" << "target_id" << "target_name" << "transformation";
 }

@@ -52,8 +52,8 @@ thera::IFragmentConf& MatchModel::get(int index) {
 	return mMatches[index];
 }
 
-QStringList MatchModel::fieldList() const {
-	return mDb->fieldList();
+QSet<QString> MatchModel::fieldList() const {
+	return mDb->matchFields();
 }
 
 QString MatchModel::getFilter() const {

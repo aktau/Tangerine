@@ -5,7 +5,7 @@
 #include <QtSql>
 #include <QDomDocument>
 #include <QList>
-#include <QStringList>
+#include <QSet>
 #include <QMap>
 
 #include "SQLFragmentConf.h"
@@ -31,13 +31,10 @@ class SQLDatabase : public QObject {
 		virtual void saveToXML(const QString& XMLFile) const;
 
 		// using QList because QVector require a default constructor, which we _cannot_ use with SQLFragmentConf
-		// alternative solutions are:
-		// 1) use a pointer (but makes ownership dangerous), advantage would be polymorphy
-		// 2) ...
-		// 3) Profit, I think
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
 
-		QStringList fieldList() const;
+		bool matchHasField(const QString& field) const;
+		const QSet<QString>& matchFields() const;
 
 		int matchCount() const;
 
@@ -48,11 +45,14 @@ class SQLDatabase : public QObject {
 		void databaseOpStepDone(int step);
 		void databaseOpEnded();
 		void matchCountChanged();
+		void matchFieldsChanged();
 
 	protected:
 		virtual bool hasCorrectCapabilities() const;
+
 		virtual QSqlDatabase open(const QString& file) = 0;
 		virtual void setPragmas() = 0;
+		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
 
 		QSqlDatabase database() const;
 		void close();
@@ -61,12 +61,12 @@ class SQLDatabase : public QObject {
 
 	protected slots:
 		virtual void resetQueries();
+		virtual void makeFieldsSet();
 
 	private:
 		void parseXML(const QDomElement &root);
 		const QDomDocument toXML() const;
 
-		bool matchHasField(const QString& field) const;
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
 		template<typename T> T matchGetValue(int id, const QString& field);
 
@@ -76,8 +76,13 @@ class SQLDatabase : public QObject {
 		SQLDatabase& operator=(const SQLDatabase&);
 
 	protected:
+		// a map that will store prepared queries, for performance reasons
 		typedef QMap<QString, QSqlQuery *> FieldQueryMap;
 		FieldQueryMap mFieldQueryMap;
+
+		// a set that stores all the available fields/attributes for matches
+		typedef QSet<QString> MatchFieldSet;
+		MatchFieldSet mMatchFields;
 
 		static const QString CONN_NAME;
 		static const QString SCHEMA_FILE;
@@ -89,13 +94,15 @@ class SQLDatabase : public QObject {
 		static const QString OLD_MATCHES_VERSION;
 		static const QString MATCHES_VERSION;
 
-		static QStringList FIELDS;
-
 		static SQLDatabase *mSingleton;
 
 	private:
 		friend class thera::SQLFragmentConf;
 };
+
+inline bool SQLDatabase::matchHasField(const QString& field) const {
+	return mMatchFields.contains(field.toLower());
+}
 
 template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
 
@@ -135,6 +142,10 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 
 inline QSqlDatabase SQLDatabase::database() const {
 	return QSqlDatabase::database(CONN_NAME);
+}
+
+inline const QSet<QString>& SQLDatabase::matchFields() const {
+	return mMatchFields;
 }
 
 #endif /* SQLDATABASE_H_ */

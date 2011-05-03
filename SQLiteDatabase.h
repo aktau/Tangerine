@@ -16,6 +16,7 @@ class SQLiteDatabase : public SQLDatabase {
 
 		virtual QSqlDatabase open(const QString& file);
 		virtual void setPragmas();
+		virtual QSet<QString> tableFields(const QString& tableName) const;
 
 	private:
 		// disabling copy-constructor and copy-assignment for now
