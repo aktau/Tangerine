@@ -140,6 +140,69 @@ void SQLDatabase::saveToXML(const QString& XMLFile) const {
 	}
 }
 
+bool SQLDatabase::addMatchField(const QString& name, double defaultValue) {
+	return addMatchField(name, "REAL", defaultValue);
+}
+
+bool SQLDatabase::addMatchField(const QString& name, const QString& defaultValue) {
+	return addMatchField(name, "TEXT", defaultValue);
+}
+
+bool SQLDatabase::addMatchField(const QString& name, int defaultValue) {
+	return addMatchField(name, "INTEGER", defaultValue);
+}
+
+template<typename T> bool SQLDatabase::addMatchField(const QString& name, const QString& sqlType, T defaultValue) {
+	if (matchHasField(name)) {
+		qDebug() << "SQLDatabase::addMatchField: field" << name << "already exists";
+
+		return false;
+	}
+
+	if (!isOpen()) {
+		qDebug() << "SQLDatabase::addMatchField: database wasn't open";
+
+		return false;
+	}
+
+	bool success = false;
+
+	QSqlDatabase db = database();
+	QSqlQuery query(db);
+
+	db.transaction();
+
+	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL)").arg(name).arg(sqlType));
+	if (success) {
+		// insert the default value everywhere
+		query.prepare(QString(
+			"INSERT INTO %1 (match_id, %1, confidence) "
+			"VALUES (:match_id, :value, :confidence)"
+		).arg(name));
+
+		QSqlQuery idQuery(db);
+		query.setForwardOnly(true);
+		if (idQuery.exec("SELECT match_id FROM matches")) {
+			while (idQuery.next()) {
+				query.bindValue(":match_id", idQuery.value(0).toInt());
+				query.bindValue(":value", defaultValue);
+				query.bindValue(":confidence", 1.0);
+
+				query.exec();
+			}
+		}
+
+		emit matchFieldsChanged();
+	}
+	else {
+		qDebug() << "SQLDatabase::addMatchField couldn't create table:" << query.lastError()
+			<< "\nQuery executed:" << query.lastQuery();
+	}
+	db.commit();
+
+	return success;
+}
+
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const QString& filter) {
 	QList<SQLFragmentConf> list;
 
@@ -426,5 +489,5 @@ void SQLDatabase::makeFieldsSet() {
 	}
 
 	// add the default attributs that are special and always there (their "special" status may dissapear later though)
-	mMatchFields << "source_id" << "source_name" << "target_id" << "target_name" << "transformation";
+	//mMatchFields << "source_id" << "source_name" << "target_id" << "target_name" << "transformation";
 }

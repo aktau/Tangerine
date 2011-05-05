@@ -57,9 +57,10 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 		}
 	}
 
-	setModel(&EmptyMatchModel::EMPTY);
-
 	createActions();
+	createStatusWidgets();
+
+	setModel(&EmptyMatchModel::EMPTY);
 }
 
 MatchTileView::~MatchTileView() {
@@ -87,6 +88,10 @@ QList<QAction *> MatchTileView::actions() const {
 	return mActions;
 }
 
+QList<QWidget *> MatchTileView::statusBarWidgets() const {
+	return mStatusBarWidgets;
+}
+
 void MatchTileView::createActions() {
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/sort_ascending.png"), tr("Sort ascending"), this);
 	mActions.last()->setStatusTip(tr("Sort matches ascending"));
@@ -106,6 +111,11 @@ void MatchTileView::createActions() {
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/google_custom_search.png"), tr("Visible statuses"), this);
 	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
+}
+
+void MatchTileView::createStatusWidgets() {
+	mStatusBarLabel = new QLabel;
+	mStatusBarWidgets << mStatusBarLabel;
 }
 
 void MatchTileView::sortAscending() {
@@ -185,6 +195,27 @@ void MatchTileView::filterStatuses() {
 	}
 }
 
+void MatchTileView::updateStatusBar() {
+	int lastValidIndex = mNumThumbs - 1;
+	while (lastValidIndex >= 0 && s().tindices[lastValidIndex] < 0) {
+		--lastValidIndex;
+	}
+
+	if (lastValidIndex >= 0) {
+		QString message = QString("Browsing %1 (%2) to %3 (%4) of %5")
+			.arg(s().cur_pos + 1)
+			.arg(mModel->get(s().tindices[0]).getDouble("error"))
+			.arg(s().cur_pos + lastValidIndex + 1)
+			.arg(mModel->get(s().tindices[lastValidIndex]).getDouble("error"))
+			.arg(mModel->size());
+
+		mStatusBarLabel->setText(message);
+	}
+	else {
+		mStatusBarLabel->setText("");
+	}
+}
+
 void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	s().tindices[tidx] = fcidx;
 
@@ -215,7 +246,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 
 		mThumbs[tidx]->setPixmap(p);
 
-		QString tooltip = QString("<b>Target</b>: %1\n<b>Source</b>: %2\n<b>Error</b>: %3\n<b>Volume</b>: %4\n")
+		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
 				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
 				.arg(Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id())
 				.arg(match.getString("error", ""))
@@ -369,7 +400,7 @@ void MatchTileView::scroll(int amount) {
 		updateThumbnail(i, (valid.size() > i + new_pos) ? valid[i + new_pos] : -1);
 	}
 
-	//updateStatusBar();
+	updateStatusBar();
 }
 
 void MatchTileView::refresh() {
@@ -386,6 +417,8 @@ void MatchTileView::refresh() {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (valid.size() > i + new_pos) ? valid[i + new_pos] : -1);
 	}
+
+	updateStatusBar();
 }
 
 

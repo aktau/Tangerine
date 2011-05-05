@@ -30,6 +30,10 @@ class SQLDatabase : public QObject {
 		virtual void loadFromXML(const QString& XMLFile);
 		virtual void saveToXML(const QString& XMLFile) const;
 
+		virtual bool addMatchField(const QString& name, double defaultValue);
+		virtual bool addMatchField(const QString& name, const QString& defaultValue);
+		virtual bool addMatchField(const QString& name, int defaultValue);
+
 		// using QList because QVector require a default constructor, which we _cannot_ use with SQLFragmentConf
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
 
@@ -66,6 +70,8 @@ class SQLDatabase : public QObject {
 	private:
 		void parseXML(const QDomElement &root);
 		const QDomDocument toXML() const;
+
+		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
 
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
 		template<typename T> T matchGetValue(int id, const QString& field);

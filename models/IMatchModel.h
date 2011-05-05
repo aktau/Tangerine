@@ -24,6 +24,9 @@ class IMatchModel : public QObject {
 		virtual void filter(const QString& pattern = QString()) = 0;
 		virtual thera::IFragmentConf& get(int index) = 0;
 
+		virtual bool addField(const QString& name, double defaultValue) = 0;
+		virtual bool addField(const QString& name, const QString& defaultValue) = 0;
+		virtual bool addField(const QString& name, int defaultValue) = 0;
 		virtual QSet<QString> fieldList() const = 0;
 		virtual QString getFilter() const = 0;
 

@@ -11,15 +11,16 @@
 #include <QStackedWidget>
 #include <QLabel>
 #include <QDir>
+#include <QList>
 
 #include "SQLDatabase.h"
 #include "MatchModel.h"
 
 #ifdef WITH_TILEVIEW
-#include "MatchTileView.h"
+#	include "MatchTileView.h"
 #endif
 #ifdef WITH_GRAPH
-#include "GraphView.h"
+#	include "GraphView.h"
 #endif
 
 #define SETTINGS_DB_ROOT_KEY "db/root"

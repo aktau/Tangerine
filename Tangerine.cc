@@ -109,6 +109,10 @@ void Tangerine::setupWindow() {
 	mTileViewToolbar = addToolBar(tr("Tile View"));
 	mTileViewToolbar->addActions(mTileView->actions());
 	mTileViewToolbar->setMovable(false);
+
+	foreach (QWidget *widget, mTileView->statusBarWidgets()) {
+		statusBar()->addWidget(widget);
+	}
 #else
 	mCentralWidget->addWidget(new QWidget);
 #endif
@@ -274,6 +278,10 @@ void Tangerine::normalView() {
 #ifdef WITH_TILEVIEW
 	mTileViewMenu->menuAction()->setVisible(true);
 	mTileViewToolbar->setVisible(true);
+
+	foreach (QWidget *widget, mTileView->statusBarWidgets()) {
+		widget->setVisible(true);
+	}
 #endif
 
 #ifdef WITH_GRAPH
@@ -288,6 +296,10 @@ void Tangerine::nodeView() {
 #ifdef WITH_TILEVIEW
 	mTileViewMenu->menuAction()->setVisible(false);
 	mTileViewToolbar->setVisible(false);
+
+	foreach (QWidget *widget, mTileView->statusBarWidgets()) {
+		widget->setVisible(false);
+	}
 #endif
 
 #ifdef WITH_GRAPH

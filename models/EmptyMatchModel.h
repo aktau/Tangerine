@@ -24,6 +24,9 @@ class EmptyMatchModel : public IMatchModel {
 			return mFc;
 		}
 
+		bool addField(const QString& name, double defaultValue) { return false; }
+		bool addField(const QString& name, const QString& defaultValue) { return false; }
+		bool addField(const QString& name, int defaultValue) { return false; }
 		QSet<QString> fieldList() const {  qDebug() << "EmptyMatchModel::fieldList: Attempted to get field list"; return QSet<QString>(); }
 		QString getFilter() const {  qDebug() << "EmptyMatchModel::getFilter: Attempted to get filter"; return QString(); }
 

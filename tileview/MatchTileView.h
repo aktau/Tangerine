@@ -41,6 +41,7 @@ class MatchTileView : public QScrollArea {
 		virtual void setModel(IMatchModel *model);
 
 		QList<QAction *> actions() const;
+		QList<QWidget *> statusBarWidgets() const;
 
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
@@ -59,7 +60,9 @@ class MatchTileView : public QScrollArea {
 
 	private:
 		void createActions();
+		void createStatusWidgets();
 
+		void updateStatusBar();
 		void updateThumbnail(int tidx, int fcidx);
 		QString thumbName(thera::IFragmentConf &conf);
 		void scroll(int amount);
@@ -69,6 +72,8 @@ class MatchTileView : public QScrollArea {
 
 	private:
 		QList<QAction *> mActions;
+		QList<QWidget *> mStatusBarWidgets;
+		QLabel *mStatusBarLabel;
 
 		QDir mThumbDir;
 

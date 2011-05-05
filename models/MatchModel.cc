@@ -31,25 +31,44 @@ int MatchModel::size() const {
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 	// TODO: sanity check on field
-	mSortField = field;
-	mSortOrder = order;
+	if (!mDb->matchHasField(field)) {
+		qDebug() << "MatchModel::sort: Field" << field << "doesn't exist";
+	}
+	else if (mSortField != field || mSortOrder != order) {
+		mSortField = field;
+		mSortOrder = order;
 
-	// ask the database for a new, sorted, list
-	populateModel();
+		// ask the database for a new, sorted, list
+		populateModel();
 
-	emit orderChanged();
+		emit orderChanged();
+	}
 }
 
 void MatchModel::filter(const QString& pattern) {
-	mFilter = pattern;
+	if (mFilter != pattern) {
+		mFilter = pattern;
 
-	populateModel();
+		populateModel();
 
-	emit modelChanged();
+		emit modelChanged();
+	}
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
 	return mMatches[index];
+}
+
+bool MatchModel::addField(const QString& name, double defaultValue) {
+	return mDb->addMatchField(name, defaultValue);
+}
+
+bool MatchModel::addField(const QString& name, const QString& defaultValue) {
+	return mDb->addMatchField(name, defaultValue);
+}
+
+bool MatchModel::addField(const QString& name, int defaultValue) {
+	return mDb->addMatchField(name, defaultValue);
 }
 
 QSet<QString> MatchModel::fieldList() const {
