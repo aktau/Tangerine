@@ -33,6 +33,7 @@ class SQLDatabase : public QObject {
 		virtual bool addMatchField(const QString& name, double defaultValue);
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
 		virtual bool addMatchField(const QString& name, int defaultValue);
+		virtual bool removeMatchField(const QString& name);
 
 		// using QList because QVector require a default constructor, which we _cannot_ use with SQLFragmentConf
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());

@@ -27,6 +27,7 @@ class MatchModel : public IMatchModel {
 		virtual bool addField(const QString& name, double defaultValue);
 		virtual bool addField(const QString& name, const QString& defaultValue);
 		virtual bool addField(const QString& name, int defaultValue);
+		virtual bool removeField(const QString& name);
 		virtual QSet<QString> fieldList() const;
 		virtual QString getFilter() const;
 

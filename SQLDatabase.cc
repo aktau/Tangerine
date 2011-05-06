@@ -203,6 +203,35 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 	return success;
 }
 
+bool SQLDatabase::removeMatchField(const QString& name) {
+	if (!matchHasField(name)) {
+		qDebug() << "SQLDatabase::removeMatchField: field" << name << "doesn't exist";
+
+		return false;
+	}
+
+	if (!isOpen()) {
+		qDebug() << "SQLDatabase::removeMatchField: database wasn't open";
+
+		return false;
+	}
+
+	QSqlDatabase db(database());
+	QSqlQuery query(db);
+
+	db.transaction();
+	if (!query.exec(QString("DROP TABLE %1").arg(name))) {
+		qDebug() << "SQLDatabase::removeMatchField couldn't drop table:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
+	}
+	else {
+		emit matchFieldsChanged();
+	}
+	db.commit();
+
+	return true;
+}
+
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const QString& filter) {
 	QList<SQLFragmentConf> list;
 

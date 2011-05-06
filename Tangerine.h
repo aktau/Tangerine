@@ -49,6 +49,9 @@ class Tangerine : public QMainWindow {
 		void importDatabase();
 		void exportDatabase();
 
+		void addAttribute();
+		void removeAttribute();
+
 		void normalView();
 		void nodeView();
 
@@ -90,6 +93,7 @@ class Tangerine : public QMainWindow {
 		QLabel *mNumberOfMatchesLabel;
 
 		QMenu *mFileMenu;
+		QMenu *mEditMenu;
 		QMenu *mViewMenu;
 		QMenu *mHelpMenu;
 		QToolBar *mFileToolbar;
@@ -100,6 +104,9 @@ class Tangerine : public QMainWindow {
 
 		QAction *mImportXMLAct;
 		QAction *mSaveXMLAct;
+
+		QAction *mAddAttributeAct;
+		QAction *mRemoveAttributeAct;
 
 		QActionGroup *mViewGroup;
 		QAction *mNormalViewAct;

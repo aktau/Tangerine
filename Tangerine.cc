@@ -61,6 +61,10 @@ void Tangerine::setupWindow() {
 	mFileMenu->addAction(mImportXMLAct);
 	mFileMenu->addAction(mSaveXMLAct);
 
+	mEditMenu = menuBar()->addMenu(tr("&Edit"));
+	mEditMenu->addAction(mAddAttributeAct);
+	mEditMenu->addAction(mRemoveAttributeAct);
+
 	mViewMenu = menuBar()->addMenu(tr("&View"));
 	mViewMenu->addAction(mNormalViewAct);
 	mViewMenu->addAction(mNodeViewAct);
@@ -74,6 +78,9 @@ void Tangerine::setupWindow() {
 	mFileToolbar->addAction(mLoadFragDbAct);
 	mFileToolbar->addAction(mLoadMatchDbAct);
 	mFileToolbar->addAction(mSaveDbAct);
+	mFileToolbar->addSeparator();
+	mFileToolbar->addAction(mAddAttributeAct);
+	mFileToolbar->addAction(mRemoveAttributeAct);
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mImportXMLAct);
 	mFileToolbar->addAction(mSaveXMLAct);
@@ -198,6 +205,14 @@ void Tangerine::createActions() {
 	mViewGroup->addAction(mNodeViewAct);
 	mNormalViewAct->setChecked(true);
 
+	mAddAttributeAct = new QAction(QIcon(":/rcc/fatcow/32x32/cog_add.png"), tr("Add an attribute to the matches"), this);
+	mAddAttributeAct->setStatusTip(tr("Add an attribute to the matches"));
+	connect(mAddAttributeAct, SIGNAL(triggered()), this, SLOT(addAttribute()));
+
+	mRemoveAttributeAct = new QAction(QIcon(":/rcc/fatcow/32x32/cog_delete.png"), tr("Remove an attribute from the matches"), this);
+	mRemoveAttributeAct->setStatusTip(tr("Remove an attribute from the matches"));
+	connect(mRemoveAttributeAct, SIGNAL(triggered()), this, SLOT(removeAttribute()));
+
     mHelpAboutAct = new QAction(QIcon(":/rcc/fatcow/32x32/information.png"), tr("&About"), this);
     mHelpAboutAct->setStatusTip(tr("Show the about dialog"));
 	connect(mHelpAboutAct, SIGNAL(triggered()), this, SLOT(about()));
@@ -271,6 +286,53 @@ void Tangerine::exportDatabase() {
 
 	if (fileName != "") {
 		mDb.saveToXML(fileName);
+	}
+}
+
+void Tangerine::addAttribute() {
+	bool ok;
+
+	QString name = QInputDialog::getText(this, tr("Add attribute"), tr("Choose an attribute name"), QLineEdit::Normal, tr("Wha?"), &ok);
+
+	if (ok && !name.isEmpty()) {
+		QStringList typeList = QStringList() << "Text" << "Real" << "Integer";
+
+		QString type = QInputDialog::getItem(this, tr("Add attribute"), tr("What type is the field?"), typeList, 0, false, &ok);
+
+		if (ok && !type.isEmpty()) {
+			QString defaultValue = QInputDialog::getText(this, tr("Add attribute"), tr("Input a default value"), QLineEdit::Normal, tr("Wha?"), &ok);
+
+			if (ok && !defaultValue.isEmpty()) {
+				type = type.toLower();
+
+				if (type == "text") {
+					mModel.addField(name, defaultValue);
+				}
+				else if (type == "real") {
+					mModel.addField(name, defaultValue.toDouble());
+				}
+				else if (type == "integer") {
+					mModel.addField(name, defaultValue.toInt());
+				}
+				else {
+					qDebug() << "Unknown type";
+				}
+			}
+		}
+	}
+}
+
+void Tangerine::removeAttribute() {
+	QStringList fieldList = QStringList::fromSet(mModel.fieldList());
+
+	if (!fieldList.isEmpty()) {
+		bool ok;
+
+		QString field = QInputDialog::getItem(this, "Remove attribute", "Choose an attribute to remove", fieldList, 0, false, &ok);
+
+		if (ok && !field.isEmpty()) {
+			mModel.removeField(field);
+		}
 	}
 }
 

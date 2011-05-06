@@ -71,6 +71,10 @@ bool MatchModel::addField(const QString& name, int defaultValue) {
 	return mDb->addMatchField(name, defaultValue);
 }
 
+bool MatchModel::removeField(const QString& name) {
+	return mDb->removeMatchField(name);
+}
+
 QSet<QString> MatchModel::fieldList() const {
 	return mDb->matchFields();
 }
