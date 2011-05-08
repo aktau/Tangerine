@@ -19,5 +19,6 @@
     <file>rcc/fatcow/32x32/google_custom_search.png</file>
     <file>rcc/fatcow/32x32/cog_add.png</file>
     <file>rcc/fatcow/32x32/cog_delete.png</file>
+    <file>rcc/fatcow/32x32/page_copy.png</file>
   </qresource>
 </RCC>

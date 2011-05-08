@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QDir>
 #include <QAction>
+#include <QMenu>
 
 #include "IMatchModel.h"
 #include "IFragmentConf.h"
@@ -46,6 +47,7 @@ class MatchTileView : public QScrollArea {
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
+	    void copyMatch();
 	    void modelChanged();
 	    void modelOrderChanged();
 
@@ -74,6 +76,10 @@ class MatchTileView : public QScrollArea {
 		QList<QAction *> mActions;
 		QList<QWidget *> mStatusBarWidgets;
 		QLabel *mStatusBarLabel;
+
+		QMenu *mStatusMenu;
+		QAction *mCopyAction;
+		QList<QAction *> mStatusMenuActions;
 
 		QDir mThumbDir;
 

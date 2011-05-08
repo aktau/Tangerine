@@ -24,15 +24,12 @@ namespace thera {
 	bool SQLFragmentConf::setMetaData(const QString& field, const QString& value) const {
 		assert(mId != -1 && mDb != NULL);
 
-		// check if "field" is a valid table or one of the basic attributes
 		if (mDb->matchHasField(field)) {
 			mDb->matchSetValue(mId, field, value);
 		}
 		else {
 			return false;
 		}
-
-		// retrieve
 
 		return true;
 	}

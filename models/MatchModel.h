@@ -11,6 +11,9 @@
 
 #include "SQLDatabase.h"
 
+/**
+ * The main implementation of a match model
+ */
 class MatchModel : public IMatchModel {
 		Q_OBJECT
 

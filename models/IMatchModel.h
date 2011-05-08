@@ -7,6 +7,9 @@
 
 #include "IFragmentConf.h"
 
+/**
+ * The pure abstract interface for all match models
+ */
 class IMatchModel : public QObject {
 		Q_OBJECT
 

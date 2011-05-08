@@ -7,6 +7,10 @@
 
 #include "InvalidFragmentConf.h"
 
+/**
+ * Represents an empty match model to which nothing can be added, good for initializing classes that use
+ * models but haven't received a real one yet
+ */
 class EmptyMatchModel : public IMatchModel {
 		Q_OBJECT
 

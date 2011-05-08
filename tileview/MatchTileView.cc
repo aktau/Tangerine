@@ -1,5 +1,7 @@
 #include "MatchTileView.h"
 
+#include <QtGui>
+#include <QApplication>
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QDebug>
@@ -10,6 +12,8 @@
 #include "Database.h"
 #include "Fragment.h"
 #include "FragmentRef.h"
+#include "TabletopModel.h"
+#include "TabletopIO.h"
 
 #include "EmptyMatchModel.h"
 #include "ShowStatusDialog.h"
@@ -59,6 +63,15 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 
 	createActions();
 	createStatusWidgets();
+
+	mStatusMenu = new QMenu(this);
+
+	for (int i = 0; i < IMatchModel::NUM_STATUSES; ++i) {
+		mStatusMenuActions << mStatusMenu->addAction(IMatchModel::STATUS_STRINGS[i]);
+	}
+
+	mStatusMenu->addSeparator();
+	mStatusMenu->addAction(mCopyAction);
 
 	setModel(&EmptyMatchModel::EMPTY);
 }
@@ -111,6 +124,11 @@ void MatchTileView::createActions() {
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/google_custom_search.png"), tr("Visible statuses"), this);
 	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
+
+	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
+	mCopyAction->setShortcuts(QKeySequence::Copy);
+	mCopyAction->setStatusTip(tr("Copy this match to the clipboard"));
+	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copyMatch()));
 }
 
 void MatchTileView::createStatusWidgets() {
@@ -287,7 +305,45 @@ QString MatchTileView::thumbName(IFragmentConf &conf) {
 }
 
 void MatchTileView::clicked(int idx, QMouseEvent *event) {
-	Q_UNUSED(event);
+	switch (event->buttons()) {
+		case Qt::LeftButton:
+		{
+			// select
+			int fcidx = s().tindices[idx];
+
+			if (event->modifiers() == Qt::ShiftModifier) {
+				qDebug() << "MatchTileView::clicked: copying " << thumbName(mModel->get(fcidx));
+
+				copyMatch();
+			}
+			else if (event->modifiers() == Qt::ControlModifier) {
+				IFragmentConf &match =  mModel->get(fcidx);
+				QString comment = match.getString("comment", "");
+
+				bool ok;
+				comment = QInputDialog::getText(this, tr("Comment"), tr("Insert comment") + ":", QLineEdit::Normal, comment, &ok);
+
+				if (ok) {
+					match.setMetaData("comment", comment);
+
+					updateThumbnail(idx, fcidx);
+				}
+			}
+		}
+		break;
+
+		case Qt::MidButton:
+		{
+			//setStatus(idx, IMatchModel::YES);
+		}
+		break;
+
+		case Qt::RightButton:
+		{
+			mStatusMenu->popup(QCursor::pos());
+		}
+		break;
+	}
 
 	qDebug() << "Clicked!" << idx;
 }
@@ -296,6 +352,27 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 	Q_UNUSED(event);
 
 	qDebug() << "Double Clicked!" << idx;
+}
+
+void MatchTileView::copyMatch() {
+	qDebug() << "Copy triggered on thumbnail";
+
+	TabletopModel pairModel;
+	int idx = 5;
+
+	const IFragmentConf &c = mModel->get(s().tindices[idx]);
+
+	FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
+	FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
+
+	pairModel.fragmentPlace(target.id(), XF());
+	pairModel.fragmentPlace(source.id(), c.mXF);
+	pairModel.group(QSet<const Placement *>()
+			<< pairModel.placedFragment(target.id())
+			<< pairModel.placedFragment(source.id()));
+
+	QString xml = writeToString(pairModel);
+	QApplication::clipboard()->setText(xml);
 }
 
 void MatchTileView::modelChanged() {
@@ -320,6 +397,11 @@ void MatchTileView::resizeEvent(QResizeEvent *event) {
 
 void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
+		case Qt::Key_A:
+		{
+			// ctrl = select all
+		}
+
 		case Qt::Key_S:
 		{
 			static bool order = true;
