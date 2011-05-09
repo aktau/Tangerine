@@ -22,6 +22,7 @@ class IMatchModel : public QObject {
 		virtual ~IMatchModel() { }
 
 	public:
+		virtual bool isValidIndex(int index) const = 0;
 		virtual int size() const = 0;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) = 0;
 		virtual void filter(const QString& pattern = QString()) = 0;

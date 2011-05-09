@@ -25,6 +25,10 @@ MatchModel::~MatchModel() {
 
 }
 
+bool MatchModel::isValidIndex(int index) const {
+	return (index >= 0) && (index < size());
+}
+
 int MatchModel::size() const {
 	return mMatches.size();
 }
@@ -87,9 +91,18 @@ void MatchModel::populateModel() {
 	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 }
 
+void MatchModel::resetSort() {
+	mSortField = QString();
+	mSortOrder = Qt::AscendingOrder;
+}
+
+void MatchModel::resetFilter() {
+	mFilter = QString();
+}
+
 void MatchModel::databaseModified() {
-	sort();
-	filter();
+	resetSort();
+	resetFilter();
 
 	populateModel();
 

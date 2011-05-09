@@ -23,6 +23,7 @@ class MatchSelectionModel : public QObject {
 		virtual ~MatchSelectionModel();
 
 	public:
+		virtual int currentIndex() const;
 		virtual QList<int> selectedIndexes() const;
 
 	public slots:
@@ -32,8 +33,14 @@ class MatchSelectionModel : public QObject {
 		virtual void clearSelection();
 
 	signals:
-		void selectionChanged(const QList<int>& selected, const QList<int>& deselection);
+		void selectionChanged(const QList<int>& selected, const QList<int>& deselected);
 		void currentChanged(int current, int previous);
+
+	protected:
+		virtual void emitSelectionChanged(const QList<int>& newSelection, const QList<int>& oldSelection);
+		virtual void emitSelectionChanged(const QSet<int>& newSelection, const QSet<int>& oldSelection);
+
+		virtual void selectWithoutSignals(int index, QItemSelectionModel::SelectionFlags command, bool *selChanged, bool *idxChanged);
 
 	private:
 		int mCurrent;

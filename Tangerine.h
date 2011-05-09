@@ -71,6 +71,7 @@ class Tangerine : public QMainWindow {
 		SQLDatabase& mDb;
 
 		MatchModel mModel;
+		MatchSelectionModel *mSelectionModel;
 
 		QDir mThumbDir;
 

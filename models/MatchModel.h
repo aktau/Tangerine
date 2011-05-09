@@ -22,6 +22,7 @@ class MatchModel : public IMatchModel {
 		virtual ~MatchModel();
 
 	public:
+		virtual bool isValidIndex(int index) const;
 		virtual int size() const;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder);
 		virtual void filter(const QString& pattern = QString());
@@ -36,6 +37,10 @@ class MatchModel : public IMatchModel {
 
 	private:
 		void populateModel();
+
+		// these two do NOT emit signals
+		void resetSort();
+		void resetFilter();
 
 	private slots:
 		void databaseModified();

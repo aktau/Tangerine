@@ -10,15 +10,85 @@
 #include <QDir>
 #include <QAction>
 #include <QMenu>
+#include <QPainter>
+#include <QPixmapCache>
 
 #include "IMatchModel.h"
 #include "IFragmentConf.h"
+#include "MatchSelectionModel.h"
 
 class ThumbLabel : public QLabel {
 		Q_OBJECT;
 
 	public:
-		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i) {}
+		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false) {
+			// ensure 100 MB of cache
+			QPixmapCache::setCacheLimit(102400);
+		}
+
+		void setThumbnail(const QString& file = QString()) {
+			const bool exists = QFile::exists(file);
+
+			if (file.isEmpty()) {
+				mSource = ".empty";
+			}
+			else {
+				mSource = exists ? file : ".invalid";
+			}
+
+			QPixmap p;
+
+			if (!QPixmapCache::find(mSource, &p)) {
+				p = (file.isEmpty() || !exists) ?  QPixmap(width(), height()) : QPixmap(file);
+
+				if (file.isEmpty()) {
+					p.fill(Qt::black);
+				}
+				else if (!exists) {
+					p.fill(Qt::lightGray);
+				}
+				else {
+					p = p.scaledToWidth(width(), Qt::SmoothTransformation);
+				}
+
+				QPixmapCache::insert(mSource, p);
+			}
+			/*
+			else {
+				qDebug() << "cached and found!" << idx << ":" << mSource;
+			}
+			*/
+
+			mSelected = false;
+
+			setPixmap(p);
+		}
+
+		void select() {
+			if (!isSelected()) {
+				QPixmap p = QPixmap(pixmap()->width(), pixmap()->height());
+				QPainter painter(&p);
+
+				painter.drawPixmap(rect(), *pixmap());
+				painter.fillRect(rect(), QColor(255,255,255,50));
+
+				setPixmap(p);
+
+				mSelected = true;
+			}
+		}
+
+		void unselect() {
+			if (isSelected()) {
+				setThumbnail(mSource);
+
+				mSelected = false;
+			}
+		}
+
+		bool isSelected() const {
+			return mSelected;
+		}
 
 	signals:
 		void clicked(int i, QMouseEvent *event);
@@ -28,8 +98,13 @@ class ThumbLabel : public QLabel {
 		virtual void mousePressEvent(QMouseEvent *event) { emit clicked(idx, event); }
 		virtual void mouseDoubleClickEvent(QMouseEvent *event) { emit doubleClicked(idx, event); }
 
-	private:
+	public:
 		const int idx;
+
+	private:
+		bool mSelected;
+
+		QString mSource;
 };
 
 class MatchTileView : public QScrollArea {
@@ -40,6 +115,10 @@ class MatchTileView : public QScrollArea {
 		virtual ~MatchTileView();
 
 		virtual void setModel(IMatchModel *model);
+		virtual IMatchModel *model() const;
+
+		virtual void setSelectionModel(MatchSelectionModel *model);
+		virtual MatchSelectionModel *selectionModel() const;
 
 		QList<QAction *> actions() const;
 		QList<QWidget *> statusBarWidgets() const;
@@ -47,14 +126,20 @@ class MatchTileView : public QScrollArea {
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
-	    void copyMatch();
+	    void copyCurrent();
+	    void copySelection();
+
 	    void modelChanged();
 	    void modelOrderChanged();
+
+	    void selectionChanged(const QList<int>& selected, const QList<int>& deselected);
+	    void currentThumbChanged(int current, int previous);
 
 	    void sortAscending();
 	    void sortDescending();
 	    void filter();
 	    void filterStatuses();
+	    void comment();
 
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);
@@ -66,11 +151,14 @@ class MatchTileView : public QScrollArea {
 
 		void updateStatusBar();
 		void updateThumbnail(int tidx, int fcidx);
-		QString thumbName(thera::IFragmentConf &conf);
+		QString thumbName(const thera::IFragmentConf &conf) const;
 		void scroll(int amount);
 		void refresh();
 		void sort(Qt::SortOrder order);
 		void currentValidIndices(QVector<int>& valid);
+
+		int modelToViewIndex(int modelIndex) const;
+		QList<int> modelToViewIndex(const QList<int>& modelIndexes) const;
 
 	private:
 		QList<QAction *> mActions;
@@ -79,14 +167,16 @@ class MatchTileView : public QScrollArea {
 
 		QMenu *mStatusMenu;
 		QAction *mCopyAction;
+		QAction *mCommentAction;
 		QList<QAction *> mStatusMenuActions;
 
 		QDir mThumbDir;
 
 		QFrame *mFrame;
-		QVector<QLabel *> mThumbs;
+		QVector<ThumbLabel *> mThumbs;
 
 		IMatchModel *mModel;
+		MatchSelectionModel *mSelectionModel;
 
 		int mNumThumbs;
 		float mScale;
@@ -118,6 +208,10 @@ class MatchTileView : public QScrollArea {
 		QList<State> mStates;
 
 		State& s() {
+			return mStates.back();
+		}
+
+		const State& s() const {
 			return mStates.back();
 		}
 };

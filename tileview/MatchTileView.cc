@@ -5,7 +5,6 @@
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <QDebug>
-#include <QPixmap>
 #include <QInputDialog>
 #include <QPair>
 
@@ -24,7 +23,7 @@ using namespace thera;
 #define THUMB_HEIGHT 466
 #define THUMB_GUTTER 10
 
-MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) : QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mScale(scale) {
+MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) : QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale) {
 	setFrameShape(QFrame::NoFrame);
 	setObjectName("MainScrollArea");
 	setFocusPolicy(Qt::StrongFocus);
@@ -73,10 +72,15 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mStatusMenu->addSeparator();
 	mStatusMenu->addAction(mCopyAction);
 
+	mStatusMenu->addSeparator();
+	mStatusMenu->addAction(mCommentAction);
+
 	setModel(&EmptyMatchModel::EMPTY);
+	setSelectionModel(new MatchSelectionModel(model(), this));
 }
 
 MatchTileView::~MatchTileView() {
+
 }
 
 void MatchTileView::setModel(IMatchModel *model) {
@@ -95,6 +99,30 @@ void MatchTileView::setModel(IMatchModel *model) {
 	else {
 		qDebug() << "MatchTileView::setModel: Invalid model";
 	}
+}
+
+IMatchModel *MatchTileView::model() const {
+	return mModel;
+}
+
+void MatchTileView::setSelectionModel(MatchSelectionModel *model) {
+	if (model != NULL) {
+		if (mSelectionModel != NULL) {
+			disconnect(mSelectionModel, 0, this, 0);
+		}
+
+		mSelectionModel = model;
+
+		connect(mSelectionModel, SIGNAL(selectionChanged(const QList<int>&, const QList<int>&)), this, SLOT(selectionChanged(const QList<int>&, const QList<int>&)));
+		connect(mSelectionModel, SIGNAL(currentChanged(int, int)), this, SLOT(currentThumbChanged(int, int)));
+	}
+	else {
+		qDebug() << "MatchTileView::setSelectionModel: model was NULL";
+	}
+}
+
+MatchSelectionModel *MatchTileView::selectionModel() const {
+	return mSelectionModel;
 }
 
 QList<QAction *> MatchTileView::actions() const {
@@ -128,7 +156,11 @@ void MatchTileView::createActions() {
 	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
 	mCopyAction->setShortcuts(QKeySequence::Copy);
 	mCopyAction->setStatusTip(tr("Copy this match to the clipboard"));
-	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copyMatch()));
+	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copyCurrent()));
+
+	mCommentAction = new QAction(QIcon(":/rcc/fatcow/32x32/comment_add.png"), tr("Comment"), this);
+	mCommentAction->setStatusTip(tr("Add a comment to the match"));
+	connect(mCommentAction, SIGNAL(triggered()), this, SLOT(comment()));
 }
 
 void MatchTileView::createStatusWidgets() {
@@ -213,6 +245,30 @@ void MatchTileView::filterStatuses() {
 	}
 }
 
+
+void MatchTileView::comment() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		IFragmentConf &match = mModel->get(current);
+		QString comment = match.getString("comment", "");
+
+		bool ok;
+		comment = QInputDialog::getText(this, tr("Comment"), tr("Insert comment") + ":", QLineEdit::Normal, comment, &ok);
+
+		if (ok) {
+			//qDebug() << "MatchTileView::comment: Going to insert comment at (" << modelToViewIndex(current) << "," << current << ")";
+
+			match.setMetaData("comment", comment);
+
+			updateThumbnail(modelToViewIndex(current), current);
+		}
+	}
+	else {
+		qDebug() << "MatchTileView::comment: invalid model index" << current;
+	}
+}
+
 void MatchTileView::updateStatusBar() {
 	int lastValidIndex = mNumThumbs - 1;
 	while (lastValidIndex >= 0 && s().tindices[lastValidIndex] < 0) {
@@ -238,31 +294,13 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	s().tindices[tidx] = fcidx;
 
 	if (fcidx < 0 || fcidx >= mModel->size()) {
-		//qDebug() << "Updating [INVALID] thumbnail" << tidx << "to model index" << fcidx;
-
-		QPixmap p(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
-		p.fill(Qt::black);
-
-		mThumbs[tidx]->setPixmap(p);
-		mThumbs[tidx]->setToolTip(QString());
+		mThumbs[tidx]->setThumbnail();
 	}
 	else {
-		IFragmentConf& match = mModel->get(fcidx);
+		const IFragmentConf& match = mModel->get(fcidx);
 
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		QPixmap p = QPixmap(thumbFile);
-
-		if (p.isNull()) {
-			qDebug() << "MatchTileView::updateThumbnail: non-existing thumbnail encountered, path:" << thumbFile;
-
-			p = QPixmap(THUMB_WIDTH * mScale, THUMB_HEIGHT * mScale);
-			p.fill(Qt::lightGray);
-		}
-		else {
-			p = p.scaledToWidth(THUMB_WIDTH * mScale, Qt::SmoothTransformation);
-		}
-
-		mThumbs[tidx]->setPixmap(p);
+		mThumbs[tidx]->setThumbnail(thumbFile);
 
 		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
 				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
@@ -284,7 +322,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	//updateThumbnailStatus(tidx);
 }
 
-QString MatchTileView::thumbName(IFragmentConf &conf) {
+QString MatchTileView::thumbName(const IFragmentConf &conf) const {
 	FragmentRef target(conf.mFragments[IFragmentConf::TARGET]);
 	FragmentRef source(conf.mFragments[IFragmentConf::SOURCE]);
 
@@ -305,6 +343,15 @@ QString MatchTileView::thumbName(IFragmentConf &conf) {
 }
 
 void MatchTileView::clicked(int idx, QMouseEvent *event) {
+	if (s().tindices[idx] != mSelectionModel->currentIndex()) {
+		if (event->buttons() == Qt::LeftButton && event->modifiers() == Qt::ControlModifier) {
+			mSelectionModel->select(s().tindices[idx], QItemSelectionModel::Select | QItemSelectionModel::Current);
+		}
+		else {
+			mSelectionModel->select(s().tindices[idx], QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Current);
+		}
+	}
+
 	switch (event->buttons()) {
 		case Qt::LeftButton:
 		{
@@ -314,21 +361,13 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 			if (event->modifiers() == Qt::ShiftModifier) {
 				qDebug() << "MatchTileView::clicked: copying " << thumbName(mModel->get(fcidx));
 
-				copyMatch();
+				copyCurrent();
 			}
+			/*
 			else if (event->modifiers() == Qt::ControlModifier) {
-				IFragmentConf &match =  mModel->get(fcidx);
-				QString comment = match.getString("comment", "");
-
-				bool ok;
-				comment = QInputDialog::getText(this, tr("Comment"), tr("Insert comment") + ":", QLineEdit::Normal, comment, &ok);
-
-				if (ok) {
-					match.setMetaData("comment", comment);
-
-					updateThumbnail(idx, fcidx);
-				}
+				comment();
 			}
+			*/
 		}
 		break;
 
@@ -344,8 +383,6 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 		}
 		break;
 	}
-
-	qDebug() << "Clicked!" << idx;
 }
 
 void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
@@ -354,7 +391,7 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 	qDebug() << "Double Clicked!" << idx;
 }
 
-void MatchTileView::copyMatch() {
+void MatchTileView::copyCurrent() {
 	qDebug() << "Copy triggered on thumbnail";
 
 	TabletopModel pairModel;
@@ -375,6 +412,134 @@ void MatchTileView::copyMatch() {
 	QApplication::clipboard()->setText(xml);
 }
 
+void MatchTileView::copySelection() {
+	// construct clean TabletopModel which will contain all pieces currently in the matchbrowser
+	TabletopModel model;
+
+	// figure out which fragments should be grouped together
+	QHash<int, int> groups;
+	int next_group = 0;
+
+	foreach (int index, mSelectionModel->selectedIndexes()) {
+		const IFragmentConf &c = mModel->get(index);
+
+		int tgt = c.mFragments[IFragmentConf::TARGET];
+		int src = c.mFragments[IFragmentConf::SOURCE];
+
+		FragmentRef target(tgt);
+		FragmentRef source(src);
+
+		if (groups.contains(tgt) && groups.contains(src)) {
+			// both tgt and src fragments have been seen already
+			int tidx = groups[tgt];
+			int sidx = groups[src];
+
+			if (tidx == sidx) {
+				continue; // and they're already in the same group
+			}
+
+			qDebug() << "Computing motion based on" << FragmentRef(source) << FragmentRef(target);
+			XF dxf = model.placedFragment(target)->accumXF() * c.mXF;
+			dxf = dxf * inv(model.placedFragment(source)->accumXF());
+
+			// merge the groups containing src and tgt
+			foreach (int key, groups.keys()) {
+				if (groups[key] == sidx) {
+					groups[key] = tidx;
+					const Placement *p = model.placedFragment(FragmentRef(key));
+					assert(p);
+					qDebug() << "Moving" << FragmentRef(key);
+					XF xf = p->accumXF();
+					std::cerr << xf;
+					model.setXF(p, p->xf() * inv(xf) * dxf * xf);
+				}
+			}
+		}
+		else if (groups.contains(tgt)) {
+			// src should go in the same group as tgt
+			groups[src] = groups[tgt];
+			model.fragmentPlace(source, model.placedFragment(target)->accumXF() * c.mXF);
+		}
+		else if (groups.contains(src)) {
+			// tgt should go in the same group as src
+			groups[tgt] = groups[src];
+			model.fragmentPlace(target, model.placedFragment(source)->accumXF() * inv(c.mXF));
+		}
+		else {
+			// src and tgt should go in a new group
+			groups[src] = next_group++;
+			groups[tgt] = groups[src];
+
+			model.fragmentPlace(target, XF());
+			model.fragmentPlace(source, c.mXF);
+		}
+	}
+
+	// loop over all matches (in the fc vector) and add them to the model in the appropriate group
+	QVector< QSet<const Placement *> > placedFragments(next_group);
+
+	foreach (int index, mSelectionModel->selectedIndexes()) {
+		const IFragmentConf &c = mModel->get(index);
+
+		const FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
+		const FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
+
+		const PlacedFragment *ptgt = model.placedFragment(target.id());
+		const PlacedFragment *psrc = model.placedFragment(source.id());
+
+		if (!ptgt && !psrc) {
+			qDebug() << "Placing both" << target.id() << "and" << source.id();
+			model.fragmentPlace(target.id(), XF());
+			model.fragmentPlace(source.id(), c.mXF);
+		}
+		else if (!ptgt) {
+			model.fragmentPlace(target.id(), psrc->accumXF() * inv(c.mXF));
+		}
+		else if (!psrc) {
+			qDebug() << "Placing source" << source.id() << "next to" << target.id();
+			model.fragmentPlace(source.id(), ptgt->accumXF() * c.mXF);
+		} // else both fragments are already placed
+
+		// add pair annotation
+		QString status  = IMatchModel::STATUS_STRINGS[c.getString("status", "0").toInt()];
+		QString comment = c.getString("comment", QString());
+
+		PairAnnotation pa(source.id(), target.id(), status, comment);
+		model.addPairAnnotation(pa);
+
+		// const PlacedFragment *placedTarget = model.placedFragment(target.id());
+		// const PlacedFragment *placedSource = model.placedFragment(source.id());
+
+		// qDebug() << "matchBrowser::copyAll: placedTarget was" << ((placedTarget == NULL) ? "NULL" : "OK") << ". Match id =" << c.getString("id") << ", Fragment id =" << target.id();
+		// qDebug() << "matchBrowser::copyAll: placedSource was" << ((placedSource == NULL) ? "NULL" : "OK") << ". Match id =" << c.getString("id") << ", Fragment id =" << source.id();
+
+		assert(groups.contains(c.mFragments[IFragmentConf::TARGET]));
+		assert(groups.contains(c.mFragments[IFragmentConf::SOURCE]));
+
+		qDebug() << c.mFragments[IFragmentConf::TARGET] << groups[c.mFragments[IFragmentConf::TARGET]];
+		qDebug() << c.mFragments[IFragmentConf::SOURCE] << groups[c.mFragments[IFragmentConf::SOURCE]];
+
+		int g = groups[c.mFragments[IFragmentConf::TARGET]];
+
+		assert(g == groups[c.mFragments[IFragmentConf::SOURCE]]);
+		assert(g < placedFragments.size());
+
+		placedFragments[g]
+			<< model.placedFragment(target.id())
+			<< model.placedFragment(source.id());
+	}
+
+	foreach (const QSet<const Placement *>& group, placedFragments) {
+		if (!group.isEmpty()) {
+			model.group(group);
+		}
+	}
+
+	// write current TabletopModel to string and copy to clipboard
+	QString xml = writeToString(model);
+	QApplication::clipboard()->setText(xml);
+}
+
 void MatchTileView::modelChanged() {
 	qDebug() << "MatchTileView::modelChanged: called";
 
@@ -389,6 +554,26 @@ void MatchTileView::modelOrderChanged() {
 	refresh();
 }
 
+void MatchTileView::selectionChanged(const QList<int>& selected, const QList<int>& deselected) {
+	qDebug() << "MatchTileView::selectionChanged: selection changed, selected:" << selected.size() << "|| deselected:" << deselected.size();
+
+	QList<int> viewIndices = modelToViewIndex(selected);
+
+	foreach (int viewIndex, viewIndices) {
+		mThumbs[viewIndex]->select();
+	}
+
+	viewIndices = modelToViewIndex(deselected);
+
+	foreach (int viewIndex, viewIndices) {
+		mThumbs[viewIndex]->unselect();
+	}
+}
+
+void MatchTileView::currentThumbChanged(int current, int previous) {
+	qDebug() << "MatchTileView::currentThumbChanged: current thumb changed";
+}
+
 /*
 void MatchTileView::resizeEvent(QResizeEvent *event) {
 	refresh();
@@ -399,8 +584,25 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
 		case Qt::Key_A:
 		{
-			// ctrl = select all
+			if (event->modifiers() & Qt::ControlModifier) {
+				QList<int> list;
+
+				foreach (int modelIndex, s().tindices) {
+					list << modelIndex;
+				}
+
+				mSelectionModel->select(list, QItemSelectionModel::ClearAndSelect);
+			}
 		}
+		break;
+
+		case Qt::Key_C:
+		{
+			if (event->modifiers() & Qt::ControlModifier) {
+				copySelection();
+			}
+		}
+		break;
 
 		case Qt::Key_S:
 		{
@@ -503,7 +705,6 @@ void MatchTileView::refresh() {
 	updateStatusBar();
 }
 
-
 void MatchTileView::currentValidIndices(QVector<int>& valid) {
 	// it's possible the vector still contains data, better to make sure and clear it
 	valid.clear();
@@ -577,4 +778,25 @@ void MatchTileView::currentValidIndices(QVector<int>& valid) {
 		}
 		*/
 	}
+}
+
+int MatchTileView::modelToViewIndex(int modelIndex) const {
+	return s().tindices.indexOf(modelIndex);
+}
+
+/**
+ * Will silently drop indices to are not currently available as view indexes
+ */
+QList<int> MatchTileView::modelToViewIndex(const QList<int>& modelIndexes) const {
+	QList<int> list;
+
+	foreach (int index, modelIndexes) {
+		int viewIndex = modelToViewIndex(index);
+
+		if (viewIndex != -1) {
+			list << viewIndex;
+		}
+	}
+
+	return list;
 }

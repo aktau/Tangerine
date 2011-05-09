@@ -15,7 +15,9 @@ const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
 const int Tangerine::MIN_WIDTH = 1280;
 const int Tangerine::MIN_HEIGHT = 600;
 
-Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(*db), mModel(db), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(*db), mModel(db), mSelectionModel(NULL), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+	mSelectionModel = new MatchSelectionModel(&mModel, this);
+
 	setupWindow();
 
 	// the ordering is important, the slots use instances made in setupWindow() et cetera
@@ -108,6 +110,7 @@ void Tangerine::setupWindow() {
 #ifdef WITH_TILEVIEW
 	mTileView = new MatchTileView(mThumbDir);
 	mTileView->setModel(&mModel);
+	mTileView->setSelectionModel(mSelectionModel);
 	mCentralWidget->addWidget(mTileView);
 
 	mTileViewMenu = menuBar()->addMenu(tr("&Actions"));
