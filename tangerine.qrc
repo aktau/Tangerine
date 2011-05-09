@@ -21,5 +21,6 @@
     <file>rcc/fatcow/32x32/cog_delete.png</file>
     <file>rcc/fatcow/32x32/page_copy.png</file>
     <file>rcc/fatcow/32x32/comment_add.png</file>
+    <file>rcc/fatcow/32x32/zoom.png</file>
   </qresource>
 </RCC>

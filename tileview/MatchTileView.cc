@@ -8,6 +8,9 @@
 #include <QDebug>
 #include <QInputDialog>
 #include <QPair>
+#include <QHBoxLayout>
+#include <QToolButton>
+#include <QStyle>
 
 #include "Database.h"
 #include "Fragment.h"
@@ -160,15 +163,29 @@ void MatchTileView::createActions() {
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
 
 	// filter widget that will appear in the toolbar
+
+	// we put a the real widget in a layout in another widget just so we can make it appear on the right side... for esthetic reasons
 	QWidgetAction *wb = new QWidgetAction(this);
+	QWidget *containerWidget = new QWidget;
+	QToolButton *lookingGlass = new QToolButton(); {
+		lookingGlass->setAutoRaise(true);
+		lookingGlass->setIcon(QIcon(":/rcc/fatcow/32x32/zoom.png"));
+		// if the size of the toolbutton is unsatisfactory check this out: http://doc.qt.nokia.com/latest/qstyle.html#PixelMetric-enum
+	}
+	QBoxLayout *containerLayout = new QHBoxLayout(containerWidget);
 	mFilterEdit = new QLineEdit();
-	QSizePolicy sizePolicy = mFilterEdit->sizePolicy();
 	connect(mFilterEdit, SIGNAL(returnPressed()), this, SLOT(filter()));
 
+	QSizePolicy sizePolicy = mFilterEdit->sizePolicy();
 	sizePolicy.setHorizontalPolicy(QSizePolicy::Minimum);
 	mFilterEdit->setSizePolicy(sizePolicy);
 
-	wb->setDefaultWidget(mFilterEdit);
+	containerLayout->addStretch(30);
+	containerLayout->addWidget(lookingGlass, Qt::AlignRight);
+	containerLayout->addWidget(mFilterEdit, Qt::AlignRight);
+
+	wb->setDefaultWidget(containerWidget);
+	//wb->setDefaultWidget(mFilterEdit);
 	mToolbarOnlyActions << wb;
 
 	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
