@@ -58,7 +58,6 @@ void MatchSelectionModel::select(const QList<int>& selection, QItemSelectionMode
 	}
 
 	if (!selection.isEmpty() && command != QItemSelectionModel::NoUpdate) {
-		qDebug() << "Whatfuck:" << command;
 		foreach (int index, selection) {
 			selectWithoutSignals(index, command, &selChanged, &idxChanged);
 		}

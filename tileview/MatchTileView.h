@@ -22,47 +22,38 @@ class ThumbLabel : public QLabel {
 		Q_OBJECT;
 
 	public:
-		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false) {
+		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false), mStatus(IMatchModel::UNKNOWN) {
 			// ensure 100 MB of cache
 			QPixmapCache::setCacheLimit(102400);
 		}
 
+		/**
+		 * keeps the old status
+		 */
 		void setThumbnail(const QString& file = QString()) {
-			const bool exists = QFile::exists(file);
-
 			if (file.isEmpty()) {
-				mSource = ".empty";
-			}
-			else {
-				mSource = exists ? file : ".invalid";
+				mStatus = IMatchModel::UNKNOWN;
 			}
 
-			QPixmap p;
+			setThumbnail(file, mStatus);
+		}
 
-			if (!QPixmapCache::find(mSource, &p)) {
-				p = (file.isEmpty() || !exists) ?  QPixmap(width(), height()) : QPixmap(file);
-
-				if (file.isEmpty()) {
-					p.fill(Qt::black);
-				}
-				else if (!exists) {
-					p.fill(Qt::lightGray);
-				}
-				else {
-					p = p.scaledToWidth(width(), Qt::SmoothTransformation);
-				}
-
-				QPixmapCache::insert(mSource, p);
-			}
-			/*
-			else {
-				qDebug() << "cached and found!" << idx << ":" << mSource;
-			}
-			*/
-
+		void setThumbnail(const QString& file, IMatchModel::Status status) {
+			mSource = file;
+			mStatus = status;
 			mSelected = false;
 
-			setPixmap(p);
+			paintThumbnail();
+			paintStatus();
+		}
+
+		void setStatus(IMatchModel::Status status) {
+			mStatus = status;
+
+			// ugly-ish hack for when the thumb is selected, in which case we would have to blend the selection marker afterwards
+			unselect();
+			paintStatus();
+			select();
 		}
 
 		void select() {
@@ -99,6 +90,61 @@ class ThumbLabel : public QLabel {
 		virtual void mousePressEvent(QMouseEvent *event) { emit clicked(idx, event); }
 		virtual void mouseDoubleClickEvent(QMouseEvent *event) { emit doubleClicked(idx, event); }
 
+		void paintStatus() {
+			QPixmap p = *pixmap();
+			QPainter painter(&p);
+
+			QColor c;
+			switch (mStatus) {
+				case IMatchModel::UNKNOWN: c = Qt::black; break; // unknown
+				case IMatchModel::YES: c = Qt::green; break; // correct
+				case IMatchModel::MAYBE: c = QColor(255, 128, 0); break; // maybe
+				case IMatchModel::NO: c = Qt::red; break; // no
+				case IMatchModel::CONFLICT: c = /* Qt::magenta */ QColor(128, 128, 128); break; // no by conflict
+
+				default: {
+					qDebug() << "ThumbLabel::setStatus: encountered unknown kind of status. Thumb" << idx << "- Status" << mStatus;
+
+					c = Qt::white;
+				}
+			};
+
+			painter.fillRect(0, 0, width(), 10, c);
+
+			setPixmap(p);
+		}
+
+		void paintThumbnail() {
+			const bool exists = QFile::exists(mSource);
+			const bool empty = mSource.isEmpty();
+
+			QString cachedSource;
+
+			if (exists) cachedSource = mSource;
+			else if (empty) cachedSource = ".empty";
+			else cachedSource = ".invalid";
+
+			QPixmap p;
+
+			if (!QPixmapCache::find(cachedSource, &p)) {
+				p = !exists ?  QPixmap(width(), height()) : QPixmap(cachedSource);
+
+				if (empty) {
+					p.fill(Qt::black);
+				}
+				else if (!exists) {
+					p.fill(Qt::lightGray);
+				}
+				else {
+					p = p.scaledToWidth(width(), Qt::SmoothTransformation);
+				}
+
+				QPixmapCache::insert(mSource, p);
+			}
+
+			setPixmap(p);
+		}
+
 	public:
 		const int idx;
 
@@ -106,6 +152,8 @@ class ThumbLabel : public QLabel {
 		bool mSelected;
 
 		QString mSource;
+
+		IMatchModel::Status mStatus;
 };
 
 class MatchTileView : public QScrollArea {

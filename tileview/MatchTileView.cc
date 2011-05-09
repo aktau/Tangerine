@@ -334,7 +334,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		const IFragmentConf& match = mModel->get(fcidx);
 
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		mThumbs[tidx]->setThumbnail(thumbFile);
+		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt());
 
 		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
 				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
