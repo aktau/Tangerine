@@ -4,12 +4,13 @@
 #include <QScrollArea>
 #include <QFrame>
 #include <QList>
-#include <QVector>
-#include <QList>
 #include <QLabel>
 #include <QDir>
 #include <QAction>
 #include <QMenu>
+#include <QLineEdit>
+#include <QVector>
+#include <QList>
 #include <QPainter>
 #include <QPixmapCache>
 
@@ -121,6 +122,7 @@ class MatchTileView : public QScrollArea {
 		virtual MatchSelectionModel *selectionModel() const;
 
 		QList<QAction *> actions() const;
+		QList<QAction *> toolbarOnlyActions() const;
 		QList<QWidget *> statusBarWidgets() const;
 
 	public slots:
@@ -162,8 +164,10 @@ class MatchTileView : public QScrollArea {
 
 	private:
 		QList<QAction *> mActions;
+		QList<QAction *> mToolbarOnlyActions;
 		QList<QWidget *> mStatusBarWidgets;
 		QLabel *mStatusBarLabel;
+		QLineEdit *mFilterEdit;
 
 		QMenu *mStatusMenu;
 		QAction *mCopyAction;

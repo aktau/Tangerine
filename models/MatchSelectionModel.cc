@@ -32,24 +32,33 @@ void MatchSelectionModel::select(const QList<int>& selection, QItemSelectionMode
 	bool selChanged = false;
 	bool idxChanged = false;
 
-	if (command & QItemSelectionModel::Clear && !mSelection.isEmpty()) {
-		mSelection.clear();
+	// we're moving the clear out here because otherwise we would clear every time inside of the loop (selectWithoutSignals),
+	// erasing all of our hard work selecting stuff...
+	if (command & QItemSelectionModel::Clear) {
+		if (!mSelection.isEmpty()) {
+			mSelection.clear();
+
+			selChanged = true;
+		}
+
+		command &= ~QItemSelectionModel::Clear;
 
 		// yep this doesn't look nice, low priority for now
 		if (command & QItemSelectionModel::Current) {
-			mCurrent = !selection.isEmpty() ? selection.last() : -1;
+			int newCurrent = (selection.isEmpty() || !mModel->isValidIndex(selection.last())) ? -1 : selection.last();
 
-			idxChanged = true;
+			if (mCurrent != newCurrent) {
+				mCurrent = -1;
+
+				idxChanged = true;
+			}
 
 			command &= ~QItemSelectionModel::Current;
 		}
-
-		selChanged = true;
-
-		command &= ~QItemSelectionModel::Clear;
 	}
 
-	if (!selection.isEmpty()) {
+	if (!selection.isEmpty() && command != QItemSelectionModel::NoUpdate) {
+		qDebug() << "Whatfuck:" << command;
 		foreach (int index, selection) {
 			selectWithoutSignals(index, command, &selChanged, &idxChanged);
 		}

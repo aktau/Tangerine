@@ -113,12 +113,13 @@ void Tangerine::setupWindow() {
 	mTileView->setSelectionModel(mSelectionModel);
 	mCentralWidget->addWidget(mTileView);
 
-	mTileViewMenu = menuBar()->addMenu(tr("&Actions"));
-	mTileViewMenu->addActions(mTileView->actions());
-
 	mTileViewToolbar = addToolBar(tr("Tile View"));
 	mTileViewToolbar->addActions(mTileView->actions());
+	mTileViewToolbar->addActions(mTileView->toolbarOnlyActions());
 	mTileViewToolbar->setMovable(false);
+
+	mTileViewMenu = menuBar()->addMenu(tr("&Actions"));
+	mTileViewMenu->addActions(mTileView->actions());
 
 	foreach (QWidget *widget, mTileView->statusBarWidgets()) {
 		statusBar()->addWidget(widget);
@@ -132,12 +133,12 @@ void Tangerine::setupWindow() {
 	mGraphView->setModel(&mModel);
 	mCentralWidget->addWidget(mGraphView);
 
-	mGraphViewMenu = menuBar()->addMenu(tr("&Actions"));
-	mGraphViewMenu->addActions(mGraphView->actions());
-
 	mGraphViewToolbar = addToolBar(tr("Graph View"));
 	mGraphViewToolbar->addActions(mGraphView->actions());
 	mGraphViewToolbar->setMovable(false);
+
+	mGraphViewMenu = menuBar()->addMenu(tr("&Actions"));
+	mGraphViewMenu->addActions(mGraphView->actions());
 #else
 	mCentralWidget->addWidget(new QWidget);
 #endif

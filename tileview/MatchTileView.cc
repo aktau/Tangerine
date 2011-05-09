@@ -1,6 +1,7 @@
 #include "MatchTileView.h"
 
-#include <QtGui>
+#include <QClipboard>
+#include <QWidgetAction>
 #include <QApplication>
 #include <QMessageBox>
 #include <QKeyEvent>
@@ -129,6 +130,10 @@ QList<QAction *> MatchTileView::actions() const {
 	return mActions;
 }
 
+QList<QAction *> MatchTileView::toolbarOnlyActions() const {
+	return mToolbarOnlyActions;
+}
+
 QList<QWidget *> MatchTileView::statusBarWidgets() const {
 	return mStatusBarWidgets;
 }
@@ -145,13 +150,26 @@ void MatchTileView::createActions() {
 	mActions << new QAction(tr("Separator"), this);
 	mActions.last()->setSeparator(true);
 
-	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/filter.png"), tr("Filter matches"), this);
-	mActions.last()->setStatusTip(tr("Filter matches by name"));
-	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filter()));
+	// the old (deprecated) filter action
+	//mActions << new QAction(QIcon(":/rcc/fatcow/32x32/filter.png"), tr("Filter matches"), this);
+	//mActions.last()->setStatusTip(tr("Filter matches by name"));
+	//connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filter()));
 
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/google_custom_search.png"), tr("Visible statuses"), this);
 	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
+
+	// filter widget that will appear in the toolbar
+	QWidgetAction *wb = new QWidgetAction(this);
+	mFilterEdit = new QLineEdit();
+	QSizePolicy sizePolicy = mFilterEdit->sizePolicy();
+	connect(mFilterEdit, SIGNAL(returnPressed()), this, SLOT(filter()));
+
+	sizePolicy.setHorizontalPolicy(QSizePolicy::Minimum);
+	mFilterEdit->setSizePolicy(sizePolicy);
+
+	wb->setDefaultWidget(mFilterEdit);
+	mToolbarOnlyActions << wb;
 
 	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
 	mCopyAction->setShortcuts(QKeySequence::Copy);
@@ -192,17 +210,16 @@ void MatchTileView::sort(Qt::SortOrder order) {
 }
 
 void MatchTileView::filter() {
-	bool ok = false;
-	QString filter = QInputDialog::getText(this, tr("Filter"), tr("Filter in wilcard format, * matches everything, ? matches one character") + ":", QLineEdit::Normal, mModel->getFilter(), &ok);
+	//bool ok = false;
+	//QString filter = QInputDialog::getText(this, tr("Filter"), tr("Filter in wilcard format, * matches everything, ? matches one character") + ":", QLineEdit::Normal, mModel->getFilter(), &ok);
+	QString filter = mFilterEdit->text();
 
-	if (ok) {
-		filter = filter.trimmed();
+	filter = filter.trimmed();
 
-		if (!filter.startsWith('*')) filter.prepend("*");
-		if (!filter.endsWith('*')) filter.append("*");
+	if (!filter.startsWith('*')) filter.prepend("*");
+	if (!filter.endsWith('*')) filter.append("*");
 
-		mModel->filter(filter);
-	}
+	mModel->filter(filter);
 }
 
 void MatchTileView::filterStatuses() {
@@ -543,6 +560,8 @@ void MatchTileView::copySelection() {
 void MatchTileView::modelChanged() {
 	qDebug() << "MatchTileView::modelChanged: called";
 
+	mFilterEdit->setText(mModel->getFilter());
+
 	s().cur_pos = 0;
 	refresh();
 }
@@ -661,7 +680,7 @@ void MatchTileView::scroll(int amount) {
 		return;
 	}
 
-	qDebug() << "Filter =" << s().filter << "isEmpty:" << s().filter.isEmpty();
+	qDebug() << "Still mucking about with currentValidIndices, remove it! filter =" << s().filter << "isEmpty:" << s().filter.isEmpty();
 
 	QVector<int> valid;
 	currentValidIndices(valid); // fill the vector with all currently valid indices (matching filter, etc.)
