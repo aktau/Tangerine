@@ -9,6 +9,7 @@
 #include <QMap>
 
 #include "SQLFragmentConf.h"
+#include "SQLFilter.h"
 
 class SQLDatabase : public QObject {
 		Q_OBJECT
@@ -34,9 +35,15 @@ class SQLDatabase : public QObject {
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
 		virtual bool addMatchField(const QString& name, int defaultValue);
 		virtual bool removeMatchField(const QString& name);
+		//virtual QString fieldSqlType(const QString& field) const = 0;
 
-		// using QList because QVector require a default constructor, which we _cannot_ use with SQLFragmentConf
+		// the first getMatches() filters by default on the source_name and target_name fields concatenated, it's likely to be deprecated in the future
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const QString& filter = QString());
+		// in the filters map, the key is the field dependencies and the value is the SQL clause that will be put into a WHERE, they will be concatenated with AND
+		// one could perfectly also include AND's and OR's inside of the value component
+		// example: Key = "error" -> Value = "error < 0.25 OR error > 0.50"
+		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
+		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter());
 
 		bool matchHasField(const QString& field) const;
 		const QSet<QString>& matchFields() const;

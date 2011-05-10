@@ -246,7 +246,8 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	if (!filter.isEmpty()) {
 		QString normalizedFilter = QString(filter).replace("*","%").replace("?","_");
 
-		queryString += QString(" WHERE matches.source_name || matches.target_name LIKE '%1' OR matches.target_name || matches.source_name LIKE '%1'").arg(normalizedFilter);
+		//queryString += QString(" WHERE matches.source_name || matches.target_name LIKE '%1' OR matches.target_name || matches.source_name LIKE '%1'").arg(normalizedFilter);
+		queryString += QString(" WHERE source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter);
 	}
 
 	if (!sortField.isEmpty()) {
@@ -279,6 +280,71 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 
 	return list;
 }
+
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter) {
+	QList<SQLFragmentConf> list;
+
+	QString queryString = "SELECT matches.match_id, source_name, target_name, transformation FROM matches";
+
+	// join in dependencies
+	// << "source_name" << "target_name" << "transformation";
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	if (!sortField.isEmpty()) {
+		if (matchHasField(sortField)) dependencies << sortField;
+		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
+	}
+
+	//join in dependencies
+	foreach (const QString& field, filter.dependencies()) {
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ").arg(field);
+	}
+
+	foreach (const QString& filterClause, filter.clauses()) {
+		// have to add WHERE and AND's
+		//queryString += QString(" %1") filterClause;
+	}
+
+	/*
+	if (!filters.isEmpty()) {
+		QString normalizedFilter = QString(filter).replace("*","%").replace("?","_");
+
+		//queryString += QString(" WHERE matches.source_name || matches.target_name LIKE '%1' OR matches.target_name || matches.source_name LIKE '%1'").arg(normalizedFilter);
+		queryString += QString(" WHERE source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter);
+	}
+	*/
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+	if (query.exec(queryString)) {
+		while (query.next()) {
+			SQLFragmentConf fc(this, query.value(0).toInt());
+
+			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
+
+			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
+
+			XF xf;
+			QTextStream ts(query.value(2).toString().toAscii());
+			ts >> xf;
+
+			list.append(fc);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getAllMatches query failed:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	return list;
+}
+
 
 /**
  * TODO: implement

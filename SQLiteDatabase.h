@@ -10,6 +10,8 @@ class SQLiteDatabase : public SQLDatabase {
 		virtual void connect(const QString& name);
 		virtual void loadFromXML(const QString& XMLFile);
 
+		//virtual QString fieldSqlType(const QString& field) const;
+
 	protected:
 		SQLiteDatabase(QObject *parent);
 		virtual ~SQLiteDatabase();
