@@ -3,9 +3,11 @@
 #include <QDebug>
 #include <QElapsedTimer>
 
+#include "SQLFilter.h"
+
 using namespace thera;
 
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -50,13 +52,40 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 }
 
 void MatchModel::filter(const QString& pattern) {
-	if (mFilter != pattern) {
-		mFilter = pattern;
+	if (mNameFilter != pattern) {
+		if (!pattern.isEmpty()) {
+			QString normalizedFilter = pattern;
+
+			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
+			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
+
+			normalizedFilter = QString(normalizedFilter).replace("*","%").replace("?","_");
+
+			mFilter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
+		}
+		else {
+			mFilter.removeFilter("matchmodel_names");
+		}
+
+		mNameFilter = pattern;
 
 		populateModel();
 
 		emit modelChanged();
 	}
+}
+
+void MatchModel::genericFilter(const QString& key, const QString& filter) {
+	if (!filter.isEmpty()) {
+		mFilter.setFilter(key, filter);
+	}
+	else {
+		mFilter.removeFilter(key);
+	}
+
+	populateModel();
+
+	emit modelChanged();
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
@@ -84,20 +113,30 @@ QSet<QString> MatchModel::fieldList() const {
 }
 
 QString MatchModel::getFilter() const {
-	return mFilter;
+	return mNameFilter;
 }
 
 void MatchModel::populateModel() {
+	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
+	//SQLFilter filter(mDb);
+
 	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 }
 
+/**
+ * resets without firing signals
+ */
 void MatchModel::resetSort() {
 	mSortField = QString();
 	mSortOrder = Qt::AscendingOrder;
 }
 
+/**
+ * resets without firing signals
+ */
 void MatchModel::resetFilter() {
-	mFilter = QString();
+	mNameFilter = QString();
+	mFilter.clear();
 }
 
 void MatchModel::databaseModified() {

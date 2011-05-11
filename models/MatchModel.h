@@ -26,6 +26,7 @@ class MatchModel : public IMatchModel {
 		virtual int size() const;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder);
 		virtual void filter(const QString& pattern = QString());
+		virtual void genericFilter(const QString& key, const QString& filter);
 		virtual thera::IFragmentConf& get(int index);
 
 		virtual bool addField(const QString& name, double defaultValue);
@@ -48,11 +49,12 @@ class MatchModel : public IMatchModel {
 	private:
 		QList<thera::SQLFragmentConf> mMatches;
 
-		QString mFilter;
+		QString mNameFilter;
 		QString mSortField;
 		Qt::SortOrder mSortOrder;
 
 		SQLDatabase *mDb;
+		SQLFilter mFilter;
 
 };
 

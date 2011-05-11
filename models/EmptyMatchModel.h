@@ -19,10 +19,11 @@ class EmptyMatchModel : public IMatchModel {
 		virtual ~EmptyMatchModel() { }
 
 	public:
-		bool isValidIndex(int index) const { return false; }
+		bool isValidIndex(int index) const { qDebug() << "EmptyMatchModel::isValidIndex: tried to check if index" << index << "was valid"; return false; }
 		int size() const { return 0; }
 		void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) { qDebug() << "EmptyMatchModel::sort: Attempted to sort, field:" << field << "| order:" << order; }
 		void filter(const QString& pattern = QString()) { qDebug() << "EmptyMatchModel::filter: Attempted to filter, pattern:" << pattern; }
+		void genericFilter(const QString& key, const QString& filter) { qDebug() << "EmptyMatchModel::genericFilter: Attempted to filter generically, key:" << key << "| filter" << filter; }
 		thera::IFragmentConf& get(int index) {
 			qDebug() << "EmptyMatchModel::get: Attempted to get fragmentconf:" << index;
 

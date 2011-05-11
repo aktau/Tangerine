@@ -240,7 +240,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	if (!sortField.isEmpty()) {
 		// TODO: sanity check the sort field
 		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ").arg(sortField);
-
 	}
 
 	if (!filter.isEmpty()) {
@@ -296,13 +295,13 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	}
 
 	//join in dependencies
-	foreach (const QString& field, filter.dependencies()) {
-		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id ").arg(field);
+	foreach (const QString& field, dependencies) {
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
 	}
 
-	foreach (const QString& filterClause, filter.clauses()) {
-		// have to add WHERE and AND's
-		//queryString += QString(" %1") filterClause;
+	// add filter clauses
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
 	}
 
 	/*
@@ -317,6 +316,8 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	if (!sortField.isEmpty()) {
 		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
 	}
+
+	qDebug() << "QUERY = " << queryString;
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);

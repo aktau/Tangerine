@@ -34,6 +34,10 @@ QStringList SQLFilter::clauses() const {
 	return mFilters.values();
 }
 
+bool SQLFilter::isEmpty() const {
+	return mFilters.isEmpty();
+}
+
 void SQLFilter::setFilter(const QString& key, const QString& filter) {
 	if (mDb == NULL) {
 		qDebug() << "SQLFilter::addFilter: can't add filter while database is NULL, please use setDatabase() first";

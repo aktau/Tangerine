@@ -153,11 +153,6 @@ void MatchTileView::createActions() {
 	mActions << new QAction(tr("Separator"), this);
 	mActions.last()->setSeparator(true);
 
-	// the old (deprecated) filter action
-	//mActions << new QAction(QIcon(":/rcc/fatcow/32x32/filter.png"), tr("Filter matches"), this);
-	//mActions.last()->setStatusTip(tr("Filter matches by name"));
-	//connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filter()));
-
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/google_custom_search.png"), tr("Visible statuses"), this);
 	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
@@ -233,9 +228,6 @@ void MatchTileView::filter() {
 
 	filter = filter.trimmed();
 
-	if (!filter.startsWith('*')) filter.prepend("*");
-	if (!filter.endsWith('*')) filter.append("*");
-
 	mModel->filter(filter);
 }
 
@@ -256,6 +248,7 @@ void MatchTileView::filterStatuses() {
 			case IMatchModel::MAYBE: activated = s().show_maybe; break;
 			case IMatchModel::NO: activated = s().show_rejected; break;
 			case IMatchModel::UNKNOWN: activated = s().show_unknown; break;
+			case IMatchModel::YES: activated = s().show_confirmed; break;
 		}
 
 		statuses << StringBoolPair(IMatchModel::STATUS_STRINGS.at(i), activated);
@@ -268,14 +261,34 @@ void MatchTileView::filterStatuses() {
 	if (!!ret) {
 		statuses = dialog.getStatuses();
 
+		QStringList disabled;
+
+		// TODO: this is code that relies on ordering and other things, should replace in time
 		foreach (const StringBoolPair& status, statuses) {
-			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::CONFLICT) == status.first) s().show_conflicted = status.second;
-			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::MAYBE) == status.first) s().show_maybe = status.second;
-			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::NO) == status.first) s().show_rejected = status.second;
-			if (IMatchModel::STATUS_STRINGS.at(IMatchModel::UNKNOWN) == status.first) s().show_unknown = status.second;
+			for (int i = 0; i < IMatchModel::NUM_STATUSES; ++i) {
+				if (IMatchModel::STATUS_STRINGS.at(i) == status.first) {
+					switch ((IMatchModel::Status) i) {
+						case IMatchModel::CONFLICT: s().show_conflicted = status.second; break;
+						case IMatchModel::MAYBE: s().show_maybe = status.second; break;
+						case IMatchModel::NO: s().show_rejected = status.second; break;
+						case IMatchModel::UNKNOWN: s().show_unknown = status.second; break;
+						case IMatchModel::YES: s().show_confirmed = status.second; break;
+
+						default: qDebug() << "MatchTileView::filterStatuses: unknown status encountered:" << status.first << "| number" << i;
+					}
+
+					if (status.second == false) disabled << QString().setNum(i);
+				}
+			}
 		}
 
-		modelChanged();
+		if (!disabled.isEmpty()) {
+			mModel->genericFilter("tileview_statuses", QString("status NOT IN (%1)").arg(disabled.join(",")));
+		}
+		else {
+			// this is equivalent to removing the filter
+			mModel->genericFilter("tileview_statuses", QString());
+		}
 	}
 }
 
@@ -607,7 +620,7 @@ void MatchTileView::selectionChanged(const QList<int>& selected, const QList<int
 }
 
 void MatchTileView::currentThumbChanged(int current, int previous) {
-	qDebug() << "MatchTileView::currentThumbChanged: current thumb changed";
+	qDebug() << "MatchTileView::currentThumbChanged: current thumb changed to" << current << "( was" << previous << ")";
 }
 
 /*
@@ -689,6 +702,8 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 }
 
 void MatchTileView::scroll(int amount) {
+	int max = mModel->size();
+
 	int new_pos = qMax(s().cur_pos + amount, 0);
 
 	if (new_pos == s().cur_pos) {
@@ -697,14 +712,9 @@ void MatchTileView::scroll(int amount) {
 		return;
 	}
 
-	qDebug() << "Still mucking about with currentValidIndices, remove it! filter =" << s().filter << "isEmpty:" << s().filter.isEmpty();
-
-	QVector<int> valid;
-	currentValidIndices(valid); // fill the vector with all currently valid indices (matching filter, etc.)
-
 	// update the current state
-	s().total = (int) valid.size();
-	new_pos = qMax(0, qMin(new_pos, (int) valid.size() - mNumThumbs));
+	s().total = max;
+	new_pos = qMax(0, qMin(new_pos, max - mNumThumbs));
 
 	/*
 	if (new_pos == s().cur_pos) {
@@ -717,25 +727,24 @@ void MatchTileView::scroll(int amount) {
 	// reload thumbnails
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
-		updateThumbnail(i, (valid.size() > i + new_pos) ? valid[i + new_pos] : -1);
+		updateThumbnail(i, (max >= i + new_pos) ? i + new_pos : -1);
 	}
 
 	updateStatusBar();
 }
 
 void MatchTileView::refresh() {
-	QVector<int> valid;
-	currentValidIndices(valid); // fill the vector with all currently valid indices (matching filter, etc.)
+	int max = mModel->size();
 
 	// update the current state
-	int new_pos = qMax(0, qMin(s().cur_pos, (int) valid.size() - mNumThumbs));
-	s().total = valid.size();
+	int new_pos = qMax(0, qMin(s().cur_pos, max - mNumThumbs));
+	s().total = max;
 	s().cur_pos = new_pos;
 
 	// reload thumbnails
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
-		updateThumbnail(i, (valid.size() > i + new_pos) ? valid[i + new_pos] : -1);
+		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
 	}
 
 	updateStatusBar();
@@ -747,42 +756,6 @@ void MatchTileView::currentValidIndices(QVector<int>& valid) {
 
 	if (s().conflict_index < 0) {
 		// this means we're not looking for all conflicts to s().conflict_index, business as usual
-		for (int i = 0, ii = mModel->size(); i < ii; ++i) {
-			//qDebug() << "index = " << i << "| size =" << ii;
-
-			IFragmentConf& match = mModel->get(i);
-
-			int status = match.getString("status", "0").toInt();
-
-			if (!s().show_unknown && status == IMatchModel::UNKNOWN)
-				continue;
-			if (!s().show_rejected && status == IMatchModel::NO)
-				continue;
-			if (!s().show_conflicted && status == IMatchModel::CONFLICT)
-				continue;
-			if (!s().show_maybe && status == IMatchModel::MAYBE)
-				continue;
-
-			//qDebug("IFragmentConf::TARGET[%d] = %d", IFragmentConf::TARGET, match.mFragments[IFragmentConf::TARGET]);
-			//qDebug() << "ref = " << FragmentRef(match.mFragments[IFragmentConf::TARGET]);
-
-			QString tid = FragmentRef(match.mFragments[IFragmentConf::TARGET]).id(); // target id
-			QString sid = FragmentRef(match.mFragments[IFragmentConf::SOURCE]).id(); // source id
-
-			QRegExp filter(s().filter, Qt::CaseSensitive, QRegExp::Wildcard);
-			QString text = tid + "<>" + sid;
-
-			if (!s().filter.isEmpty() && !text.contains(filter)) {
-				// qDebug() << "Filtered" << text;
-				continue;
-			}
-
-			if (!(s().show_conflicted || s().show_rejected || s().show_unknown)) {
-				// fprintf(stderr, "%d %s\n", status, qPrintable(thumbName(fc[i])));
-			}
-
-			valid.append(i);
-		}
 	}
 	else {
 		// in this case (s().conflict_index >= 0), load everything that conflicts with s().conflict_index, and the element itself

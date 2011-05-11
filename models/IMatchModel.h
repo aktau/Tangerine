@@ -26,6 +26,7 @@ class IMatchModel : public QObject {
 		virtual int size() const = 0;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) = 0;
 		virtual void filter(const QString& pattern = QString()) = 0;
+		virtual void genericFilter(const QString& key, const QString& filter) = 0; // the syntax is the same as the SQL WHERE-clause syntax
 		virtual thera::IFragmentConf& get(int index) = 0;
 
 		virtual bool addField(const QString& name, double defaultValue) = 0;

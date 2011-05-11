@@ -20,6 +20,8 @@ class SQLFilter {
 		// the collection of clauses to be put in an SQL WHERE statement, they will usually be combined with the AND operator
 		virtual QStringList clauses() const;
 
+		virtual bool isEmpty() const;
+
 		virtual void setDatabase(SQLDatabase *db);
 
 		// for example:

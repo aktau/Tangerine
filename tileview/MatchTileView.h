@@ -246,13 +246,21 @@ class MatchTileView : public QScrollArea {
 			// decide whether or not to show explicitly
 			// rejected pairs, and those that conflict
 			// with approved pairs
-			bool show_rejected, show_conflicted, show_maybe, show_unknown;
+			bool show_rejected, show_conflicted, show_maybe, show_unknown, show_confirmed;
 
 			int cur_pos, total; // the current position in the list of proposals
 
 			QVector<int> tindices;
 
-			State(int nt) : filter(""), conflict_index(-1), show_rejected(true), show_conflicted(true),show_maybe(true),  show_unknown(true), cur_pos(0) {
+			State(int nt) :
+				filter(""),
+				conflict_index(-1),
+				show_rejected(true),
+				show_conflicted(true),
+				show_maybe(true),
+				show_unknown(true),
+				show_confirmed(true),
+				cur_pos(0) {
 				tindices.resize(nt);
 			}
 		};
