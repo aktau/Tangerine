@@ -43,12 +43,12 @@ void MatchSelectionModel::select(const QList<int>& selection, QItemSelectionMode
 
 		command &= ~QItemSelectionModel::Clear;
 
-		// yep this doesn't look nice, low priority for now
+		// this doesn't look nice, low priority for now
 		if (command & QItemSelectionModel::Current) {
 			int newCurrent = (selection.isEmpty() || !mModel->isValidIndex(selection.last())) ? -1 : selection.last();
 
 			if (mCurrent != newCurrent) {
-				mCurrent = -1;
+				mCurrent = (command &  QItemSelectionModel::Select) ? newCurrent : -1;
 
 				idxChanged = true;
 			}
@@ -80,6 +80,7 @@ void MatchSelectionModel::selectWithoutSignals(int index, QItemSelectionModel::S
 	}
 
 	// the way it stands now, this is a dead code path (see select()...), but it can't really hurt...
+	/*
 	if (command & QItemSelectionModel::Clear && !mSelection.isEmpty()) {
 		mSelection.clear();
 
@@ -91,6 +92,7 @@ void MatchSelectionModel::selectWithoutSignals(int index, QItemSelectionModel::S
 
 		*selChanged = true;
 	}
+	*/
 
 	if (command & QItemSelectionModel::Select && !mSelection.contains(index)) {
 		mSelection << index;
