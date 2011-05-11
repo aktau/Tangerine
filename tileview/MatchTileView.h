@@ -199,16 +199,20 @@ class MatchTileView : public QScrollArea {
 		void createActions();
 		void createStatusWidgets();
 
-		void updateStatusBar();
-		void updateThumbnail(int tidx, int fcidx);
-		QString thumbName(const thera::IFragmentConf &conf) const;
 		void scroll(int amount);
 		void refresh();
-		void sort(Qt::SortOrder order);
+
+		void updateStatusBar();
+		void updateThumbnail(int tidx, int fcidx);
+		void setStatus(IMatchModel::Status status);
 		void currentValidIndices(QVector<int>& valid);
+
+		void sort(Qt::SortOrder order);
 
 		int modelToViewIndex(int modelIndex) const;
 		QList<int> modelToViewIndex(const QList<int>& modelIndexes) const;
+
+		QString thumbName(const thera::IFragmentConf &conf) const;
 
 	private:
 		QList<QAction *> mActions;

@@ -165,6 +165,8 @@ void MatchTileView::createActions() {
 	QToolButton *lookingGlass = new QToolButton(); {
 		lookingGlass->setAutoRaise(true);
 		lookingGlass->setIcon(QIcon(":/rcc/fatcow/32x32/zoom.png"));
+		lookingGlass->setToolTip(tr("Will filter matches based on the text to the right. You can use wildcards. <br /><br />'*' matches any sequence of characters and '?' matches one character. <br /><br /><b>Example</b>: <em>WDC1_?1*1</em>"));
+		connect(lookingGlass, SIGNAL(clicked()), this, SLOT(filter()));
 		// if the size of the toolbutton is unsatisfactory check this out: http://doc.qt.nokia.com/latest/qstyle.html#PixelMetric-enum
 	}
 	QBoxLayout *containerLayout = new QHBoxLayout(containerWidget);
@@ -277,7 +279,7 @@ void MatchTileView::filterStatuses() {
 						default: qDebug() << "MatchTileView::filterStatuses: unknown status encountered:" << status.first << "| number" << i;
 					}
 
-					if (status.second == false) disabled << QString().setNum(i);
+					if (status.second == false) disabled << QString::number(i);
 				}
 			}
 		}
@@ -369,6 +371,10 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	//updateThumbnailStatus(tidx);
 }
 
+void MatchTileView::setStatus(IMatchModel::Status status) {
+
+}
+
 QString MatchTileView::thumbName(const IFragmentConf &conf) const {
 	FragmentRef target(conf.mFragments[IFragmentConf::TARGET]);
 	FragmentRef source(conf.mFragments[IFragmentConf::SOURCE]);
@@ -420,7 +426,7 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 
 		case Qt::MidButton:
 		{
-			//setStatus(idx, IMatchModel::YES);
+			setStatus(IMatchModel::YES);
 		}
 		break;
 
@@ -660,6 +666,34 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			mModel->sort("error", order ? Qt::AscendingOrder : Qt::DescendingOrder);
 
 			order = !order;
+		}
+		break;
+
+		case Qt::Key_N:
+		{
+			// set all visible UNKNOWN's to NO
+		    bool changed = false;
+
+		    //undo_list.push_back(std::vector< std::pair<int, int> >());
+		    for (int i = 0; i < mNumThumbs; ++i) {
+		    	const IFragmentConf& c = mModel->get(s().tindices[i]);
+
+		    	int status = c.getString("status", "0").toInt();
+
+		    	if (status == IMatchModel::UNKNOWN) {
+		    		c.setMetaData("status", QString::number(IMatchModel::NO));
+
+		    		//undo_list.back().push_back(std::pair<int, int>(s().tindices[i], status));
+
+		    		changed = true;
+		    	}
+		    }
+		    if (changed) {
+		    	refresh();
+		    }
+		    else {
+		    	//undo_list.pop_back();
+		    }
 		}
 		break;
 
