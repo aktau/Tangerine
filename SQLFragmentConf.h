@@ -20,6 +20,7 @@ namespace thera {
 
 		public:
 			virtual void updateID(int id);
+			virtual int getID() const;
 
 			// TODO: these methods are maybe technically const, but they are not semantically const, however currently FragmentConf dictates otherwise
 			virtual bool setMetaData(const QString &field, const QString &value) const;

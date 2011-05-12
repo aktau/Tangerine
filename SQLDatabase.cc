@@ -1,6 +1,5 @@
 #include "SQLDatabase.h"
 
-#include <QtSql>
 #include <QFile>
 #include <QTextStream>
 
@@ -18,8 +17,6 @@ const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
 const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
-
-//QStringList SQLDatabase::FIELDS = QStringList() << "status" <<  "error" << "overlap" << "volume" << "old_volume";
 
 SQLDatabase * SQLDatabase::mSingleton = NULL;
 
@@ -119,7 +116,7 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 	}
 }
 
-void SQLDatabase::saveToXML(const QString& XMLFile) const {
+void SQLDatabase::saveToXML(const QString& XMLFile) {
 	if (XMLFile == "") {
 		qDebug("SQLDatabase::saveToXML: filename was empty, aborting...");
 
@@ -289,11 +286,10 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	return list;
 }
 
-
 /**
  * TODO: implement
  */
-const QDomDocument SQLDatabase::toXML() const {
+const QDomDocument SQLDatabase::toXML() {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";
 
@@ -303,6 +299,33 @@ const QDomDocument SQLDatabase::toXML() const {
 	QDomDocument doc(MATCHES_DOCTYPE);
 	QDomElement matches = doc.createElement(MATCHES_ROOTTAG);
 	matches.setAttribute("version", MATCHES_VERSION);
+
+	const QList<thera::SQLFragmentConf> configurations = getMatches();
+	const QStringList fields = matchFields().toList();
+
+	foreach (const thera::SQLFragmentConf& conf, configurations) {
+		QDomElement match(doc.createElement("match"));
+
+		match.setAttribute("src", conf.getSourceId());
+		match.setAttribute("tgt", conf.getTargetId());
+		match.setAttribute("id", QString::number(conf.getID()));
+
+		// all other attributes (the ones stored in the database
+		foreach (const QString& field, fields) {
+			match.setAttribute(field, conf.getString(field, QString()));
+		}
+
+		QString xf;
+		for (int col = 0; col < 4; ++col) {
+			for (int row = 0; row < 4; ++row) {
+				xf += QString("%1 ").arg(conf.mXF[4 * row + col], 0, 'e', 20);
+			}
+		}
+
+		match.setAttribute("xf", xf);
+
+		matches.appendChild(match);
+	}
 
 	doc.appendChild(matches);
 

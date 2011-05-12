@@ -21,6 +21,10 @@ namespace thera {
 		mId = id;
 	}
 
+	int SQLFragmentConf::getID() const {
+		return mId;
+	}
+
 	bool SQLFragmentConf::setMetaData(const QString& field, const QString& value) const {
 		assert(mId != -1 && mDb != NULL);
 

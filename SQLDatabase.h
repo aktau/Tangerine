@@ -29,7 +29,7 @@ class SQLDatabase : public QObject {
 		virtual void connect(const QString& name) = 0;
 
 		virtual void loadFromXML(const QString& XMLFile);
-		virtual void saveToXML(const QString& XMLFile) const;
+		virtual void saveToXML(const QString& XMLFile);
 
 		virtual bool addMatchField(const QString& name, double defaultValue);
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
@@ -75,7 +75,7 @@ class SQLDatabase : public QObject {
 
 	private:
 		void parseXML(const QDomElement &root);
-		const QDomDocument toXML() const;
+		const QDomDocument toXML();
 
 		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
 
