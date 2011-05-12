@@ -48,22 +48,24 @@ namespace thera {
 	}
 
 	QString SQLFragmentConf::getString(const QString& field, const QString& deflt) const {
-		assert(mId != -1 && mDb != NULL);
-
-		if (mDb->matchHasField(field)) {
-			return mDb->matchGetValue<QString>(mId, field);
-		}
-
-		return deflt;
+		return get<QString>(field, deflt);
 	}
 
     double SQLFragmentConf::getDouble(const QString& field, double deflt) const {
+    	return get<double>(field, deflt);
+    }
+
+    int SQLFragmentConf::getInt(const QString &field, int deflt) const {
+    	return get<int>(field, deflt);
+    }
+
+    template<typename T> inline T SQLFragmentConf::get(const QString &field, T deflt) const {
     	assert(mId != -1 && mDb != NULL);
 
-		if (mDb->matchHasField(field)) {
-			return mDb->matchGetValue<double>(mId, field);
-		}
+    	if (mDb->matchHasField(field)) {
+    		return mDb->matchGetValue<T>(mId, field);
+    	}
 
-		return deflt;
+    	return deflt;
     }
 }

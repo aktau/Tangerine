@@ -351,28 +351,56 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
 		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt());
 
+		if (mSelectionModel->isSelected(fcidx)) {
+			mThumbs[tidx]->select();
+		}
+
 		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
 				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
 				.arg(Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id())
 				.arg(match.getString("error", ""))
 				.arg(match.getString("volume", ""));
 
-		QString comment = match.getString("comment", "");
+		QString comment = match.getString("comment", QString());
 
 		if (!comment.isEmpty()) {
-			tooltip += "\n<b>Comment</b>: " + comment;
+			tooltip += "<br /><b>Comment</b>: " + comment;
 		}
-
-		//qDebug() << "Updating [VALID] thumbnail" << tidx << "to model index" << fcidx << "| thumb = " << thumbFile;
 
 		mThumbs[tidx]->setToolTip(tooltip);
 	}
-
-	//updateThumbnailStatus(tidx);
 }
 
 void MatchTileView::setStatus(IMatchModel::Status status) {
+	foreach (int modelIndex, mSelectionModel->selectedIndexes()) {
+		IFragmentConf &c = mModel->get(modelIndex);
 
+		int currentStatus = c.getInt("status", 0);
+	}
+
+	/*
+	qDebug() << FragmentRef(c.mFragments[FragmentConf::TARGET]).id() <<
+			FragmentRef(c.mFragments[FragmentConf::SOURCE]).id() <<
+			c.getDouble("error", -1);
+
+	int cur_status = c.getString("status", "0").toInt();
+	if (cur_status == status) return;
+
+	int old_status = c.getString("status", "0").toInt();
+
+	undo_list.push_back(std::vector< std::pair<int, int> >());
+	std::vector< std::pair<int, int> > &u = undo_list.back();
+
+	c.setMetaData("status", QString::number(status));
+	// fprintf(stderr, "pushing %d %d\n", s().tindices[idx], cur_status);
+	u.push_back(std::pair<int, int>(s().tindices[idx], cur_status));
+
+	if (old_status == YES || old_status == MAYBE || status == YES || status == MAYBE) {
+		recomputeConflicts();
+	}
+
+	updateThumbnailStatuses();
+	*/
 }
 
 QString MatchTileView::thumbName(const IFragmentConf &conf) const {

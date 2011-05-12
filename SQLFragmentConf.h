@@ -27,6 +27,10 @@ namespace thera {
 
 			virtual QString getString(const QString &field, const QString &deflt = "") const;
 			virtual double getDouble(const QString &field, double deflt = 0.0) const;
+			virtual int getInt(const QString &field, int deflt = 0) const;
+
+		private:
+			template<typename T> T get(const QString &field, T deflt) const;
 
 		private:
 			SQLDatabase *mDb;

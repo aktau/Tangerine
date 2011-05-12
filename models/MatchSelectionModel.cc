@@ -21,6 +21,10 @@ QList<int> MatchSelectionModel::selectedIndexes() const {
 	return QList<int>::fromSet(mSelection);
 }
 
+bool MatchSelectionModel::isSelected(int index) const {
+	return mSelection.contains(index);
+}
+
 void MatchSelectionModel::select(int index, QItemSelectionModel::SelectionFlags command) {
 	select(QList<int>() << index, command);
 }

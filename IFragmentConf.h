@@ -80,8 +80,9 @@ namespace thera {
 
 			virtual bool setMetaData(const QString &field, const QString &value) const = 0;
 			virtual bool setMetaData(const QString &field, double value) const = 0;
-			virtual QString getString(const QString &field, const QString &deflt="") const = 0;
-			virtual double getDouble(const QString &field, double deflt=0.0) const = 0;
+			virtual QString getString(const QString &field, const QString &deflt = "") const = 0;
+			virtual double getDouble(const QString &field, double deflt = 0.0) const = 0;
+			virtual int getInt(const QString &field, int deflt = 0) const = 0;
 
 			virtual const QString getTargetId() const { return Database::entryID(mFragments[TARGET]); }
 			virtual const QString getSourceId() const { return Database::entryID(mFragments[SOURCE]); }

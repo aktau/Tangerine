@@ -25,6 +25,7 @@ class MatchSelectionModel : public QObject {
 	public:
 		virtual int currentIndex() const;
 		virtual QList<int> selectedIndexes() const;
+		virtual bool isSelected(int index) const;
 
 	public slots:
 		virtual void select(int index, QItemSelectionModel::SelectionFlags command);

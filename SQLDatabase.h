@@ -117,7 +117,28 @@ inline bool SQLDatabase::matchHasField(const QString& field) const {
 }
 
 template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
+	QString queryKey = field + "update";
 
+	if (!mFieldQueryMap.contains(queryKey)) {
+		// doesn't exist yet, make and insert
+		QSqlQuery *q = new QSqlQuery(database());
+
+		q->prepare(QString("UPDATE %1 SET %1 = :value WHERE match_id = :match_id").arg(field));
+
+		mFieldQueryMap.insert(queryKey, q);
+	}
+
+	QSqlQuery &query = *mFieldQueryMap.value(queryKey);
+
+	query.bindValue(":match_id", id);
+	query.bindValue(":value", QVariant(value).toString());
+
+	if (!query.exec()) {
+		qDebug()
+			<< "SQLDatabase::matchSetValue: Query failed:" << query.lastError()
+			<< "\nQuery executed: " << query.executedQuery();
+			//<< "\nBound values:" <<query.boundValues();
+	}
 }
 
 template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field) {

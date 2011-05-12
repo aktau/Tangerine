@@ -16,6 +16,7 @@ namespace thera {
 			virtual bool setMetaData(const QString &field, double value) const { qDebug() << "InvalidFragmentConf::setMetaData: " << field << "|" << value; return false; }
 			virtual QString getString(const QString &field, const QString &deflt="") const { qDebug() << "InvalidFragmentConf::getString: " << field << "|" << deflt; return deflt; }
 			virtual double getDouble(const QString &field, double deflt=0.0) const { qDebug() << "InvalidFragmentConf::getDouble: " << field << "|" << deflt; return deflt; }
+			virtual int getInt(const QString &field, int deflt = 0) const { qDebug() << "InvalidFragmentConf::getInt: " << field << "|" << deflt; return deflt; };
 
 			virtual const QString getTargetId() const { return QString(); }
 			virtual const QString getSourceId() const { return QString(); }
