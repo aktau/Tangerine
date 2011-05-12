@@ -340,6 +340,10 @@ void MatchTileView::updateStatusBar() {
 }
 
 void MatchTileView::updateThumbnail(int tidx, int fcidx) {
+	if (tidx < 0 || tidx >= mNumThumbs) {
+		return;
+	}
+
 	s().tindices[tidx] = fcidx;
 
 	if (fcidx < 0 || fcidx >= mModel->size()) {
@@ -376,6 +380,14 @@ void MatchTileView::setStatus(IMatchModel::Status status) {
 		IFragmentConf &c = mModel->get(modelIndex);
 
 		int currentStatus = c.getInt("status", 0);
+
+		if ((IMatchModel::Status) currentStatus != status) {
+			c.setMetaData("status", QString::number(status));
+
+			updateThumbnail(modelToViewIndex(modelIndex), modelIndex);
+
+			// set a flag if any change to/from "YES" and "MAYBE" was made
+		}
 	}
 
 	/*
