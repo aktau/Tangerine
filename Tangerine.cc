@@ -157,9 +157,13 @@ void Tangerine::setupWindow() {
 	setStyleSheet(styleSheet);
 	*/
 
-	/* window size */
+	/* window geometry */
 
 	resize(MIN_WIDTH, MIN_HEIGHT);
+
+	// center app on screen
+	QRect desktopRect = QApplication::desktop()->screenGeometry();
+	move(desktopRect.width() / 2 - width() / 2, desktopRect.height() / 2 - height() / 2);
 
 	//setGeometry(screenSize);
 	//QRect screenSize = (QApplication::desktop())->availableGeometry(this);
