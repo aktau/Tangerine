@@ -139,6 +139,8 @@ template<typename T> inline void SQLDatabase::matchSetValue(int id, const QStrin
 			<< "\nQuery executed: " << query.executedQuery();
 			//<< "\nBound values:" <<query.boundValues();
 	}
+
+	query.finish();
 }
 
 template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field) {
@@ -169,6 +171,8 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 			<< "\nQuery executed: " << query.executedQuery();
 			//<< "\nBound values:" <<query.boundValues();
 	}
+
+	query.finish();
 
 	return QVariant(0).value<T>();
 }

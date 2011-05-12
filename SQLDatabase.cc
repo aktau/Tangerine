@@ -213,6 +213,13 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 		return false;
 	}
 
+	// this seems to be necessary for the database table to become "unlocked"
+	// even though the queries that we are delete'ing here have in fact had
+	// finish() called on them. Anyway, it's not really a big deal.
+	//
+	// relevant SQL(ite) error if this line is skipped: QSqlError(6, "Unable to fetch row", "database table is locked")
+	resetQueries();
+
 	QSqlDatabase db(database());
 	QSqlQuery query(db);
 
