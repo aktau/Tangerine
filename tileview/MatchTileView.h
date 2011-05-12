@@ -185,6 +185,7 @@ class MatchTileView : public QScrollArea {
 	    void selectionChanged(const QList<int>& selected, const QList<int>& deselected);
 	    void currentThumbChanged(int current, int previous);
 
+	    void statusMenuTriggered(QAction *action);
 	    void sortAscending();
 	    void sortDescending();
 	    void filter();

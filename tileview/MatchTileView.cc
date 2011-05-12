@@ -72,6 +72,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	for (int i = 0; i < IMatchModel::NUM_STATUSES; ++i) {
 		mStatusMenuActions << mStatusMenu->addAction(IMatchModel::STATUS_STRINGS[i]);
 	}
+	connect(mStatusMenu, SIGNAL(triggered(QAction *)), this, SLOT(statusMenuTriggered(QAction *)));
 
 	mStatusMenu->addSeparator();
 	mStatusMenu->addAction(mCopyAction);
@@ -198,6 +199,14 @@ void MatchTileView::createActions() {
 void MatchTileView::createStatusWidgets() {
 	mStatusBarLabel = new QLabel;
 	mStatusBarWidgets << mStatusBarLabel;
+}
+
+void MatchTileView::statusMenuTriggered(QAction *action) {
+	int status = IMatchModel::STATUS_STRINGS.indexOf(action->text());
+
+	if (status != -1) {
+		setStatus((IMatchModel::Status) status);
+	}
 }
 
 void MatchTileView::sortAscending() {
