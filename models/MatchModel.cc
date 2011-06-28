@@ -120,7 +120,12 @@ void MatchModel::populateModel() {
 	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 	//SQLFilter filter(mDb);
 
+	QElapsedTimer timer;
+	timer.start();
+
 	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
+
+	qDebug() << "MatchModel::populateModel: Done repopulating model," << timer.elapsed() << "milliseconds";
 }
 
 /**

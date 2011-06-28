@@ -233,11 +233,7 @@ void MatchTileView::sort(Qt::SortOrder order) {
 }
 
 void MatchTileView::filter() {
-	//bool ok = false;
-	//QString filter = QInputDialog::getText(this, tr("Filter"), tr("Filter in wilcard format, * matches everything, ? matches one character") + ":", QLineEdit::Normal, mModel->getFilter(), &ok);
-	QString filter = mFilterEdit->text();
-
-	filter = filter.trimmed();
+	QString filter = mFilterEdit->text().trimmed();
 
 	mModel->filter(filter);
 }
