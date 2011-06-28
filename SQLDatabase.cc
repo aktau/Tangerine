@@ -236,6 +236,7 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 	return true;
 }
 
+/*
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter) {
 	QList<SQLFragmentConf> list;
 
@@ -292,10 +293,95 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 
 	return list;
 }
+*/
 
-/**
- * TODO: implement
- */
+int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
+	QString queryString = "SELECT Count(matches.match_id) FROM matches";
+
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	//join in dependencies
+	foreach (const QString& field, dependencies) {
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
+	}
+
+	// add filter clauses
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
+	}
+
+	QSqlQuery query(database());
+	if (query.exec(queryString) && query.first()) {
+		return query.value(0).toInt();
+	}
+	else {
+		qDebug() << "SQLDatabase::getNumberOfMatches: problem with query:" << query.lastError();
+
+		return 0;
+	}
+}
+
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int from, int to) {
+	QList<SQLFragmentConf> list;
+
+	QString queryString = "SELECT matches.match_id, source_name, target_name, transformation FROM matches";
+
+	// join in dependencies
+	// << "source_name" << "target_name" << "transformation";
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	if (!sortField.isEmpty()) {
+		if (matchHasField(sortField)) dependencies << sortField;
+		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
+	}
+
+	//join in dependencies
+	foreach (const QString& field, dependencies) {
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
+	}
+
+	// add filter clauses
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
+	}
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
+
+	if (from != -1 && to != - 1) {
+		queryString += QString(" LIMIT %1, %2").arg(from).arg(to);
+	}
+
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString;
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+	if (query.exec(queryString)) {
+		while (query.next()) {
+			SQLFragmentConf fc(this, query.value(0).toInt());
+
+			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
+
+			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
+
+			XF xf;
+			QTextStream ts(query.value(2).toString().toAscii());
+			ts >> xf;
+
+			list.append(fc);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	return list;
+}
+
 const QDomDocument SQLDatabase::toXML() {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";

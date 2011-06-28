@@ -41,7 +41,9 @@ class SQLDatabase : public QObject {
 		// one could perfectly also include AND's and OR's inside of the value component
 		// example: Key = "error" -> Value = "error < 0.25 OR error > 0.50"
 		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
-		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter());
+		//QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter());
+		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
+		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int from = -1, int to = -1);
 
 		bool matchHasField(const QString& field) const;
 		const QSet<QString>& matchFields() const;

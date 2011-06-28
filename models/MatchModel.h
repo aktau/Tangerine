@@ -44,6 +44,7 @@ class MatchModel : public IMatchModel {
 		void resetFilter();
 
 	private slots:
+		//void matchCountChanged();
 		void databaseModified();
 
 	private:
@@ -56,6 +57,8 @@ class MatchModel : public IMatchModel {
 		SQLDatabase *mDb;
 		SQLFilter mFilter;
 
+		int mRealSize;
+		int mCurrentWindowBegin, mCurrentWindowEnd;
 };
 
 #endif /* MATCHMODEL_H_ */

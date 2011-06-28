@@ -7,11 +7,12 @@
 
 using namespace thera;
 
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mCurrentWindowBegin(0), mCurrentWindowEnd(0) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
 	else {
+		//connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
 		connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(databaseModified()));
 
 		if (!mDb->isOpen()) {
@@ -32,7 +33,7 @@ bool MatchModel::isValidIndex(int index) const {
 }
 
 int MatchModel::size() const {
-	return mMatches.size();
+	return mRealSize;
 }
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
@@ -89,6 +90,9 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
+	//implement window fetching!
+	//if ()
+
 	return mMatches[index];
 }
 
@@ -123,7 +127,13 @@ void MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
+	mRealSize = mDb->getNumberOfMatches(mFilter);
+
+	qDebug() << "MatchModel::populateModel: Get # of matches," << timer.restart() << "milliseconds [result" << mRealSize << "matches]";
+
+	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter, 10, 20);
+	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
+	//mRealSize = mMatches.size();
 
 	qDebug() << "MatchModel::populateModel: Done repopulating model," << timer.elapsed() << "milliseconds";
 }
