@@ -2,6 +2,7 @@
 #define GVGRAPH_H_
 
 #include <QMap>
+#include <QHash>
 #include <QPair>
 #include <QFont>
 #include <QString>

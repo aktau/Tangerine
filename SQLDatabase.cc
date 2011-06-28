@@ -264,7 +264,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
 	}
 
-	qDebug() << "QUERY = " << queryString;
+	qDebug() << "QUERY =" << queryString;
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
