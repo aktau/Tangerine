@@ -321,7 +321,7 @@ int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
 	}
 }
 
-QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int from, int to) {
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
 	QList<SQLFragmentConf> list;
 
 	QString queryString = "SELECT matches.match_id, source_name, target_name, transformation FROM matches";
@@ -349,8 +349,8 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
 	}
 
-	if (from != -1 && to != - 1) {
-		queryString += QString(" LIMIT %1, %2").arg(from).arg(to);
+	if (offset != -1 && limit != -1) {
+		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
 	}
 
 	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString;
@@ -449,6 +449,8 @@ int SQLDatabase::matchCount() const {
  */
 void SQLDatabase::parseXML(const QDomElement &root) {
 	register int i = 1;
+
+	qDebug() << "STARTING TO PARSE XML";
 
 	QSqlDatabase db(database());
 
@@ -561,6 +563,8 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 	}
 
 	db.commit();
+
+	qDebug() << "DONE TO PARSE XML";
 
 	emit databaseOpEnded();
 	emit matchCountChanged();

@@ -7,7 +7,7 @@
 
 using namespace thera;
 
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mCurrentWindowBegin(0), mCurrentWindowEnd(0) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -26,6 +26,19 @@ MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mC
 
 MatchModel::~MatchModel() {
 
+}
+
+void MatchModel::setWindowSize(int size) {
+	assert(size > 0);
+
+	mWindowSize = size;
+}
+
+void MatchModel::requestWindow(int windowIndex) {
+	mWindowBegin = windowIndex * mWindowSize;
+	mWindowEnd = (windowIndex + 1) * mWindowSize;
+
+	populateModel();
 }
 
 bool MatchModel::isValidIndex(int index) const {
@@ -90,10 +103,12 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
-	//implement window fetching!
-	//if ()
+	if (index < mWindowBegin || index > mWindowEnd) {
+		// if the index is outside of the window, request another window in which it fits
+		requestWindow(index / mWindowSize);
+	}
 
-	return mMatches[index];
+	return mMatches[index % mWindowSize];
 }
 
 bool MatchModel::addField(const QString& name, double defaultValue) {
@@ -127,15 +142,27 @@ void MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	mRealSize = mDb->getNumberOfMatches(mFilter);
+	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter, mWindowBegin, mWindowSize);
+	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
-	qDebug() << "MatchModel::populateModel: Get # of matches," << timer.restart() << "milliseconds [result" << mRealSize << "matches]";
-
-	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter, 10, 20);
 	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 	//mRealSize = mMatches.size();
 
 	qDebug() << "MatchModel::populateModel: Done repopulating model," << timer.elapsed() << "milliseconds";
+}
+
+void MatchModel::requestRealSize() {
+	QElapsedTimer timer;
+	timer.start();
+
+	mRealSize = mDb->getNumberOfMatches(mFilter);
+
+	qDebug() << "MatchModel::populateModel: Get # of matches," << timer.elapsed() << "milliseconds [result" << mRealSize << "matches]";
+}
+
+void MatchModel::resetWindow() {
+	mWindowBegin = 0;
+	mWindowEnd = mWindowBegin + mWindowSize - 1;
 }
 
 /**
@@ -157,7 +184,9 @@ void MatchModel::resetFilter() {
 void MatchModel::databaseModified() {
 	resetSort();
 	resetFilter();
+	resetWindow();
 
+	requestRealSize();
 	populateModel();
 
 	emit modelChanged();

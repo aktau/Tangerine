@@ -22,6 +22,8 @@ class MatchModel : public IMatchModel {
 		virtual ~MatchModel();
 
 	public:
+		virtual void setWindowSize(int size);
+
 		virtual bool isValidIndex(int index) const;
 		virtual int size() const;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder);
@@ -37,9 +39,13 @@ class MatchModel : public IMatchModel {
 		virtual QString getFilter() const;
 
 	private:
+		void requestWindow(int windowIndex);
+		void requestRealSize();
+
 		void populateModel();
 
-		// these two do NOT emit signals
+		// these do NOT emit signals
+		void resetWindow();
 		void resetSort();
 		void resetFilter();
 
@@ -58,7 +64,8 @@ class MatchModel : public IMatchModel {
 		SQLFilter mFilter;
 
 		int mRealSize;
-		int mCurrentWindowBegin, mCurrentWindowEnd;
+		int mWindowSize;
+		int mWindowBegin, mWindowEnd;
 };
 
 #endif /* MATCHMODEL_H_ */
