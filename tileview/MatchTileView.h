@@ -18,6 +18,10 @@
 #include "IFragmentConf.h"
 #include "MatchSelectionModel.h"
 
+#ifdef WITH_DETAILVIEW
+#	include "DetailView.h"
+#endif
+
 class ThumbLabel : public QLabel {
 		Q_OBJECT;
 
@@ -237,6 +241,10 @@ class MatchTileView : public QScrollArea {
 
 		int mNumThumbs;
 		float mScale;
+
+		// Detailed view
+		DetailView mDetailView;
+		DetailScene mDetailScene;
 
 	private:
 		struct State {

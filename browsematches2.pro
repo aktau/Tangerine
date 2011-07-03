@@ -10,6 +10,7 @@ CONFIG   -= app_bundle
 # compile-time modules support
 CONFIG += graphviz
 CONFIG += tileview
+CONFIG += detailview
 
 QT += opengl xml sql
 
@@ -54,6 +55,17 @@ tileview {
 	HEADERS += tileview/*.h
 
 	INCLUDEPATH += tileview
+}
+
+detailview {
+	message(Tangerine: Detailview support was added)
+	
+	DEFINES += WITH_DETAILVIEW
+
+	SOURCES += detailview/*.cc
+	HEADERS += detailview/*.h
+
+	INCLUDEPATH += detailview
 }
 
 graphviz {

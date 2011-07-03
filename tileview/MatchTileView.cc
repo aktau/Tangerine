@@ -82,6 +82,15 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 
 	setModel(&EmptyMatchModel::EMPTY);
 	setSelectionModel(new MatchSelectionModel(model(), this));
+
+#ifdef WITH_DETAILVIEW
+	QGLWidget *widget = new QGLWidget(QGLFormat(QGL::SampleBuffers));
+
+	widget->makeCurrent(); // The current context must be set before calling Scene's constructor
+	mDetailView.setViewport(widget);
+	mDetailView.setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+	mDetailView.setScene(&mDetailScene);
+#endif
 }
 
 MatchTileView::~MatchTileView() {
@@ -485,6 +494,10 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 
 void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 	Q_UNUSED(event);
+
+#ifdef WITH_DETAILVIEW
+	mDetailView.show(); // make it visible
+#endif
 
 	qDebug() << "Double Clicked!" << idx;
 }
