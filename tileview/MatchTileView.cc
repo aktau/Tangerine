@@ -27,7 +27,8 @@ using namespace thera;
 #define THUMB_HEIGHT 466
 #define THUMB_GUTTER 10
 
-MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) : QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale) {
+MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) :
+		QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale), mDetailScene(this) {
 	setFrameShape(QFrame::NoFrame);
 	setObjectName("MainScrollArea");
 	setFocusPolicy(Qt::StrongFocus);

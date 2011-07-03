@@ -8,7 +8,7 @@
 
 class DetailView: public QGraphicsView {
 	public:
-		DetailView() {
+		DetailView(QWidget *parent = NULL) : QGraphicsView(parent) {
 			setWindowTitle(tr("View details of match"));
 			setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 		}
@@ -27,7 +27,7 @@ class DetailScene : public QGraphicsScene {
 	Q_OBJECT
 
 	public:
-		DetailScene();
+		DetailScene(QObject *parent = 0);
 		virtual ~DetailScene();
 
 		virtual void drawBackground(QPainter *painter, const QRectF &rect);
@@ -44,6 +44,9 @@ class DetailScene : public QGraphicsScene {
 
 	private:
 	    void initGL();
+
+	private:
+	    QGraphicsTextItem *mDescription;
 };
 
 #endif /* DETAILVIEW_H_ */

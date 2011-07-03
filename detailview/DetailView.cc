@@ -1,11 +1,13 @@
 #include "DetailView.h"
 
-DetailScene::DetailScene() {
+DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent) {
 	setSceneRect(0, 0, 800, 600);
 
-	addItem(new QGraphicsEllipseItem(100,100,50,50));
-
-	addItem(new QGraphicsTextItem("This is SPARTA"));
+	mDescription = new QGraphicsTextItem;
+	mDescription->setParent(this);
+	mDescription->setHtml("<h1>Madness?</h1> <b>MADNESS</b> <hr /> <p>Formatting has never been this easy!</p>?");
+	mDescription->setPos(QPointF(50.0f, 50.0f));
+	addItem(mDescription);
 
 	initGL();
 }
@@ -29,7 +31,8 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 	glMatrixMode(GL_MODELVIEW);
 	glTranslatef(-1.5f,0.0f,-6.0f);
 
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_TEXTURE_2D);
 
 	glBegin(GL_TRIANGLES);
 		glColor3f(1.0f, 0.0f, 0.0f); glVertex3f( 0.0f, 1.0f, 0.0f);
@@ -39,10 +42,13 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 
 	glTranslatef(3.0f,0.0f,0.0f);
 
-	glBegin(GL_TRIANGLES);
-		glVertex3f( 0.0f, 1.0f, 0.0f);
-		glVertex3f(-1.0f,-1.0f, 0.0f);
-		glVertex3f( 1.0f,-1.0f, 0.0f);
+	float off = 1.0f;
+
+	glBegin(GL_TRIANGLE_STRIP);
+		glColor3f(1.0f, 0.0f, 0.0f); glVertex3f( 0.0f, 1.0f, 0.0f);
+		glColor3f(1.0f, 1.0f, 0.0f); glVertex3f(-1.0f,-1.0f, 0.0f);
+		glColor3f(0.0f, 1.0f, 1.0f); glVertex3f( 1.0f,-1.0f, 0.0f);
+		glColor3f(0.8f, 0.3f, 1.0f);  glVertex3f( 0.0f, -1.0f - off, 0.0f);
 	glEnd();
 
 	defaultStates();
@@ -56,7 +62,7 @@ void DetailScene::setStates() {
     glClearColor(0.25f, 0.25f, 0.5f, 1.0f);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
     glEnable(GL_LIGHTING);
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_TEXTURE_2D);
@@ -81,7 +87,7 @@ void DetailScene::defaultStates() {
     //glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
     glDisable(GL_LIGHTING);
     glDisable(GL_COLOR_MATERIAL);
     glDisable(GL_TEXTURE_2D);
