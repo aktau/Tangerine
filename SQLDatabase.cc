@@ -368,8 +368,10 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
 
 			XF xf;
-			QTextStream ts(query.value(2).toString().toAscii());
+			QTextStream ts(query.value(3).toString().toAscii());
 			ts >> xf;
+
+			fc.mXF = xf;
 
 			list.append(fc);
 		}

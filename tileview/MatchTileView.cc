@@ -15,7 +15,7 @@
 #include "Database.h"
 #include "Fragment.h"
 #include "FragmentRef.h"
-#include "TabletopModel.h"
+//#include "TabletopModel.h"
 #include "TabletopIO.h"
 
 #include "EmptyMatchModel.h"
@@ -497,6 +497,21 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 	Q_UNUSED(event);
 
 #ifdef WITH_DETAILVIEW
+	const IFragmentConf &c = mModel->get(s().tindices[idx]);
+
+	FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
+	FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
+
+	mTabletopModel.fragmentPlace(target.id(), XF());
+	mTabletopModel.fragmentPlace(source.id(), c.mXF);
+	//mTabletopModel.fragmentPlace(source.id(), XF());
+	/*
+	mTabletopModel.group(QSet<const Placement *>()
+		<< mTabletopModel.placedFragment(target.id())
+		<< mTabletopModel.placedFragment(source.id()));
+	*/
+
+	mDetailScene.init(&mTabletopModel);
 	mDetailView.show(); // make it visible
 #endif
 
@@ -517,8 +532,8 @@ void MatchTileView::copyCurrent() {
 	pairModel.fragmentPlace(target.id(), XF());
 	pairModel.fragmentPlace(source.id(), c.mXF);
 	pairModel.group(QSet<const Placement *>()
-			<< pairModel.placedFragment(target.id())
-			<< pairModel.placedFragment(source.id()));
+		<< pairModel.placedFragment(target.id())
+		<< pairModel.placedFragment(source.id()));
 
 	QString xml = writeToString(pairModel);
 	QApplication::clipboard()->setText(xml);

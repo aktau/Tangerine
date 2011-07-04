@@ -152,20 +152,20 @@ struct Agdesc_s {		/* graph descriptor */
 
 struct Agmemdisc_s {		/* memory allocator */
     void *(*open) (void);	/* independent of other resources */
-    void *(*alloc) (void *state, size_t req);
-    void *(*resize) (void *state, void *ptr, size_t old, size_t req);
-    void (*free) (void *state, void *ptr);
-    void (*close) (void *state);
+    void *(*alloc) (void *mState, size_t req);
+    void *(*resize) (void *mState, void *ptr, size_t old, size_t req);
+    void (*free) (void *mState, void *ptr);
+    void (*close) (void *mState);
 };
 
 struct Agiddisc_s {		/* object ID allocator */
     void *(*open) (Agraph_t * g);	/* associated with a graph */
-    long (*map) (void *state, int objtype, char *str, unsigned long *id,
+    long (*map) (void *mState, int objtype, char *str, unsigned long *id,
 		 int createflag);
-    long (*alloc) (void *state, int objtype, unsigned long id);
-    void (*free) (void *state, int objtype, unsigned long id);
-    char *(*print) (void *state, int objtype, unsigned long id);
-    void (*close) (void *state);
+    long (*alloc) (void *mState, int objtype, unsigned long id);
+    void (*free) (void *mState, int objtype, unsigned long id);
+    char *(*print) (void *mState, int objtype, unsigned long id);
+    void (*close) (void *mState);
 };
 
 struct Agiodisc_s {

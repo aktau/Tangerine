@@ -17,6 +17,7 @@
 #include "IMatchModel.h"
 #include "IFragmentConf.h"
 #include "MatchSelectionModel.h"
+#include "TabletopModel.h"
 
 #ifdef WITH_DETAILVIEW
 #	include "DetailView.h"
@@ -246,6 +247,8 @@ class MatchTileView : public QScrollArea {
 		DetailView mDetailView;
 		DetailScene mDetailScene;
 
+		thera::TabletopModel mTabletopModel;
+
 	private:
 		struct State {
 			// either src or tgt should contain filter
@@ -280,13 +283,8 @@ class MatchTileView : public QScrollArea {
 
 		QList<State> mStates;
 
-		State& s() {
-			return mStates.back();
-		}
-
-		const State& s() const {
-			return mStates.back();
-		}
+		State& s() { return mStates.back(); }
+		const State& s() const { return mStates.back(); }
 };
 
 #endif /* MATCHTILEVIEW_H_ */
