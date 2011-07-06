@@ -2,7 +2,7 @@
 
 using namespace thera;
 
-DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(600) {
+DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(600), mTranslateX(0.0) {
 	setSceneRect(0, 0, 800, 600);
 
 	mDescription = new QGraphicsTextItem;
@@ -120,6 +120,7 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 
 	QMatrix4x4 view;
 	view.rotate(QQuaternion());
+	view.translate(mTranslateX, 0.0);
 	view(2, 3) -= 2.0f * exp(mDistanceExponential / 1200.0f);
 	//loadMatrix(view);
     // static to prevent glLoadMatrixf to fail on certain drivers
@@ -350,6 +351,18 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 		case Qt::Key_Space:
 			resetView();
 			break;
+		case Qt::Key_Down:
+			mDistanceExponential -= 500;
+			break;
+		case Qt::Key_Up:
+			mDistanceExponential += 500;
+			break;
+		case Qt::Key_Left:
+			mTranslateX -= 50;
+			break;
+		case Qt::Key_Right:
+			mTranslateX += 50;
+			break;
 		case Qt::Key_A:
 			mState.draw_alternate = !mState.draw_alternate;
 			break;
@@ -406,6 +419,8 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 void DetailScene::wheelEvent(QGraphicsSceneWheelEvent *event) {
     QGraphicsScene::wheelEvent(event);
     if (!event->isAccepted()) {
+    	qDebug() << event->delta();
+
         mDistanceExponential += event->delta();
         /*
         if (mDistanceExponential < -8 * 120)

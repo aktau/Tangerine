@@ -84,6 +84,8 @@ class DetailScene : public QGraphicsScene {
 
 	    int mDistanceExponential;
 
+	    float mTranslateX;
+
 	private:
 	    struct State {
 			int current_mesh;
