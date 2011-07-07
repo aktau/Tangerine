@@ -31,9 +31,9 @@ Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : Q
 
 	databaseClosed();
 
-	mLoadFragDbAct->setEnabled(Database::isValid() ? false : true);
-	mLoadMatchDbAct->setEnabled(Database::isValid() ? true : false);
-	mImportXMLAct->setEnabled(Database::isValid() ? true : false);
+	mLoadFragDbAct->setEnabled(!Database::isValid());
+	mLoadMatchDbAct->setEnabled(Database::isValid());
+	mImportXMLAct->setEnabled(Database::isValid());
 }
 
 Tangerine::~Tangerine() {
@@ -393,11 +393,15 @@ void Tangerine::matchCountChanged() {
 void Tangerine::databaseOpened() {
 	mSaveDbAct->setEnabled(true);
 	mSaveXMLAct->setEnabled(true);
+	mAddAttributeAct->setEnabled(true);
+	mRemoveAttributeAct->setEnabled(true);
 }
 
 void Tangerine::databaseClosed() {
 	mSaveDbAct->setEnabled(false);
 	mSaveXMLAct->setEnabled(false);
+	mAddAttributeAct->setEnabled(false);
+	mRemoveAttributeAct->setEnabled(false);
 }
 
 void Tangerine::databaseOpStarted(const QString& operation, int steps) {
