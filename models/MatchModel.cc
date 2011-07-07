@@ -83,6 +83,7 @@ void MatchModel::filter(const QString& pattern) {
 
 		mNameFilter = pattern;
 
+		requestRealSize();
 		populateModel();
 
 		emit modelChanged();
@@ -97,6 +98,7 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 		mFilter.removeFilter(key);
 	}
 
+	requestRealSize();
 	populateModel();
 
 	emit modelChanged();
