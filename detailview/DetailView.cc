@@ -11,6 +11,8 @@ DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopMod
 	mDescription->setDefaultTextColor(Qt::white);
 	addItem(mDescription);
 
+	connect(&mWatcher, SIGNAL(finished()), this, SLOT(update()));
+
 	initGL();
 }
 
@@ -40,6 +42,8 @@ void DetailScene::tabletopChanged() {
 		}
 	}
 
+	QList<const PlacedFragment *> fragmentList;
+
 	for (TabletopModel::const_iterator it = mTabletopModel->begin(); it != mTabletopModel->end(); ++it) {
 		const PlacedFragment *pf = *it;
 		const Fragment *f = pf->fragment();
@@ -50,6 +54,9 @@ void DetailScene::tabletopChanged() {
 		f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
 		mPinnedFragments.insert(f->id());
 
+		fragmentList << pf;
+
+		/*
 		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
 		Mesh *m = &*f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING);
 		m->need_normals();
@@ -61,6 +68,7 @@ void DetailScene::tabletopChanged() {
 		m->need_normals();
 		m->need_tstrips();
 		m->need_bsphere();
+		*/
 
 		// now set up the mesh colors properly
 		/*
@@ -91,6 +99,9 @@ void DetailScene::tabletopChanged() {
 		*/
 	}
 
+	QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList);
+	mWatcher.setFuture(future);
+
 	need_resetview &= !mPinnedFragments.isEmpty();
 
 	if (need_resetview) {
@@ -98,7 +109,29 @@ void DetailScene::tabletopChanged() {
 	}
 
 	updateDisplayInformation();
-	//need_redraw();
+
+	update();
+}
+
+void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList) {
+	foreach (const PlacedFragment *pf, fragmentList) {
+		const Fragment *f = pf->fragment();
+
+		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
+		Mesh *m = &*f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING);
+		m->need_normals();
+		m->need_tstrips();
+		m->need_bsphere();
+
+		qDebug() << "Calculating for HIRES_MESH";
+		m = &*f->mesh(Fragment::HIRES_MESH);
+		m->need_normals();
+		m->need_tstrips();
+		m->need_bsphere();
+
+		mLoadedFragments << pf;
+		update();
+	}
 }
 
 void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
@@ -132,6 +165,7 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 
+	/*
 	glBegin(GL_TRIANGLES);
 		glColor3f(1.0f, 0.0f, 0.0f); glVertex3f( 0.0f, 1.0f, 0.0f);
 		glColor3f(1.0f, 1.0f, 0.0f); glVertex3f(-1.0f,-1.0f, 0.0f);
@@ -148,10 +182,13 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 		glColor3f(0.0f, 1.0f, 1.0f); glVertex3f( 1.0f,-1.0f, 0.0f);
 		glColor3f(0.8f, 0.3f, 1.0f);  glVertex3f( 0.0f, -1.0f - off, 0.0f);
 	glEnd();
+	*/
 
-	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
+	// failed attempt at transparancy
+	//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
 
-	if (mTabletopModel) {
+	/*
+	if (mTabletopModel && mWatcher.isFinished()) {
 		int i = 0;
 
 		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it, ++i) {
@@ -166,6 +203,16 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 			glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
 			drawMesh(*it);
 		}
+	}
+	*/
+
+	int i = 0;
+
+	foreach (const PlacedFragment *pf, mLoadedFragments) {
+		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
+		drawMesh(pf);
+
+		++i;
 	}
 
 	defaultStates();
@@ -499,16 +546,19 @@ void DetailScene::updateDisplayInformation() {
 		xf = QString() + t;
 	}
 
-	mDescription->setHtml(
-		QString(
-			"<h1>Detailed match information</h1> "
-			"<b>Showing match %1</b>"
-			"<hr />"
-			"<h2>Properties</h2>"
-			"<ul><li>Error: %2</li><li>Volume: %3</li></ul> "
-			"<p>XF:</p><pre>%4</pre>"
-		).arg(match).arg(0.9812).arg(14.5).arg(xf)
-	);
+	QString html = QString(
+		"<h1>Detailed match information</h1> "
+		"<b>Showing match %1</b>"
+		"<hr />"
+		"<h2>Properties</h2>"
+		"<ul><li>Error: %2</li><li>Volume: %3</li></ul> "
+	).arg(match).arg(0.9812).arg(14.5);
+
+	if (mWatcher.isRunning()) {
+		html = QString("<h1>Loading data, please be patient</h1>") + html;
+	}
+
+	mDescription->setHtml(html);
 }
 
 Mesh *DetailScene::getMesh(const PlacedFragment *pf) {

@@ -8,6 +8,8 @@
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QtOpenGL>
+#include <QFuture>
+#include <QFutureWatcher>
 
 #include "CMesh.h"
 #include "XF.h"
@@ -67,6 +69,8 @@ class DetailScene : public QGraphicsScene {
 	    void updateBoundingSphere();
 	    void updateDisplayInformation();
 
+	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList);
+
 	    thera::Mesh *getMesh(const thera::PlacedFragment *pf);
 	    thera::XF getXF(const thera::PlacedFragment *pf);
 
@@ -77,6 +81,7 @@ class DetailScene : public QGraphicsScene {
 	    const thera::TabletopModel *mTabletopModel;
 
 	    QSet<QString> mPinnedFragments;
+	    QSet<const thera::PlacedFragment *> mLoadedFragments;
 	    QVector<xform> mXforms;
 	    QVector<thera::Mesh *> mMeshes;
 
@@ -85,6 +90,9 @@ class DetailScene : public QGraphicsScene {
 	    int mDistanceExponential;
 
 	    float mTranslateX;
+
+	    bool mLoaded;
+	    QFutureWatcher<void> mWatcher;
 
 	private:
 	    struct State {

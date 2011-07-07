@@ -504,12 +504,6 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 
 	mTabletopModel.fragmentPlace(target.id(), XF());
 	mTabletopModel.fragmentPlace(source.id(), c.mXF);
-	//mTabletopModel.fragmentPlace(source.id(), XF());
-	/*
-	mTabletopModel.group(QSet<const Placement *>()
-		<< mTabletopModel.placedFragment(target.id())
-		<< mTabletopModel.placedFragment(source.id()));
-	*/
 
 	mDetailScene.init(&mTabletopModel);
 	mDetailView.show(); // make it visible
