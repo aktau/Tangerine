@@ -196,6 +196,7 @@ class MatchTileView : public QScrollArea {
 	    void filter();
 	    void filterStatuses();
 	    void comment();
+	    void findDuplicates();
 
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);

@@ -212,7 +212,7 @@ void MatchTileView::createActions() {
 
 	mFindDuplicatesAction = new QAction(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), tr("Find duplicate matches"), this);
 	mFindDuplicatesAction->setStatusTip(tr("Display all duplicates of this match (i.e.: every match that consists of the same fragments)"));
-	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(comment()));
+	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(findDuplicates()));
 
 	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting matches"), this);
 	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
@@ -350,6 +350,22 @@ void MatchTileView::comment() {
 	}
 }
 
+void MatchTileView::findDuplicates() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		IFragmentConf &match = mModel->get(current);
+
+		mModel->genericFilter(
+			"duplicates",
+			QString("(target_name = '%1' AND source_name = '%2') OR (target_name = '%2' AND source_name = '%1')").arg(match.getSourceId()).arg(match.getTargetId())
+		);
+	}
+	else {
+		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
+	}
+}
+
 void MatchTileView::updateStatusBar() {
 	int lastValidIndex = mNumThumbs - 1;
 	while (lastValidIndex >= 0 && s().tindices[lastValidIndex] < 0) {
@@ -463,8 +479,8 @@ QString MatchTileView::thumbName(const IFragmentConf &conf) const {
 	*/
 
 	return QString("%3_%1_%2_%4.jpg").arg(target.id(), source.id(),
-			QString::number(conf.getDouble("error"), 'f', 4),
-			QString::number(conf.getDouble("volume"), 'f', 4));
+		QString::number(conf.getDouble("error"), 'f', 4),
+		QString::number(conf.getDouble("volume"), 'f', 4));
 }
 
 void MatchTileView::clicked(int idx, QMouseEvent *event) {
@@ -516,16 +532,20 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 
 void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 #ifdef WITH_DETAILVIEW
-	const IFragmentConf &c = mModel->get(s().tindices[idx]);
+	int current = mSelectionModel->currentIndex();
 
-	FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
-	FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
+	if (mModel->isValidIndex(current)) {
+		const IFragmentConf &c = mModel->get(s().tindices[idx]);
 
-	mTabletopModel.fragmentPlace(target.id(), XF());
-	mTabletopModel.fragmentPlace(source.id(), c.mXF);
+		FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
+		FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
 
-	mDetailScene.init(&mTabletopModel);
-	mDetailView.show(); // make it visible
+		mTabletopModel.fragmentPlace(target.id(), XF());
+		mTabletopModel.fragmentPlace(source.id(), c.mXF);
+
+		mDetailScene.init(&mTabletopModel);
+		mDetailView.show(); // make it visible
+	}
 #endif
 }
 
@@ -825,23 +845,17 @@ void MatchTileView::scroll(int amount) {
 
 	int new_pos = qMax(s().cur_pos + amount, 0);
 
-	if (new_pos == s().cur_pos) {
-		qDebug() << "new_pos" << new_pos << "| cur_pos" << s().cur_pos;
-
-		return;
-	}
-
 	// update the current state
 	s().total = max;
 	new_pos = qMax(0, qMin(new_pos, max - mNumThumbs));
 
-	/*
 	if (new_pos == s().cur_pos) {
 		return;
 	}
-	*/
 
 	s().cur_pos = new_pos;
+
+	qDebug() << "SCROLLIN";
 
 	// reload thumbnails
 	for (int i = 0; i < mNumThumbs; ++i) {
