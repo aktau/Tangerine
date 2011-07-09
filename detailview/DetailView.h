@@ -71,8 +71,11 @@ class DetailScene : public QGraphicsScene {
 
 	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList);
 
-	    thera::Mesh *getMesh(const thera::PlacedFragment *pf);
-	    thera::XF getXF(const thera::PlacedFragment *pf);
+	    thera::Mesh *getMesh(const thera::PlacedFragment *pf) const;
+	    thera::XF getXF(const thera::PlacedFragment *pf) const;
+
+	private slots:
+		void calcDone();
 
 	private:
 	    thera::XF mGlobalXF;

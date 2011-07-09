@@ -481,21 +481,23 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 
 		case Qt::MidButton:
 		{
-			setStatus(IMatchModel::YES);
+			if (!mSelectionModel->isEmpty()) {
+				setStatus(IMatchModel::YES);
+			}
 		}
 		break;
 
 		case Qt::RightButton:
 		{
-			mStatusMenu->popup(QCursor::pos());
+			if (!mSelectionModel->isEmpty()) {
+				mStatusMenu->popup(QCursor::pos());
+			}
 		}
 		break;
 	}
 }
 
-void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
-	Q_UNUSED(event);
-
+void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 #ifdef WITH_DETAILVIEW
 	const IFragmentConf &c = mModel->get(s().tindices[idx]);
 
@@ -508,8 +510,6 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *event) {
 	mDetailScene.init(&mTabletopModel);
 	mDetailView.show(); // make it visible
 #endif
-
-	qDebug() << "Double Clicked!" << idx;
 }
 
 void MatchTileView::copyCurrent() {

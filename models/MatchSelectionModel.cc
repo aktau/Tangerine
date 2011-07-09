@@ -25,6 +25,10 @@ bool MatchSelectionModel::isSelected(int index) const {
 	return mSelection.contains(index);
 }
 
+bool MatchSelectionModel::isEmpty() const {
+	return mSelection.isEmpty();
+}
+
 void MatchSelectionModel::select(int index, QItemSelectionModel::SelectionFlags command) {
 	select(QList<int>() << index, command);
 }

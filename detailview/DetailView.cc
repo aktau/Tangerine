@@ -2,7 +2,7 @@
 
 using namespace thera;
 
-DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(600), mTranslateX(0.0) {
+DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(5040), mTranslateX(0.0) {
 	setSceneRect(0, 0, 800, 600);
 
 	mDescription = new QGraphicsTextItem;
@@ -11,7 +11,7 @@ DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopMod
 	mDescription->setDefaultTextColor(Qt::white);
 	addItem(mDescription);
 
-	connect(&mWatcher, SIGNAL(finished()), this, SLOT(update()));
+	connect(&mWatcher, SIGNAL(finished()), this, SLOT(calcDone()));
 
 	initGL();
 }
@@ -20,11 +20,18 @@ DetailScene::~DetailScene() {
 }
 
 void DetailScene::init(const TabletopModel *tabletopModel) {
-	mGlobalXF = XF();
+	if (mTabletopModel != tabletopModel) {
+		if (mTabletopModel != NULL) {
+			disconnect(mTabletopModel, 0, this, 0);
+		}
 
-	mTabletopModel = tabletopModel;
+		mGlobalXF = XF();
+		mTabletopModel = tabletopModel;
 
-	tabletopChanged();
+		connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
+
+		tabletopChanged();
+	}
 }
 
 void DetailScene::tabletopChanged() {
@@ -36,7 +43,7 @@ void DetailScene::tabletopChanged() {
 	foreach (const QString& id, mPinnedFragments) {
 		if (!mTabletopModel->contains(id)) {
 			Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
-			Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
+			//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
 			mPinnedFragments.remove(id);
 			//mesh_colors.remove(id);
 		}
@@ -51,7 +58,7 @@ void DetailScene::tabletopChanged() {
 		if (mPinnedFragments.contains(f->id())) continue;
 
 		f->mesh(Fragment::HIRES_MESH).pin();
-		f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
+		//f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
 		mPinnedFragments.insert(f->id());
 
 		fragmentList << pf;
@@ -117,14 +124,16 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
 
+		/*
 		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
 		Mesh *m = &*f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING);
 		m->need_normals();
 		m->need_tstrips();
 		m->need_bsphere();
+		*/
 
 		qDebug() << "Calculating for HIRES_MESH";
-		m = &*f->mesh(Fragment::HIRES_MESH);
+		Mesh *m = &*f->mesh(Fragment::HIRES_MESH);
 		m->need_normals();
 		m->need_tstrips();
 		m->need_bsphere();
@@ -405,10 +414,10 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 			mDistanceExponential += 500;
 			break;
 		case Qt::Key_Left:
-			mTranslateX -= 50;
+			mTranslateX += 50;
 			break;
 		case Qt::Key_Right:
-			mTranslateX += 50;
+			mTranslateX -= 50;
 			break;
 		case Qt::Key_A:
 			mState.draw_alternate = !mState.draw_alternate;
@@ -466,9 +475,8 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 void DetailScene::wheelEvent(QGraphicsSceneWheelEvent *event) {
     QGraphicsScene::wheelEvent(event);
     if (!event->isAccepted()) {
-    	qDebug() << event->delta();
-
         mDistanceExponential += event->delta();
+
         /*
         if (mDistanceExponential < -8 * 120)
             mDistanceExponential = -8 * 120;
@@ -539,7 +547,7 @@ void DetailScene::updateDisplayInformation() {
 	QString match, xf;
 
 	for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
-		match += (*it)->id();
+		match += (*it)->id() + (it != end - 1 ? ", " : "");
 
 		XF t = getXF(*it);
 
@@ -552,7 +560,8 @@ void DetailScene::updateDisplayInformation() {
 		"<hr />"
 		"<h2>Properties</h2>"
 		"<ul><li>Error: %2</li><li>Volume: %3</li></ul> "
-	).arg(match).arg(0.9812).arg(14.5);
+		"<p>Zoom: %4</p>"
+	).arg(match).arg(0.9812).arg(14.5).arg(mDistanceExponential);
 
 	if (mWatcher.isRunning()) {
 		html = QString("<h1>Loading data, please be patient</h1>") + html;
@@ -561,10 +570,16 @@ void DetailScene::updateDisplayInformation() {
 	mDescription->setHtml(html);
 }
 
-Mesh *DetailScene::getMesh(const PlacedFragment *pf) {
+Mesh *DetailScene::getMesh(const PlacedFragment *pf) const {
 	return pf ? &*pf->fragment()->mesh(Fragment::HIRES_MESH) : NULL;
 }
 
-XF DetailScene::getXF(const PlacedFragment *pf) {
+XF DetailScene::getXF(const PlacedFragment *pf) const {
 	return pf ? pf->accumXF() : XF();
+}
+
+void DetailScene::calcDone() {
+	updateBoundingSphere();
+	updateDisplayInformation();
+	update();
 }
