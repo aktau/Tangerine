@@ -537,11 +537,8 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 	if (mModel->isValidIndex(current)) {
 		const IFragmentConf &c = mModel->get(s().tindices[idx]);
 
-		FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
-		FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
-
-		mTabletopModel.fragmentPlace(target.id(), XF());
-		mTabletopModel.fragmentPlace(source.id(), c.mXF);
+		mTabletopModel.fragmentPlace(c.getTargetId(), XF());
+		mTabletopModel.fragmentPlace(c.getSourceId(), c.mXF);
 
 		mDetailScene.init(&mTabletopModel);
 		mDetailView.show(); // make it visible

@@ -40,6 +40,9 @@ void DetailScene::tabletopChanged() {
 
 	bool need_resetview = mPinnedFragments.isEmpty();
 
+	QElapsedTimer timer;
+	timer.start();
+
 	foreach (const QString& id, mPinnedFragments) {
 		if (!mTabletopModel->contains(id)) {
 			Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
@@ -57,25 +60,13 @@ void DetailScene::tabletopChanged() {
 
 		if (mPinnedFragments.contains(f->id())) continue;
 
+		/*
 		f->mesh(Fragment::HIRES_MESH).pin();
 		//f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
 		mPinnedFragments.insert(f->id());
+		*/
 
 		fragmentList << pf;
-
-		/*
-		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
-		Mesh *m = &*f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING);
-		m->need_normals();
-		m->need_tstrips();
-		m->need_bsphere();
-
-		qDebug() << "Calculating for HIRES_MESH";
-		m = &*f->mesh(Fragment::HIRES_MESH);
-		m->need_normals();
-		m->need_tstrips();
-		m->need_bsphere();
-		*/
 
 		// now set up the mesh colors properly
 		/*
@@ -106,8 +97,12 @@ void DetailScene::tabletopChanged() {
 		*/
 	}
 
+	qDebug() << "Spent" << timer.restart() << "msec";
+
 	QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList);
 	mWatcher.setFuture(future);
+
+	qDebug() << "Activating the concurrent run cost" << timer.elapsed() << "msec";
 
 	need_resetview &= !mPinnedFragments.isEmpty();
 
@@ -123,6 +118,10 @@ void DetailScene::tabletopChanged() {
 void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList) {
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
+
+		f->mesh(Fragment::HIRES_MESH).pin();
+		//f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
+		mPinnedFragments.insert(f->id());
 
 		/*
 		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
