@@ -81,6 +81,11 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mStatusMenu->addSeparator();
 	mStatusMenu->addAction(mCommentAction);
 
+	mStatusMenu->addSeparator();
+	mStatusMenu->addAction(mFindDuplicatesAction);
+	mStatusMenu->addAction(mFindConflictingAction);
+	mStatusMenu->addAction(mFindNonconflictingAction);
+
 	setModel(&EmptyMatchModel::EMPTY);
 	setSelectionModel(new MatchSelectionModel(model(), this));
 
@@ -204,6 +209,18 @@ void MatchTileView::createActions() {
 	mCommentAction = new QAction(QIcon(":/rcc/fatcow/32x32/comment_add.png"), tr("Comment"), this);
 	mCommentAction->setStatusTip(tr("Add a comment to the match"));
 	connect(mCommentAction, SIGNAL(triggered()), this, SLOT(comment()));
+
+	mFindDuplicatesAction = new QAction(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), tr("Find duplicate matches"), this);
+	mFindDuplicatesAction->setStatusTip(tr("Display all duplicates of this match (i.e.: every match that consists of the same fragments)"));
+	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(comment()));
+
+	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting matches"), this);
+	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
+	connect(mFindConflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
+
+	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting matches"), this);
+	mFindNonconflictingAction->setStatusTip(tr("Display matches that do not conflict with this one (i.e.: all matches that have have a fragment in common but are not mutually exclusive)"));
+	connect(mFindNonconflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
 }
 
 void MatchTileView::createStatusWidgets() {

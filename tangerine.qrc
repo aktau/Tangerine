@@ -22,5 +22,8 @@
     <file>rcc/fatcow/32x32/page_copy.png</file>
     <file>rcc/fatcow/32x32/comment_add.png</file>
     <file>rcc/fatcow/32x32/zoom.png</file>
+    <file>rcc/fatcow/32x32/shape_ungroup.png</file>
+    <file>rcc/fatcow/32x32/sql_join_inner.png</file>
+    <file>rcc/fatcow/32x32/sql_join_outer_exclude.png</file>
   </qresource>
 </RCC>
