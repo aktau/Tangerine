@@ -62,7 +62,7 @@ class DetailScene : public QGraphicsScene {
 	private:
 	    void initGL();
 
-	    void drawMesh(const thera::PlacedFragment *pf);
+	    void drawMesh(const thera::PlacedFragment *pf, thera::Fragment::meshEnum meshType = thera::Fragment::HIRES_MESH);
 	    void drawTstrips(const thera::Mesh *themesh);
 
 	    void resetView();
@@ -71,7 +71,7 @@ class DetailScene : public QGraphicsScene {
 
 	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList);
 
-	    thera::Mesh *getMesh(const thera::PlacedFragment *pf) const;
+	    thera::Mesh *getMesh(const thera::PlacedFragment *pf, thera::Fragment::meshEnum meshType = thera::Fragment::HIRES_MESH) const;
 	    thera::XF getXF(const thera::PlacedFragment *pf) const;
 
 	private slots:
@@ -84,7 +84,8 @@ class DetailScene : public QGraphicsScene {
 	    const thera::TabletopModel *mTabletopModel;
 
 	    QSet<QString> mPinnedFragments;
-	    QSet<const thera::PlacedFragment *> mLoadedFragments;
+	    QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum> mLoadedFragments;
+	    //QSet<const thera::PlacedFragment *> mLoadedFragments;
 	    QVector<xform> mXforms;
 	    QVector<thera::Mesh *> mMeshes;
 

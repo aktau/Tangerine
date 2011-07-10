@@ -45,7 +45,7 @@ void DetailScene::tabletopChanged() {
 
 	foreach (const QString& id, mPinnedFragments) {
 		if (!mTabletopModel->contains(id)) {
-			Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
+			Database::fragment(id)->mesh(Fragment::LORES_MESH).unpin();
 			//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
 			mPinnedFragments.remove(id);
 			//mesh_colors.remove(id);
@@ -59,12 +59,6 @@ void DetailScene::tabletopChanged() {
 		const Fragment *f = pf->fragment();
 
 		if (mPinnedFragments.contains(f->id())) continue;
-
-		/*
-		f->mesh(Fragment::HIRES_MESH).pin();
-		//f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
-		mPinnedFragments.insert(f->id());
-		*/
 
 		fragmentList << pf;
 
@@ -116,28 +110,35 @@ void DetailScene::tabletopChanged() {
 }
 
 void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList) {
+	// first load low resolution data for fast display
+	foreach (const PlacedFragment *pf, fragmentList) {
+		const Fragment *f = pf->fragment();
+
+		f->mesh(Fragment::LORES_MESH).pin();
+		mPinnedFragments << f->id();
+
+		Mesh *m = &*f->mesh(Fragment::LORES_MESH);
+		m->need_normals();
+		m->need_tstrips();
+		m->need_bsphere();
+
+		mLoadedFragments.insert(pf, Fragment::LORES_MESH);
+		update();
+	}
+
+	// now start loading high resolution data
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
 
 		f->mesh(Fragment::HIRES_MESH).pin();
-		//f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).pin();
-		mPinnedFragments.insert(f->id());
+		mPinnedFragments << f->id();
 
-		/*
-		qDebug() << "Calculating for RIBBON_MESH_FORMAT_STRING";
-		Mesh *m = &*f->mesh(Fragment::RIBBON_MESH_FORMAT_STRING);
-		m->need_normals();
-		m->need_tstrips();
-		m->need_bsphere();
-		*/
-
-		qDebug() << "Calculating for HIRES_MESH";
 		Mesh *m = &*f->mesh(Fragment::HIRES_MESH);
 		m->need_normals();
 		m->need_tstrips();
 		m->need_bsphere();
 
-		mLoadedFragments << pf;
+		mLoadedFragments.insert(pf, Fragment::HIRES_MESH);
 		update();
 	}
 }
@@ -216,12 +217,19 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 
 	int i = 0;
 
+	for (QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it, ++i) {
+		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
+		drawMesh(it.key(), it.value());
+	}
+
+	/*
 	foreach (const PlacedFragment *pf, mLoadedFragments) {
 		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
 		drawMesh(pf);
 
 		++i;
 	}
+	*/
 
 	defaultStates();
 	painter->endNativePainting();
@@ -231,8 +239,8 @@ void DetailScene::initGL() {
 	//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
 }
 
-void DetailScene::drawMesh(const thera::PlacedFragment *pf) {
-	const thera::Mesh *themesh = getMesh(pf);
+void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) {
+	const thera::Mesh *themesh = getMesh(pf, meshType);
 
 	glPushMatrix();
 	glMultMatrixd(getXF(pf));
@@ -569,8 +577,8 @@ void DetailScene::updateDisplayInformation() {
 	mDescription->setHtml(html);
 }
 
-Mesh *DetailScene::getMesh(const PlacedFragment *pf) const {
-	return pf ? &*pf->fragment()->mesh(Fragment::HIRES_MESH) : NULL;
+Mesh *DetailScene::getMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) const {
+	return pf ? &*pf->fragment()->mesh(meshType) : NULL;
 }
 
 XF DetailScene::getXF(const PlacedFragment *pf) const {
