@@ -277,6 +277,7 @@ class MatchTileView : public QScrollArea {
 
 			// duplicate manipulation
 			bool isSelectingMaster;
+			QList<int> duplicateCandidates;
 
 			State(int nt) :
 				filter(""),

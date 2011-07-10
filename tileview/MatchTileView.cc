@@ -378,14 +378,27 @@ void MatchTileView::findDuplicates() {
 }
 
 void MatchTileView::markDuplicates() {
-	int current = mSelectionModel->currentIndex();
+	if (s().isSelectingMaster()) {
+		if (s().duplicateCandidates.isEmpty()) {
+			QMessageBox::information(this, tr("Information"), tr("No duplicates were selected previously"));
+		}
+		else {
+			int master = mSelectionModel->currentIndex();
 
-	if (mModel->isValidIndex(current)) {
-		// TODO: should only need to select master if none already exists
-		s().isSelectingMaster = true;
+			// from now on the model should handle things
+		}
 	}
 	else {
-		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
+		if (mSelectionModel->isEmpty()) {
+			QMessageBox::information(this, tr("Information"), tr("No duplicates were selected"));
+		}
+		else {
+			// TODO: should only need to select master if none already exists
+			s().isSelectingMaster = true;
+			s().duplicateCandidates = mSelectionModel->selectionChanged();
+
+			QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor)); // will be restored once again in clicked()
+		}
 	}
 }
 
@@ -530,6 +543,15 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 		else {
 			mSelectionModel->select(s().tindices[idx], QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Current);
 		}
+	}
+
+	if (s().isSelectingMaster) {
+		if (event->buttons() == Qt::LeftButton) {
+			markDuplicates();
+		}
+
+		s().isSelectingMaster = false;
+		QApplication::restoreOverrideCursor();
 	}
 
 	switch (event->buttons()) {
