@@ -37,6 +37,8 @@ class EmptyMatchModel : public IMatchModel {
 		QSet<QString> fieldList() const {  qDebug() << "EmptyMatchModel::fieldList: Attempted to get field list"; return QSet<QString>(); }
 		QString getFilter() const {  qDebug() << "EmptyMatchModel::getFilter: Attempted to get filter"; return QString(); }
 
+		bool setDuplicates(QList<int> duplicates, int master) { qDebug() << "EmptyMatchModel::setDuplicates"; }
+
 	public:
 		// create one default instance that everyone can conveniently use
 		static EmptyMatchModel EMPTY;

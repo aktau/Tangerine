@@ -225,11 +225,11 @@ void MatchTileView::createActions() {
 	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate"));
 	connect(mMarkAsMasterAction, SIGNAL(triggered()), this, SLOT(markAsMaster()));
 
-	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting fragments"), this);
+	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting neighbours"), this);
 	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
 	connect(mFindConflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
 
-	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting fragments"), this);
+	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting neighbours"), this);
 	mFindNonconflictingAction->setStatusTip(tr("Display matches that do not conflict with this one (i.e.: all matches that have have a fragment in common but are not mutually exclusive)"));
 	connect(mFindNonconflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
 }
@@ -378,7 +378,7 @@ void MatchTileView::findDuplicates() {
 }
 
 void MatchTileView::markDuplicates() {
-	if (s().isSelectingMaster()) {
+	if (s().isSelectingMaster) {
 		if (s().duplicateCandidates.isEmpty()) {
 			QMessageBox::information(this, tr("Information"), tr("No duplicates were selected previously"));
 		}
@@ -395,7 +395,7 @@ void MatchTileView::markDuplicates() {
 		else {
 			// TODO: should only need to select master if none already exists
 			s().isSelectingMaster = true;
-			s().duplicateCandidates = mSelectionModel->selectionChanged();
+			s().duplicateCandidates = mSelectionModel->selectedIndexes();
 
 			QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor)); // will be restored once again in clicked()
 		}

@@ -38,6 +38,8 @@ class MatchModel : public IMatchModel {
 		virtual QSet<QString> fieldList() const;
 		virtual QString getFilter() const;
 
+		virtual bool setDuplicates(QList<int> duplicates, int master);
+
 	private:
 		void requestWindow(int windowIndex);
 		void requestRealSize();

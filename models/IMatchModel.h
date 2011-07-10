@@ -36,6 +36,8 @@ class IMatchModel : public QObject {
 		virtual QSet<QString> fieldList() const = 0;
 		virtual QString getFilter() const = 0;
 
+		virtual bool setDuplicates(QList<int> duplicates, int master) = 0;
+
 	signals:
 		void modelChanged();
 		void orderChanged();

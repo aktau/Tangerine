@@ -137,6 +137,25 @@ QString MatchModel::getFilter() const {
 	return mNameFilter;
 }
 
+bool MatchModel::setDuplicates(QList<int> duplicates, int master) {
+	if (!isValidIndex(master)) return false;
+
+	// if the master to be was in a duplicate group, point all duplicates to it now
+	// the master will almost certainly be in the current window so it should be
+	// fast to retrieve it.
+	IFragmentConf& conf = get(master);
+
+	int duplicateGroup = conf.getInt("duplicate", 0);
+
+	if (duplicateGroup != 0) {
+		// if we're here the master to be is already part of a group
+
+		// execute SQL query
+	}
+
+	return true;
+}
+
 void MatchModel::populateModel() {
 	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 	//SQLFilter filter(mDb);
