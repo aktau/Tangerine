@@ -181,7 +181,6 @@ class MatchTileView : public QScrollArea {
 	public slots:
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
-	    void copyCurrent();
 	    void copySelection();
 
 	    void modelChanged();
@@ -196,7 +195,10 @@ class MatchTileView : public QScrollArea {
 	    void filter();
 	    void filterStatuses();
 	    void comment();
+
 	    void findDuplicates();
+	    void markDuplicates();
+	    void markAsMaster();
 
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);
@@ -229,9 +231,10 @@ class MatchTileView : public QScrollArea {
 		QLineEdit *mFilterEdit;
 
 		QMenu *mStatusMenu;
+		QMenu *mDuplicatesMenu;
 		QAction *mCopyAction;
 		QAction *mCommentAction;
-		QAction *mFindDuplicatesAction;
+		QAction *mFindDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;
 		QAction *mFindConflictingAction;
 		QAction *mFindNonconflictingAction;
 		QList<QAction *> mStatusMenuActions;
@@ -272,6 +275,9 @@ class MatchTileView : public QScrollArea {
 
 			QVector<int> tindices;
 
+			// duplicate manipulation
+			bool isSelectingMaster;
+
 			State(int nt) :
 				filter(""),
 				conflict_index(-1),
@@ -280,7 +286,8 @@ class MatchTileView : public QScrollArea {
 				show_maybe(true),
 				show_unknown(true),
 				show_confirmed(true),
-				cur_pos(0) {
+				cur_pos(0),
+				isSelectingMaster(false) {
 				tindices.resize(nt);
 			}
 		};

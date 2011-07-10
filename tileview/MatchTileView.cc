@@ -82,7 +82,10 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mStatusMenu->addAction(mCommentAction);
 
 	mStatusMenu->addSeparator();
-	mStatusMenu->addAction(mFindDuplicatesAction);
+	mDuplicatesMenu = mStatusMenu->addMenu(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), "Duplicates");
+	mDuplicatesMenu->addAction(mFindDuplicatesAction);
+	mDuplicatesMenu->addAction(mMarkAsDuplicateAction);
+	mDuplicatesMenu->addAction(mMarkAsMasterAction);
 	mStatusMenu->addAction(mFindConflictingAction);
 	mStatusMenu->addAction(mFindNonconflictingAction);
 
@@ -204,21 +207,29 @@ void MatchTileView::createActions() {
 	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
 	mCopyAction->setShortcuts(QKeySequence::Copy);
 	mCopyAction->setStatusTip(tr("Copy this match to the clipboard"));
-	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copyCurrent()));
+	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copySelection()));
 
 	mCommentAction = new QAction(QIcon(":/rcc/fatcow/32x32/comment_add.png"), tr("Comment"), this);
 	mCommentAction->setStatusTip(tr("Add a comment to the match"));
 	connect(mCommentAction, SIGNAL(triggered()), this, SLOT(comment()));
 
-	mFindDuplicatesAction = new QAction(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), tr("Find duplicate matches"), this);
-	mFindDuplicatesAction->setStatusTip(tr("Display all duplicates of this match (i.e.: every match that consists of the same fragments)"));
+	mFindDuplicatesAction = new QAction(tr("List all possible duplicates of this match"), this);
+	mFindDuplicatesAction->setStatusTip(tr("List every match that consists of the same fragments"));
 	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(findDuplicates()));
 
-	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting matches"), this);
+	mMarkAsDuplicateAction = new QAction(tr("Mark all selected matches as duplicates"), this);
+	mMarkAsDuplicateAction->setStatusTip(tr("Mark all selected matches as duplicates"));
+	connect(mMarkAsDuplicateAction, SIGNAL(triggered()), this, SLOT(markDuplicates()));
+
+	mMarkAsMasterAction = new QAction(tr("Mark this match as being the master duplicate"), this);
+	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate"));
+	connect(mMarkAsMasterAction, SIGNAL(triggered()), this, SLOT(markAsMaster()));
+
+	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting fragments"), this);
 	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
 	connect(mFindConflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
 
-	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting matches"), this);
+	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting fragments"), this);
 	mFindNonconflictingAction->setStatusTip(tr("Display matches that do not conflict with this one (i.e.: all matches that have have a fragment in common but are not mutually exclusive)"));
 	connect(mFindNonconflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
 }
@@ -366,6 +377,34 @@ void MatchTileView::findDuplicates() {
 	}
 }
 
+void MatchTileView::markDuplicates() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		// TODO: should only need to select master if none already exists
+		s().isSelectingMaster = true;
+	}
+	else {
+		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
+	}
+}
+
+void MatchTileView::markAsMaster() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		IFragmentConf &match = mModel->get(current);
+
+		mModel->genericFilter(
+			"duplicates",
+			QString("(target_name = '%1' AND source_name = '%2') OR (target_name = '%2' AND source_name = '%1')").arg(match.getSourceId()).arg(match.getTargetId())
+		);
+	}
+	else {
+		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
+	}
+}
+
 void MatchTileView::updateStatusBar() {
 	int lastValidIndex = mNumThumbs - 1;
 	while (lastValidIndex >= 0 && s().tindices[lastValidIndex] < 0) {
@@ -416,7 +455,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		QString comment = match.getString("comment", QString());
 
 		if (!comment.isEmpty()) {
-			tooltip += "<br /><b>Comment</b>: " + comment;
+			tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + comment + "</span>";
 		}
 
 		mThumbs[tidx]->setToolTip(tooltip);
@@ -502,7 +541,7 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 			if (event->modifiers() == Qt::ShiftModifier) {
 				qDebug() << "MatchTileView::clicked: copying " << thumbName(mModel->get(fcidx));
 
-				copyCurrent();
+				copySelection();
 			}
 			/*
 			else if (event->modifiers() == Qt::ControlModifier) {
@@ -544,27 +583,6 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 		mDetailView.show(); // make it visible
 	}
 #endif
-}
-
-void MatchTileView::copyCurrent() {
-	qDebug() << "Copy triggered on thumbnail";
-
-	TabletopModel pairModel;
-	int idx = 5;
-
-	const IFragmentConf &c = mModel->get(s().tindices[idx]);
-
-	FragmentRef target(c.mFragments[IFragmentConf::TARGET]);
-	FragmentRef source(c.mFragments[IFragmentConf::SOURCE]);
-
-	pairModel.fragmentPlace(target.id(), XF());
-	pairModel.fragmentPlace(source.id(), c.mXF);
-	pairModel.group(QSet<const Placement *>()
-		<< pairModel.placedFragment(target.id())
-		<< pairModel.placedFragment(source.id()));
-
-	QString xml = writeToString(pairModel);
-	QApplication::clipboard()->setText(xml);
 }
 
 void MatchTileView::copySelection() {

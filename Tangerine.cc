@@ -300,21 +300,21 @@ void Tangerine::exportDatabase() {
 void Tangerine::addAttribute() {
 	bool ok;
 
-	QString name = QInputDialog::getText(this, tr("Add attribute"), tr("Choose an attribute name"), QLineEdit::Normal, tr("Wha?"), &ok);
+	QString name = QInputDialog::getText(this, tr("Add attribute"), tr("Choose an attribute name"), QLineEdit::Normal, tr(""), &ok).toLower();
 
 	if (ok && !name.isEmpty()) {
 		QStringList typeList = QStringList() << "Text" << "Real" << "Integer";
 
-		QString type = QInputDialog::getItem(this, tr("Add attribute"), tr("What type is the field?"), typeList, 0, false, &ok);
+		QString type = QInputDialog::getItem(this, tr("Add attribute"), tr("What type is the field?"), typeList, 0, false, &ok).toLower();
 
 		if (ok && !type.isEmpty()) {
-			QString defaultValue = QInputDialog::getText(this, tr("Add attribute"), tr("Input a default value"), QLineEdit::Normal, tr("Wha?"), &ok);
+			QString defaultValue = QInputDialog::getText(this, tr("Add attribute"), tr("Input a default value"), QLineEdit::Normal, tr(""), &ok);
 
-			if (ok && !defaultValue.isEmpty()) {
+			if (ok && (!defaultValue.isEmpty() || type == "text")) {
 				type = type.toLower();
 
 				if (type == "text") {
-					mModel.addField(name, defaultValue);
+					mModel.addField(name, defaultValue.isEmpty() ? QString() : defaultValue);
 				}
 				else if (type == "real") {
 					mModel.addField(name, defaultValue.toDouble());
@@ -325,6 +325,9 @@ void Tangerine::addAttribute() {
 				else {
 					qDebug() << "Unknown type";
 				}
+			}
+			else {
+				qDebug() << "Didn't add attribute:" << type << ":" << defaultValue;
 			}
 		}
 	}
