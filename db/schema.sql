@@ -34,3 +34,7 @@ CREATE TABLE `old_volume` (
 	`match_id` INTEGER PRIMARY KEY,
 	`old_volume` REAL
 );
+CREATE TABLE `comments` (
+	`match_id` INTEGER PRIMARY KEY,
+	`comments` TEXT
+);
