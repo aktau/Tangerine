@@ -217,12 +217,12 @@ void MatchTileView::createActions() {
 	mFindDuplicatesAction->setStatusTip(tr("List every match that consists of the same fragments"));
 	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(findDuplicates()));
 
-	mMarkAsDuplicateAction = new QAction(tr("Mark all selected matches as duplicates"), this);
-	mMarkAsDuplicateAction->setStatusTip(tr("Mark all selected matches as duplicates"));
+	mMarkAsDuplicateAction = new QAction(tr("Mark as duplicates"), this);
+	mMarkAsDuplicateAction->setStatusTip(tr("Mark all selected matches as duplicates, afterwards choose a master match"));
 	connect(mMarkAsDuplicateAction, SIGNAL(triggered()), this, SLOT(markDuplicates()));
 
-	mMarkAsMasterAction = new QAction(tr("Mark this match as being the master duplicate"), this);
-	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate"));
+	mMarkAsMasterAction = new QAction(tr("Mark as master"), this);
+	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate of it's group"));
 	connect(mMarkAsMasterAction, SIGNAL(triggered()), this, SLOT(markAsMaster()));
 
 	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting neighbours"), this);
@@ -385,7 +385,11 @@ void MatchTileView::markDuplicates() {
 		else {
 			int master = mSelectionModel->currentIndex();
 
-			// from now on the model should handle things
+			if (!mModel->setDuplicates(s().duplicateCandidates, master)) {
+				qDebug() << "MatchTileView::markDuplicates: something went wrong setting duplicates";
+			}
+
+			s().duplicateCandidates.clear();
 		}
 	}
 	else {
@@ -403,19 +407,7 @@ void MatchTileView::markDuplicates() {
 }
 
 void MatchTileView::markAsMaster() {
-	int current = mSelectionModel->currentIndex();
-
-	if (mModel->isValidIndex(current)) {
-		IFragmentConf &match = mModel->get(current);
-
-		mModel->genericFilter(
-			"duplicates",
-			QString("(target_name = '%1' AND source_name = '%2') OR (target_name = '%2' AND source_name = '%1')").arg(match.getSourceId()).arg(match.getTargetId())
-		);
-	}
-	else {
-		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
-	}
+	//TODO
 }
 
 void MatchTileView::updateStatusBar() {
@@ -452,8 +444,10 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	else {
 		const IFragmentConf& match = mModel->get(fcidx);
 
+		int duplicates = match.getInt("num_duplicates", 0);
+
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt());
+		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), duplicates != 0);
 
 		if (mSelectionModel->isSelected(fcidx)) {
 			mThumbs[tidx]->select();
@@ -464,6 +458,13 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 				.arg(Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id())
 				.arg(match.getString("error", ""))
 				.arg(match.getString("volume", ""));
+
+		if (duplicates != 0) {
+			qDebug() << "Adding duplicates:" << duplicates;
+			//tooltip += "duplicates: " + duplicates;
+			tooltip += "<br /><b>Duplicates</b>: " + QString::number(duplicates);
+			//tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + QString::number(duplicates) + "</span>";
+		}
 
 		QString comment = match.getString("comment", QString());
 

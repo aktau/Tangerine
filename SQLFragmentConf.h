@@ -19,6 +19,7 @@ namespace thera {
 		//	 // leave it to the constructor, for now...
 
 		public:
+			virtual int index() const; // index is something different than ID in the original FragmentConf, but in SQLFragmentConf we define it to be the same
 			virtual void updateID(int id);
 			virtual int getID() const;
 

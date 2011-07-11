@@ -200,6 +200,46 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 	return success;
 }
 
+/**
+ * @param name
+ * 		The name of the new attribute
+ * @param sql
+ * 		SQL code to create the view which will create a VIEW that can serve as a regular attribute
+ */
+bool SQLDatabase::addMetaMatchField(const QString& name, const QString& sql) {
+	if (matchHasField(name)) {
+		qDebug() << "SQLDatabase::addMetaMatchField: field" << name << "already exists";
+
+		return false;
+	}
+
+	if (!isOpen()) {
+		qDebug() << "SQLDatabase::addMatchField: database wasn't open";
+
+		return false;
+	}
+
+	bool success = false;
+
+	QSqlDatabase db = database();
+	QSqlQuery query(db);
+
+	db.transaction();
+
+	success = query.exec(QString("CREATE VIEW IF NOT EXISTS %1 AS %2").arg(name).arg(sql));
+	if (success) {
+		qDebug() << "SQLDatabase::addMetaMatchField: Create view appears to have been succesful, query:" << query.lastQuery();
+		emit matchFieldsChanged();
+	}
+	else {
+		qDebug() << "SQLDatabase::addMetaMatchField: couldn't create VIEW table:" << query.lastError()
+			<< "\nQuery executed:" << query.lastQuery();
+	}
+	db.commit();
+
+	return success;
+}
+
 bool SQLDatabase::removeMatchField(const QString& name) {
 	if (!matchHasField(name)) {
 		qDebug() << "SQLDatabase::removeMatchField: field" << name << "doesn't exist";
@@ -222,9 +262,14 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 
 	QSqlDatabase db(database());
 	QSqlQuery query(db);
+	QString queryString;
+
+	if (mNormalMatchFields.contains(name)) queryString = QString("DROP TABLE %1").arg(name);
+	else if (mViewMatchFields.contains(name)) queryString = QString("DROP VIEW %1").arg(name);
+	else qDebug() << "SQLDatabase::removeMatchField: this should never have happened!";
 
 	db.transaction();
-	if (!query.exec(QString("DROP TABLE %1").arg(name))) {
+	if (!query.exec(queryString)) {
 		qDebug() << "SQLDatabase::removeMatchField couldn't drop table:" << query.lastError()
 				<< "\nQuery executed:" << query.lastQuery();
 	}
@@ -570,9 +615,7 @@ void SQLDatabase::resetQueries() {
 }
 
 void SQLDatabase::makeFieldsSet() {
-	if (!isOpen()) {
-		return;
-	}
+	if (!isOpen()) return;
 
 	// clear just in case
 	mMatchFields.clear();
@@ -585,6 +628,20 @@ void SQLDatabase::makeFieldsSet() {
 		if (table != "matches") {
 			// check if the table contains a match_id attribute
 			if (tableFields(table).contains("match_id")) {
+				mNormalMatchFields << table;
+				mMatchFields << table;
+			}
+		}
+	}
+
+	// include the view attributes as well but add them to mViewMatchFields as well so we can differentiate them later
+	// from the normal ones
+	foreach (const QString& table, db.tables(QSql::Views)) {
+		// check if the tables name is not the 'matches' table itself
+		if (table != "matches") {
+			// check if the table contains a match_id attribute
+			if (tableFields(table).contains("match_id")) {
+				mViewMatchFields << table;
 				mMatchFields << table;
 			}
 		}

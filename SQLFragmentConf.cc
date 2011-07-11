@@ -21,6 +21,10 @@ namespace thera {
 		mId = id;
 	}
 
+	int SQLFragmentConf::index() const {
+		return getID();
+	}
+
 	int SQLFragmentConf::getID() const {
 		return mId;
 	}
@@ -32,6 +36,8 @@ namespace thera {
 			mDb->matchSetValue(mId, field, value);
 		}
 		else {
+			qDebug() << "SQLFragmentConf::setMetaData: field" << field << "was not found in" << mDb->matchFields() << ", tried to insert" << value;
+
 			return false;
 		}
 
@@ -45,6 +51,8 @@ namespace thera {
 			mDb->matchSetValue(mId, field, value);
 		}
 		else {
+			qDebug() << "SQLFragmentConf::setMetaData: field" << field << "was not found in" << mDb->matchFields() << ", tried to insert" << value;
+
 			return false;
 		}
 

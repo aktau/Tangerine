@@ -75,7 +75,7 @@ namespace thera {
 
 		// METHODS
 		public:
-			virtual int index() const { return 1; } // as far as I can see this is only important for metadata purposes (Nicolas)
+			virtual int index() const = 0; // as far as I can see this is only important for metadata purposes (Nicolas)
 			virtual void updateID(int id) = 0;
 
 			virtual bool setMetaData(const QString &field, const QString &value) const = 0;
@@ -136,26 +136,5 @@ namespace thera {
 			}
 	};
 }
-
-			/*
-			static const QStringList& metaDataOrderedFieldNames(void) { return mMetaDataOrderedFieldNames; }
-			static MetaDataField  *addMetaDataField(const QString &name, MetaDataField::Type type, const MetaDataField::Description &description);
-			static MetaDataField *metaDataField(const QString &field) {
-			  QHash<QString,MetaDataField*>::const_iterator  it(mMetaData.find(field));
-			  if (it == mMetaData.end())
-				return NULL;
-			  else
-				return *it;
-			}
-			*/
-
-			/*
-			virtual friend FragmentConf operator&&(FragmentConf h1, FragmentConf h2) = 0;
-			virtual friend FragmentConf operator||(FragmentConf h1, FragmentConf h2) = 0;
-			virtual friend bool operator<(FragmentConf h1, FragmentConf h2) = 0;
-			virtual friend bool lessAllFields(FragmentConf h1, FragmentConf h2) = 0;
-			virtual friend bool  lessFragmentIDs(FragmentConf h1, FragmentConf h2) = 0;
-			virtual friend bool  lessRelevance(FragmentConf h1, FragmentConf h2) = 0;
-			*/
 
 #endif /* IFRAGMENTCONF_H_ */

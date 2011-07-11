@@ -34,8 +34,8 @@ class SQLDatabase : public QObject {
 		virtual bool addMatchField(const QString& name, double defaultValue);
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
 		virtual bool addMatchField(const QString& name, int defaultValue);
+		virtual bool addMetaMatchField(const QString& name, const QString& sql); // a metafield is a field computed from other fields, it is implemented through an SQL view
 		virtual bool removeMatchField(const QString& name);
-		//virtual QString fieldSqlType(const QString& field) const = 0;
 
 		// in the filters map, the key is the field dependencies and the value is the SQL clause that will be put into a WHERE, they will be concatenated with AND
 		// one could perfectly also include AND's and OR's inside of the value component
@@ -96,6 +96,8 @@ class SQLDatabase : public QObject {
 		// a set that stores all the available fields/attributes for matches
 		typedef QSet<QString> MatchFieldSet;
 		MatchFieldSet mMatchFields;
+		MatchFieldSet mNormalMatchFields; // fields that exist as real database tables
+		MatchFieldSet mViewMatchFields; // fiels that exists solely as views
 
 		static const QString CONN_NAME;
 		static const QString SCHEMA_FILE;

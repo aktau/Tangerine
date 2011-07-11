@@ -10,6 +10,7 @@ namespace thera {
 			virtual ~InvalidFragmentConf() { }
 
 		public:
+			virtual int index() const { qDebug() << "InvalidFragmentConf::index: tried to access index"; return 0; }
 			virtual void updateID(int id) { qDebug() << "InvalidFragmentConf::updateID: tried to set id" << id; }
 
 			virtual bool setMetaData(const QString &field, const QString &value) const { qDebug() << "InvalidFragmentConf::setMetaData: " << field << "|" << value; return false; }

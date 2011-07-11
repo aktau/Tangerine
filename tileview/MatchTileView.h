@@ -27,7 +27,7 @@ class ThumbLabel : public QLabel {
 		Q_OBJECT;
 
 	public:
-		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false), mStatus(IMatchModel::UNKNOWN) {
+		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false), mIsDuplicate(false), mStatus(IMatchModel::UNKNOWN) {
 			// ensure 100 MB of cache
 			QPixmapCache::setCacheLimit(102400);
 		}
@@ -40,13 +40,21 @@ class ThumbLabel : public QLabel {
 				mStatus = IMatchModel::UNKNOWN;
 			}
 
-			setThumbnail(file, mStatus);
+			setThumbnail(file, mStatus, mIsDuplicate);
 		}
 
-		void setThumbnail(const QString& file, IMatchModel::Status status) {
+		void setThumbnail(const QString& file, IMatchModel::Status status, bool isDuplicate = false) {
 			mSource = file;
 			mStatus = status;
 			mSelected = false;
+			mIsDuplicate = isDuplicate;
+
+			paintThumbnail();
+			paintStatus();
+		}
+
+		void setDuplicate(bool value) {
+			mIsDuplicate = value;
 
 			paintThumbnail();
 			paintStatus();
@@ -147,7 +155,40 @@ class ThumbLabel : public QLabel {
 				QPixmapCache::insert(mSource, p);
 			}
 
-			setPixmap(p);
+			if (!mIsDuplicate) {
+				setPixmap(p);
+			}
+			else {
+				QPixmap final = *pixmap();
+				final.fill(Qt::black);
+				QPainter painter(&final);
+
+				const int statusOffset = 10;
+				const int spare = 15;
+				const int layerMaxWidth = width() - spare;
+				const int layerMaxHeight = height() - spare;
+				const int numlayers = 3;
+				const int spacePerLayer = spare / numlayers;
+
+				for (int i = numlayers; i > 0; --i) {
+					const int greyval = 60 + (160 - 60) / i;
+					QColor c(greyval, greyval, greyval);
+
+					const int offsetFromBorder = spacePerLayer * (numlayers + 1 - i);
+
+					// bottom row
+					painter.fillRect(spacePerLayer * i, height() - offsetFromBorder, layerMaxWidth, spacePerLayer, c);
+
+					// right column
+					painter.fillRect(width() - offsetFromBorder, statusOffset + spacePerLayer * i, spacePerLayer, layerMaxHeight - statusOffset, c);
+				}
+
+				p = p.scaled(width() - spare, height() - spare, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+				painter.drawPixmap(0,0,p);
+
+				setPixmap(final);
+
+			}
 		}
 
 	public:
@@ -155,6 +196,7 @@ class ThumbLabel : public QLabel {
 
 	private:
 		bool mSelected;
+		bool mIsDuplicate;
 
 		QString mSource;
 

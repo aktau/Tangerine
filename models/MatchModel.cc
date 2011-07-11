@@ -137,8 +137,18 @@ QString MatchModel::getFilter() const {
 	return mNameFilter;
 }
 
-bool MatchModel::setDuplicates(QList<int> duplicates, int master) {
-	if (!isValidIndex(master)) return false;
+bool MatchModel::setDuplicates(QList<int> duplicatelist, int master) {
+	mDb->addMetaMatchField("dd", "SELECT duplicate, COUNT(duplicate) FROM duplicate GROUP BY duplicate");
+	mDb->addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
+
+	if (!isValidIndex(master)) {
+		qDebug() << "MatchModel::setDuplicates: master wasn't valid";
+
+		return false;
+	}
+
+	QSet<int> duplicates = duplicatelist.toSet();
+	duplicates.remove(master);
 
 	// if the master to be was in a duplicate group, point all duplicates to it now
 	// the master will almost certainly be in the current window so it should be
@@ -149,17 +159,41 @@ bool MatchModel::setDuplicates(QList<int> duplicates, int master) {
 
 	if (duplicateGroup != 0) {
 		// if we're here the master to be is already part of a group
+		// set the parent/duplicate of the master to 0 (which means that it is the master of a group)
+		conf.setMetaData("duplicate", 0);
 
 		// execute SQL query
+		// first part of filter = all matches who have the same duplicate as the new master
+		// second part of filter = the current master
+		SQLFilter filter(mDb);
+		filter.setFilter("filter", QString("duplicate = %1 OR matches.match_id = %1").arg(duplicateGroup));
+		//filter.setFilter("filter", QString("matches.match_id IN (%1)").arg(disabled.join(",")));
+
+		QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+
+		qDebug() << "MatchModel::setDuplicates: FORMER GROUP setting duplicate =" << conf.index() << "on" << list.size() << "matches";
+		foreach (const SQLFragmentConf& c, list) {
+			c.setMetaData("duplicate", conf.index());
+		}
+	}
+
+	// point all the matches referenced in the duplicates argument to the master
+	qDebug() << "MatchModel::setDuplicates: NEW GROUP setting duplicate =" << conf.index() << "on" << duplicates.size() << "matches" << duplicates;
+	foreach (int modelId, duplicates) {
+		if (!isValidIndex(modelId)) {
+			qDebug() << "MatchModel::setDuplicates: model id wasn't valid";
+
+			continue;
+		}
+
+		IFragmentConf& duplicate = get(modelId);
+		duplicate.setMetaData("duplicate", conf.index());
 	}
 
 	return true;
 }
 
 void MatchModel::populateModel() {
-	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
-	//SQLFilter filter(mDb);
-
 	QElapsedTimer timer;
 	timer.start();
 

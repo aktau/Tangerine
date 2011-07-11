@@ -26,7 +26,7 @@ class SQLFilter {
 
 		// for example:
 		// 	key: "sourcetargetfilter"
-		//	filter: "(source_name || target_name) LIKE %WDC_0043%"
+		//	filter: "(source_name || target_name) LIKE '%WDC_0043%'"
 		virtual void setFilter(const QString& key, const QString& filter);
 		virtual void removeFilter(const QString& key);
 		virtual void clear();
