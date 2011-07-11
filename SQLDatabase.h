@@ -25,7 +25,7 @@ class SQLDatabase : public QObject {
 
 		bool isOpen() const;
 
-		// we could probably provide a base implementation fo all non-SQLite db's
+		// we could probably provide a base implementation for all non-SQLite db's
 		virtual void connect(const QString& name) = 0;
 
 		virtual void loadFromXML(const QString& XMLFile);
@@ -81,7 +81,7 @@ class SQLDatabase : public QObject {
 		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
 
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
-		template<typename T> T matchGetValue(int id, const QString& field);
+		template<typename T> T matchGetValue(int id, const QString& field, const T& deflt);
 
 	private:
 		// disabling copy-constructor and copy-assignment for now
@@ -146,7 +146,7 @@ template<typename T> inline void SQLDatabase::matchSetValue(int id, const QStrin
 	query.finish();
 }
 
-template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field) {
+template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field, const T& deflt) {
 	if (!mFieldQueryMap.contains(field)) {
 		// doesn't exist yet, make and insert
 		QSqlQuery *q = new QSqlQuery(database());
@@ -165,7 +165,7 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 			return query.value(0).value<T>();
 		}
 		else {
-			qDebug() << "SQLDatabase::matchGetValue: no record was returned";
+			//qDebug() << "SQLDatabase::matchGetValue: no record was returned";
 		}
 	}
 	else {
@@ -177,7 +177,8 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 
 	query.finish();
 
-	return QVariant(0).value<T>();
+	//return QVariant(0).value<T>();
+	return deflt;
 }
 
 inline QSqlDatabase SQLDatabase::database() const {

@@ -83,6 +83,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 
 	mStatusMenu->addSeparator();
 	mDuplicatesMenu = mStatusMenu->addMenu(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), "Duplicates");
+	mDuplicatesMenu->addAction(mListDuplicatesAction);
 	mDuplicatesMenu->addAction(mFindDuplicatesAction);
 	mDuplicatesMenu->addAction(mMarkAsDuplicateAction);
 	mDuplicatesMenu->addAction(mMarkAsMasterAction);
@@ -213,8 +214,12 @@ void MatchTileView::createActions() {
 	mCommentAction->setStatusTip(tr("Add a comment to the match"));
 	connect(mCommentAction, SIGNAL(triggered()), this, SLOT(comment()));
 
-	mFindDuplicatesAction = new QAction(tr("List all possible duplicates of this match"), this);
-	mFindDuplicatesAction->setStatusTip(tr("List every match that consists of the same fragments"));
+	mListDuplicatesAction = new QAction(QIcon(":/rcc/fatcow/32x32/zoom.png"), tr("List current known duplicates"), this);
+	mListDuplicatesAction->setStatusTip(tr("List all known duplicates of this match"));
+	connect(mListDuplicatesAction, SIGNAL(triggered()), this, SLOT(listDuplicates()));
+
+	mFindDuplicatesAction = new QAction(QIcon(":/rcc/fatcow/32x32/zoom.png"), tr("Choose duplicates"), this);
+	mFindDuplicatesAction->setStatusTip(tr("List every match that consists of the same fragments, this makes it easy to choose duplicates"));
 	connect(mFindDuplicatesAction, SIGNAL(triggered()), this, SLOT(findDuplicates()));
 
 	mMarkAsDuplicateAction = new QAction(tr("Mark as duplicates"), this);
@@ -361,6 +366,27 @@ void MatchTileView::comment() {
 	}
 }
 
+void MatchTileView::listDuplicates() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		IFragmentConf &match = mModel->get(current);
+
+		int parent = match.getInt("duplicate", 0);
+		int master = (parent == 0) ? match.index() : parent;
+
+		qDebug() <<  "parent =" << parent << "and index =" << match.index();
+
+		mModel->genericFilter(
+			"duplicates",
+			QString("duplicate = %1 OR matches.match_id = %1").arg(master)
+		);
+	}
+	else {
+		qDebug() << "MatchTileView::listDuplicates: invalid model index" << current;
+	}
+}
+
 void MatchTileView::findDuplicates() {
 	int current = mSelectionModel->currentIndex();
 
@@ -389,6 +415,8 @@ void MatchTileView::markDuplicates() {
 				qDebug() << "MatchTileView::markDuplicates: something went wrong setting duplicates";
 			}
 
+			refresh();
+
 			s().duplicateCandidates.clear();
 		}
 	}
@@ -407,7 +435,11 @@ void MatchTileView::markDuplicates() {
 }
 
 void MatchTileView::markAsMaster() {
-	//TODO
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		mModel->setMaster(current);
+	}
 }
 
 void MatchTileView::updateStatusBar() {
@@ -444,7 +476,13 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	else {
 		const IFragmentConf& match = mModel->get(fcidx);
 
+		//int duplicates = 1;
+		//QElapsedTimer timer;
+		//timer.start();
+
 		int duplicates = match.getInt("num_duplicates", 0);
+
+		//qDebug() << "MatchTileView::updateThumbnail: getting num_duplicates costs" << timer.elapsed() << "msec";
 
 		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
 		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), duplicates != 0);
@@ -460,10 +498,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 				.arg(match.getString("volume", ""));
 
 		if (duplicates != 0) {
-			qDebug() << "Adding duplicates:" << duplicates;
-			//tooltip += "duplicates: " + duplicates;
 			tooltip += "<br /><b>Duplicates</b>: " + QString::number(duplicates);
-			//tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + QString::number(duplicates) + "</span>";
 		}
 
 		QString comment = match.getString("comment", QString());
@@ -753,7 +788,7 @@ void MatchTileView::modelOrderChanged() {
 }
 
 void MatchTileView::selectionChanged(const QList<int>& selected, const QList<int>& deselected) {
-	qDebug() << "MatchTileView::selectionChanged: selection changed, selected:" << selected.size() << "|| deselected:" << deselected.size();
+	//qDebug() << "MatchTileView::selectionChanged: selection changed, selected:" << selected.size() << "|| deselected:" << deselected.size();
 
 	QList<int> viewIndices = modelToViewIndex(selected);
 
@@ -769,7 +804,9 @@ void MatchTileView::selectionChanged(const QList<int>& selected, const QList<int
 }
 
 void MatchTileView::currentThumbChanged(int current, int previous) {
-	qDebug() << "MatchTileView::currentThumbChanged: current thumb changed to" << current << "( was" << previous << ")";
+	Q_UNUSED(current);
+	Q_UNUSED(previous);
+	//qDebug() << "MatchTileView::currentThumbChanged: current thumb changed to" << current << "( was" << previous << ")";
 }
 
 /*
@@ -895,11 +932,16 @@ void MatchTileView::scroll(int amount) {
 
 	qDebug() << "SCROLLIN";
 
+	QElapsedTimer timer;
+	timer.start();
+
 	// reload thumbnails
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (max >= i + new_pos) ? i + new_pos : -1);
 	}
+
+	qDebug() << "Scroll: updating all thumbnails cost" << timer.elapsed() << "msec";
 
 	updateStatusBar();
 }
@@ -912,11 +954,16 @@ void MatchTileView::refresh() {
 	s().total = max;
 	s().cur_pos = new_pos;
 
+	QElapsedTimer timer;
+	timer.start();
+
 	// reload thumbnails
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
 	}
+
+	qDebug() << "Refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
 
 	updateStatusBar();
 }

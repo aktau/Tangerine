@@ -46,6 +46,7 @@ void DetailScene::tabletopChanged() {
 	foreach (const QString& id, mPinnedFragments) {
 		if (!mTabletopModel->contains(id)) {
 			Database::fragment(id)->mesh(Fragment::LORES_MESH).unpin();
+			Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
 			//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
 			mPinnedFragments.remove(id);
 			//mesh_colors.remove(id);

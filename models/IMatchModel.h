@@ -14,6 +14,12 @@ class IMatchModel : public QObject {
 		Q_OBJECT
 
 	public:
+		typedef enum {
+			ABSORB,
+			ORPHAN,
+			DUPLICATE_MODES
+		} DuplicateMode;
+
 		enum Status { UNKNOWN, YES, MAYBE, NO, CONFLICT, NUM_STATUSES };
 		static QStringList STATUS_STRINGS;
 
@@ -36,7 +42,8 @@ class IMatchModel : public QObject {
 		virtual QSet<QString> fieldList() const = 0;
 		virtual QString getFilter() const = 0;
 
-		virtual bool setDuplicates(QList<int> duplicates, int master) = 0;
+		virtual bool setDuplicates(QList<int> duplicates, int master, DuplicateMode mode = IMatchModel::ABSORB) = 0;
+		virtual bool setMaster(int master) = 0;
 
 	signals:
 		void modelChanged();

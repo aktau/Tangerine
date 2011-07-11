@@ -75,8 +75,10 @@ namespace thera {
     	assert(mId != -1 && mDb != NULL);
 
     	if (mDb->matchHasField(field)) {
-    		return mDb->matchGetValue<T>(mId, field);
+    		return mDb->matchGetValue<T>(mId, field, deflt);
     	}
+
+    	qDebug() << "SQLFragmentConf::get: match doesn't have field" << field;
 
     	return deflt;
     }

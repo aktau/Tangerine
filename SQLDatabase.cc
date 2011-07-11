@@ -106,6 +106,10 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 			QDomElement root(doc.documentElement());
 
 			parseXML(root);
+
+			addMatchField("comment", "");
+			addMatchField("duplicate", 0);
+			addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
 		}
 		else {
 			qDebug() << "Reading XML file" << XMLFile << "failed";

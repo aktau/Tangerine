@@ -137,9 +137,16 @@ QString MatchModel::getFilter() const {
 	return mNameFilter;
 }
 
-bool MatchModel::setDuplicates(QList<int> duplicatelist, int master) {
-	mDb->addMetaMatchField("dd", "SELECT duplicate, COUNT(duplicate) FROM duplicate GROUP BY duplicate");
-	mDb->addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
+/**
+ * What do the duplicate modes do?
+ *
+ * ABSORB: all items in duplicates will have their entire respective groups (if they had one) pointing to the new master.
+ * ORPHAN: all items that refered to an item that is in duplicates will now be their own master (i.e.: they will be orphaned)
+ */
+bool MatchModel::setDuplicates(QList<int> duplicatelist, int master, DuplicateMode mode) {
+	// will create the num_duplicates view if it doesn't exist yet
+	// TODO: if we switch to a remote database, we need to save on every query, so try to eliminate this one as it will in general be redundant
+	//mDb->addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
 
 	if (!isValidIndex(master)) {
 		qDebug() << "MatchModel::setDuplicates: master wasn't valid";
@@ -155,42 +162,73 @@ bool MatchModel::setDuplicates(QList<int> duplicatelist, int master) {
 	// fast to retrieve it.
 	IFragmentConf& conf = get(master);
 
-	int duplicateGroup = conf.getInt("duplicate", 0);
-
-	if (duplicateGroup != 0) {
-		// if we're here the master to be is already part of a group
-		// set the parent/duplicate of the master to 0 (which means that it is the master of a group)
-		conf.setMetaData("duplicate", 0);
-
-		// execute SQL query
-		// first part of filter = all matches who have the same duplicate as the new master
-		// second part of filter = the current master
-		SQLFilter filter(mDb);
-		filter.setFilter("filter", QString("duplicate = %1 OR matches.match_id = %1").arg(duplicateGroup));
-		//filter.setFilter("filter", QString("matches.match_id IN (%1)").arg(disabled.join(",")));
-
-		QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
-
-		qDebug() << "MatchModel::setDuplicates: FORMER GROUP setting duplicate =" << conf.index() << "on" << list.size() << "matches";
-		foreach (const SQLFragmentConf& c, list) {
-			c.setMetaData("duplicate", conf.index());
-		}
+	int newIdForStragglers = 0;
+	switch (mode) {
+		case ABSORB: newIdForStragglers = conf.index(); break;
+		case ORPHAN: newIdForStragglers = 0; break;
+		default: qDebug() << "MatchModel::setDuplicates: unknown duplicate mode";
 	}
 
 	// point all the matches referenced in the duplicates argument to the master
 	qDebug() << "MatchModel::setDuplicates: NEW GROUP setting duplicate =" << conf.index() << "on" << duplicates.size() << "matches" << duplicates;
 	foreach (int modelId, duplicates) {
-		if (!isValidIndex(modelId)) {
-			qDebug() << "MatchModel::setDuplicates: model id wasn't valid";
-
-			continue;
-		}
+		if (!isValidIndex(modelId)) { qDebug() << "MatchModel::setDuplicates: model id wasn't valid"; continue; }
 
 		IFragmentConf& duplicate = get(modelId);
+		int duplicateGroup = duplicate.getInt("duplicate", 0);
+
+		if (duplicateGroup == 0) {
+			// this means the duplicate was the master of a group, in which case we'll have to convert its group as well
+			convertGroupToMaster(duplicate.index(), newIdForStragglers);
+		}
+		else {
+			// this means the duplicate was already part of a group, but wasn't the master of it
+			// we leave this old group alone because it is still intact
+		}
+
+		// this is likely unnecessary after convertGroupToMaster with ABSORB, but not harmful
 		duplicate.setMetaData("duplicate", conf.index());
 	}
 
 	return true;
+}
+
+bool MatchModel::setMaster(int master) {
+	if (!isValidIndex(master)) {
+		qDebug() << "MatchModel::setDuplicates: master wasn't valid";
+
+		return false;
+	}
+
+	// if the master to be was in a duplicate group, point all duplicates to it now
+	// the master will almost certainly be in the current window so it should be
+	// fast to retrieve it.
+	IFragmentConf& conf = get(master);
+
+	int duplicateGroup = conf.getInt("duplicate", 0);
+
+	// if the new master is already part of a group
+	if (duplicateGroup != 0) {
+		// set the parent/duplicate of the master to 0 (which means that it is the master of a group)
+		conf.setMetaData("duplicate", 0);
+
+		convertGroupToMaster(duplicateGroup, conf.index());
+	}
+
+	return true;
+}
+
+void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
+	// first part of filter = all matches who have the same duplicate as the new master
+	// second part of filter = the current master
+	SQLFilter filter(mDb);
+	filter.setFilter("filter", QString("duplicate = %1 OR matches.match_id = %1").arg(groupMatchId));
+
+	QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+
+	foreach (const SQLFragmentConf& c, list) {
+		c.setMetaData("duplicate", masterMatchId);
+	}
 }
 
 void MatchModel::populateModel() {

@@ -38,7 +38,8 @@ class MatchModel : public IMatchModel {
 		virtual QSet<QString> fieldList() const;
 		virtual QString getFilter() const;
 
-		virtual bool setDuplicates(QList<int> duplicates, int master);
+		virtual bool setDuplicates(QList<int> duplicates, int master, DuplicateMode mode = IMatchModel::ABSORB);
+		virtual bool setMaster(int master);
 
 	private:
 		void requestWindow(int windowIndex);
@@ -50,6 +51,8 @@ class MatchModel : public IMatchModel {
 		void resetWindow();
 		void resetSort();
 		void resetFilter();
+
+		void convertGroupToMaster(int groupMatchId, int masterMatchId);
 
 	private slots:
 		//void matchCountChanged();

@@ -38,6 +38,7 @@ class ThumbLabel : public QLabel {
 		void setThumbnail(const QString& file = QString()) {
 			if (file.isEmpty()) {
 				mStatus = IMatchModel::UNKNOWN;
+				mIsDuplicate = false;
 			}
 
 			setThumbnail(file, mStatus, mIsDuplicate);
@@ -238,6 +239,7 @@ class MatchTileView : public QScrollArea {
 	    void filterStatuses();
 	    void comment();
 
+	    void listDuplicates();
 	    void findDuplicates();
 	    void markDuplicates();
 	    void markAsMaster();
@@ -276,7 +278,7 @@ class MatchTileView : public QScrollArea {
 		QMenu *mDuplicatesMenu;
 		QAction *mCopyAction;
 		QAction *mCommentAction;
-		QAction *mFindDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;
+		QAction *mFindDuplicatesAction, *mListDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;
 		QAction *mFindConflictingAction;
 		QAction *mFindNonconflictingAction;
 		QList<QAction *> mStatusMenuActions;
