@@ -115,7 +115,7 @@ void MatchTileView::setModel(IMatchModel *model) {
 		mModel = model;
 
 		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
-		connect(mModel, SIGNAL(orderChanged()), this, SLOT(modelOrderChanged()));
+		connect(mModel, SIGNAL(orderChanged()), this, SLOT(modelChanged()));
 
 		// clear stack
 		mStates.clear();
@@ -829,19 +829,6 @@ void MatchTileView::modelChanged() {
 	refresh();
 }
 
-void MatchTileView::modelOrderChanged() {
-	qDebug() << "MatchTileView::modelOrderChanged: called";
-
-	if (!s().ignorePositionReset) {
-		s().currentPosition = 0;
-	}
-	else {
-		s().ignorePositionReset = false;
-	}
-
-	refresh();
-}
-
 void MatchTileView::selectionChanged(const QList<int>& selected, const QList<int>& deselected) {
 	//qDebug() << "MatchTileView::selectionChanged: selection changed, selected:" << selected.size() << "|| deselected:" << deselected.size();
 
@@ -987,8 +974,6 @@ void MatchTileView::saveState() {
 }
 
 void MatchTileView::goBack() {
-	qDebug() << "going back doc?";
-
 	if (mStates.size() > 1) {
 		mStates.pop_back();
 
@@ -1000,39 +985,16 @@ void MatchTileView::goBack() {
 
 		mModel->setParameters(s().parameters);
 	}
-	else {
-		qDebug() << "oops";
-	}
 }
 
 void MatchTileView::scroll(int amount) {
-	int max = mModel->size();
+	const int new_pos = qMax(0, qMin(s().currentPosition + amount, mModel->size() - mNumThumbs));
 
-	int new_pos = qMax(s().currentPosition + amount, 0);
+	if (new_pos != s().currentPosition) {
+		s().currentPosition = new_pos;
 
-	// update the current state
-	s().total = max;
-	new_pos = qMax(0, qMin(new_pos, max - mNumThumbs));
-
-	if (new_pos == s().currentPosition) {
-		return;
+		refresh();
 	}
-
-	s().currentPosition = new_pos;
-
-	QElapsedTimer timer;
-	timer.start();
-
-	// reload thumbnails
-	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
-	for (int i = 0; i < mNumThumbs; ++i) {
-		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
-		updateThumbnail(i, (max >= i + new_pos) ? i + new_pos : -1);
-	}
-
-	qDebug() << "Scroll: updating all thumbnails cost" << timer.elapsed() << "msec";
-
-	updateStatusBar();
 }
 
 void MatchTileView::refresh() {

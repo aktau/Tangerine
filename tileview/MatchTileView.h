@@ -44,7 +44,6 @@ class MatchTileView : public QScrollArea {
 	    void copySelection();
 
 	    void modelChanged();
-	    void modelOrderChanged();
 
 	    void selectionChanged(const QList<int>& selected, const QList<int>& deselected);
 	    void currentThumbChanged(int current, int previous);
