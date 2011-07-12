@@ -1020,12 +1020,11 @@ void MatchTileView::scroll(int amount) {
 
 	s().currentPosition = new_pos;
 
-	qDebug() << "SCROLLIN";
-
 	QElapsedTimer timer;
 	timer.start();
 
 	// reload thumbnails
+	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (max >= i + new_pos) ? i + new_pos : -1);
@@ -1048,6 +1047,7 @@ void MatchTileView::refresh() {
 	timer.start();
 
 	// reload thumbnails
+	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
 	for (int i = 0; i < mNumThumbs; ++i) {
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);

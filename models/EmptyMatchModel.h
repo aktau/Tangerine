@@ -19,6 +19,8 @@ class EmptyMatchModel : public IMatchModel {
 		virtual ~EmptyMatchModel() { }
 
 	public:
+		void prefetchHint(int, int) { qDebug() << "EmptyMatchModel::prefetchHint"; }
+
 		bool isValidIndex(int index) const { qDebug() << "EmptyMatchModel::isValidIndex: tried to check if index" << index << "was valid"; return false; }
 		int size() const { return 0; }
 		void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) { qDebug() << "EmptyMatchModel::sort: Attempted to sort, field:" << field << "| order:" << order; }

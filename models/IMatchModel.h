@@ -29,6 +29,8 @@ class IMatchModel : public QObject {
 		virtual ~IMatchModel() { }
 
 	public:
+		virtual void prefetchHint(int start, int end) = 0; // some model types may completely ignore this
+
 		virtual bool isValidIndex(int index) const = 0;
 		virtual int size() const = 0;
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) = 0;

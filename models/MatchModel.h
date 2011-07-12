@@ -22,7 +22,10 @@ class MatchModel : public IMatchModel {
 		virtual ~MatchModel();
 
 	public:
+		virtual void prefetchHint(int start, int end);
+
 		virtual void setWindowSize(int size);
+		virtual int getWindowSize() const;
 
 		virtual bool isValidIndex(int index) const;
 		virtual int size() const;
@@ -74,7 +77,7 @@ class MatchModel : public IMatchModel {
 		QList<thera::SQLFragmentConf> mMatches;
 
 		int mRealSize;
-		int mWindowSize;
+		int mWindowSize, mWindowOffset;
 		int mWindowBegin, mWindowEnd;
 };
 

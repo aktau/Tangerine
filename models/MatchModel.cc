@@ -8,7 +8,7 @@
 using namespace thera;
 
 //MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -29,15 +29,37 @@ MatchModel::~MatchModel() {
 
 }
 
+void MatchModel::prefetchHint(int start, int end) {
+	assert(end > start);
+
+	setWindowSize(end - start + 1);
+	mWindowOffset = start % mWindowSize;
+
+	//qDebug() << "Asked for prefetch of" << start << "to" << end << "(windowsize = " << mWindowSize << "and offset =" << mWindowOffset << ")";
+}
+
 void MatchModel::setWindowSize(int size) {
 	assert(size > 0);
 
 	mWindowSize = size;
 }
 
+int MatchModel::getWindowSize() const {
+	return mWindowSize;
+}
+
 void MatchModel::requestWindow(int windowIndex) {
-	mWindowBegin = windowIndex * mWindowSize;
-	mWindowEnd = (windowIndex + 1) * mWindowSize;
+	if (windowIndex < 0) {
+		mWindowOffset = 0;
+		windowIndex = 0;
+	}
+
+	mWindowBegin = windowIndex * mWindowSize + mWindowOffset;
+
+	// gets overriden in populateModel, why bother?
+	//mWindowEnd = (windowIndex + 1) * mWindowSize;
+
+	//qDebug() << "Requested new window" << mWindowBegin << "," << mWindowEnd << "," << mWindowSize;
 
 	populateModel();
 }
@@ -97,7 +119,7 @@ thera::IFragmentConf& MatchModel::get(int index) {
 
 	if (index < mWindowBegin || index > mWindowEnd) {
 		// if the index is outside of the window, request another window in which it fits
-		requestWindow(index / mWindowSize);
+		requestWindow((index - mWindowOffset) / mWindowSize);
 	}
 
 	return mMatches[index % mWindowSize];
