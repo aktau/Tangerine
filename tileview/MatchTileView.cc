@@ -197,6 +197,13 @@ void MatchTileView::createActions() {
 	mActions.last()->setStatusTip(tr("Select the statuses that should be visible"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(filterStatuses()));
 
+	mActions << new QAction(tr("Separator"), this);
+	mActions.last()->setSeparator(true);
+
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/help.png"), tr("How to use / tutorial"), this);
+	mActions.last()->setStatusTip(tr("How to use this view? Includes information about handy shortcuts et cetera...."));
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(help()));
+
 	// filter widget that will appear in the toolbar
 
 	// we put a the real widget in a layout in another widget just so we can make it appear on the right side... for esthetic reasons
@@ -985,6 +992,28 @@ void MatchTileView::goBack() {
 
 		mModel->setParameters(s().parameters);
 	}
+}
+
+void MatchTileView::help() {
+	QMessageBox::about(
+		this,
+		tr("Help on the view you're looking at"),
+		tr(
+			"<h1>General Overview</h1>"
+			"<p>"
+			"If you haven't done so already, start out by loading a matches database with the \"Load match database\" icon on the toolbar."
+			" If you don't have one already, you can import a Griphos .xml file and Tangerine will automatically make one for you."
+			" To do this, click the \"Import from XML\" icon. After that you should see a bunch of possible matches, things will hopefully point themselves out."
+			"</p>"
+			"<h2>Handy shortcuts</h2>"
+			"<ul>"
+			"<li> Backspace - Go back (like in a webbrowser)</li>"
+			"<li> Down, PgDown - Go down one screen</li>"
+			"<li> Up, PgUp - Go up one screen</li>"
+			"<li> Ctrl+c - Copy what you have to paste it in other programs, f.ex.: Griphos</li>"
+			"</ul>"
+		)
+	);
 }
 
 void MatchTileView::scroll(int amount) {

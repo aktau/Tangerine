@@ -63,6 +63,8 @@ class MatchTileView : public QScrollArea {
 	    void saveState();
 		void goBack();
 
+		void help();
+
 	signals:
 		void historyAvailable(bool b);
 
