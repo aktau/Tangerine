@@ -52,7 +52,11 @@ int MatchModel::size() const {
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 	if (setSort(field, order)) {
-		populateModel();
+		resetWindow();
+
+		// don't populate the model yet, we don't know where the users of the model will look
+		// and thus we could be fetching a window for naught
+		//populateModel();
 
 		emit orderChanged();
 	}
@@ -60,8 +64,12 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 
 void MatchModel::filter(const QString& pattern) {
 	if (setNameFilter(pattern)) {
+		resetWindow();
 		requestRealSize();
-		populateModel();
+
+		// don't populate the model yet, we don't know where the users of the model will look
+		// and thus we could be fetching a window for naught
+		//populateModel();
 
 		emit modelChanged();
 	}
@@ -69,14 +77,20 @@ void MatchModel::filter(const QString& pattern) {
 
 void MatchModel::genericFilter(const QString& key, const QString& filter) {
 	if (setGenericFilter(key, filter)) {
+		resetWindow();
 		requestRealSize();
-		populateModel();
+
+		// don't populate the model yet, we don't know where the users of the model will look
+		// and thus we could be fetching a window for naught
+		//populateModel();
 
 		emit modelChanged();
 	}
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
+	//qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd;
+
 	if (index < mWindowBegin || index > mWindowEnd) {
 		// if the index is outside of the window, request another window in which it fits
 		requestWindow(index / mWindowSize);
@@ -89,8 +103,12 @@ void MatchModel::setParameters(const ModelParameters& parameters) {
 	if (parameters != mPar) {
 		mPar = parameters;
 
+		resetWindow();
 		requestRealSize();
-		populateModel();
+
+		// don't populate the model yet, we don't know where the users of the model will look
+		// and thus we could be fetching a window for naught
+		//populateModel();
 
 		emit modelChanged();
 	}
@@ -250,7 +268,8 @@ void MatchModel::requestRealSize() {
 
 void MatchModel::resetWindow() {
 	mWindowBegin = 0;
-	mWindowEnd = mWindowBegin + mWindowSize - 1;
+	mWindowEnd = -1;
+	//mWindowEnd = mWindowBegin + mWindowSize - 1;
 }
 
 /**

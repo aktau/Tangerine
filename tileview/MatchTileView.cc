@@ -515,6 +515,8 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		}
 
 		mThumbs[tidx]->setToolTip(tooltip);
+
+		QApplication::processEvents();
 	}
 }
 
