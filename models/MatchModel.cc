@@ -63,7 +63,11 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 }
 
 void MatchModel::filter(const QString& pattern) {
+	qDebug() << "in model, pattern:" << pattern;
+
 	if (setNameFilter(pattern)) {
+		qDebug() << "Apparently change...";
+
 		resetWindow();
 		requestRealSize();
 

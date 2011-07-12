@@ -11,6 +11,7 @@
 #include <QList>
 
 #include "IMatchModel.h"
+#include "ModelParameters.h"
 #include "IFragmentConf.h"
 #include "MatchSelectionModel.h"
 #include "TabletopModel.h"
@@ -68,6 +69,7 @@ class MatchTileView : public QScrollArea {
 		void createActions();
 		void createStatusWidgets();
 
+		void saveState();
 		void goBack();
 		void scroll(int amount);
 		void refresh();
@@ -119,9 +121,7 @@ class MatchTileView : public QScrollArea {
 
 	private:
 		struct State {
-			// either src or tgt should contain filter
-			// to be shown
-			QString filter;
+			ModelParameters parameters;
 
 			// set to -1 for browsing the list, and
 			// to a specific index to show conflicting fragments
@@ -132,7 +132,7 @@ class MatchTileView : public QScrollArea {
 			// with approved pairs
 			bool show_rejected, show_conflicted, show_maybe, show_unknown, show_confirmed;
 
-			int cur_pos, total; // the current position in the list of proposals
+			int currentPosition, total; // the current position in the list of proposals
 
 			QVector<int> tindices;
 
@@ -140,16 +140,22 @@ class MatchTileView : public QScrollArea {
 			bool isSelectingMaster;
 			QList<int> duplicateCandidates;
 
+			// if we're going back on the stack of State's, the model will
+			// get altered, and the default behaviour is to put the currentPosition
+			// back to zero. This marker circumvents that behaviour. A more elegant
+			// solution would be nice though
+			bool ignorePositionReset;
+
 			State(int nt) :
-				filter(""),
 				conflict_index(-1),
 				show_rejected(true),
 				show_conflicted(true),
 				show_maybe(true),
 				show_unknown(true),
 				show_confirmed(true),
-				cur_pos(0),
-				isSelectingMaster(false) {
+				currentPosition(0),
+				isSelectingMaster(false),
+				ignorePositionReset(false) {
 				tindices.resize(nt);
 			}
 		};

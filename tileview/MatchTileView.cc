@@ -15,7 +15,6 @@
 #include "Database.h"
 #include "Fragment.h"
 #include "FragmentRef.h"
-//#include "TabletopModel.h"
 #include "TabletopIO.h"
 
 #include "EmptyMatchModel.h"
@@ -117,6 +116,11 @@ void MatchTileView::setModel(IMatchModel *model) {
 
 		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
 		connect(mModel, SIGNAL(orderChanged()), this, SLOT(modelOrderChanged()));
+
+		// clear stack
+		mStates.clear();
+		mStates << State(mNumThumbs);
+		s().parameters = mModel->getParameters();
 
 		modelChanged();
 	}
@@ -270,15 +274,23 @@ void MatchTileView::sort(Qt::SortOrder order) {
 		QString field = QInputDialog::getItem(this, "Sort matches", "Choose an attribute to sort by", fieldList, 0, false, &ok);
 
 		if (ok && !field.isEmpty()) {
+			saveState();
+
 			mModel->sort(field, order);
 		}
 	}
 }
 
 void MatchTileView::filter() {
+	saveState();
+
+	qDebug() << "filter 1";
+
 	QString filter = mFilterEdit->text().trimmed();
 
 	mModel->filter(filter);
+
+	qDebug() << "filter 2";
 }
 
 void MatchTileView::filterStatuses() {
@@ -370,6 +382,8 @@ void MatchTileView::listDuplicates() {
 	int current = mSelectionModel->currentIndex();
 
 	if (mModel->isValidIndex(current)) {
+		saveState();
+
 		IFragmentConf &match = mModel->get(current);
 
 		int parent = match.getInt("duplicate", 0);
@@ -391,6 +405,8 @@ void MatchTileView::findDuplicates() {
 	int current = mSelectionModel->currentIndex();
 
 	if (mModel->isValidIndex(current)) {
+		saveState();
+
 		IFragmentConf &match = mModel->get(current);
 
 		mModel->genericFilter(
@@ -460,9 +476,9 @@ void MatchTileView::updateStatusBar() {
 
 	if (lastValidIndex >= 0) {
 		message += QString("Browsing %1 (%2) to %3 (%4) of %5")
-			.arg(s().cur_pos + 1)
+			.arg(s().currentPosition + 1)
 			.arg(mModel->get(s().tindices[0]).getDouble("error"))
-			.arg(s().cur_pos + lastValidIndex + 1)
+			.arg(s().currentPosition + lastValidIndex + 1)
 			.arg(mModel->get(s().tindices[lastValidIndex]).getDouble("error"))
 			.arg(mModel->size());
 	}
@@ -787,14 +803,26 @@ void MatchTileView::modelChanged() {
 
 	mFilterEdit->setText(mModel->getFilter());
 
-	s().cur_pos = 0;
+	if (!s().ignorePositionReset) {
+		s().currentPosition = 0;
+	}
+	else {
+		s().ignorePositionReset = false;
+	}
+
 	refresh();
 }
 
 void MatchTileView::modelOrderChanged() {
 	qDebug() << "MatchTileView::modelOrderChanged: called";
 
-	s().cur_pos = 0;
+	if (!s().ignorePositionReset) {
+		s().currentPosition = 0;
+	}
+	else {
+		s().ignorePositionReset = false;
+	}
+
 	refresh();
 }
 
@@ -828,6 +856,12 @@ void MatchTileView::resizeEvent(QResizeEvent *event) {
 
 void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
+		case Qt::Key_Backspace:
+		{
+			goBack();
+		}
+		break;
+
 		case Qt::Key_A:
 		{
 			if (event->modifiers() & Qt::ControlModifier) {
@@ -926,34 +960,36 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	}
 }
 
+void MatchTileView::saveState() {
+	s().parameters = mModel->getParameters();
+
+	mStates.push_back(s());
+}
+
 void MatchTileView::goBack() {
 	if (mStates.size() > 1) {
 		mStates.pop_back();
 
-		/*
-		for (int i = 0; i < num_thumbs; i++) {
-			updateThumbnail(i, s().tindices[i]);
-		}
+		s().ignorePositionReset = true;
 
-		updateStatusBar();
-		*/
+		mModel->setParameters(s().parameters);
 	}
 }
 
 void MatchTileView::scroll(int amount) {
 	int max = mModel->size();
 
-	int new_pos = qMax(s().cur_pos + amount, 0);
+	int new_pos = qMax(s().currentPosition + amount, 0);
 
 	// update the current state
 	s().total = max;
 	new_pos = qMax(0, qMin(new_pos, max - mNumThumbs));
 
-	if (new_pos == s().cur_pos) {
+	if (new_pos == s().currentPosition) {
 		return;
 	}
 
-	s().cur_pos = new_pos;
+	s().currentPosition = new_pos;
 
 	qDebug() << "SCROLLIN";
 
@@ -975,9 +1011,9 @@ void MatchTileView::refresh() {
 	int max = mModel->size();
 
 	// update the current state
-	int new_pos = qMax(0, qMin(s().cur_pos, max - mNumThumbs));
+	int new_pos = qMax(0, qMin(s().currentPosition, max - mNumThumbs));
 	s().total = max;
-	s().cur_pos = new_pos;
+	s().currentPosition = new_pos;
 
 	QElapsedTimer timer;
 	timer.start();
