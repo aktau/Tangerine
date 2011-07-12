@@ -190,6 +190,8 @@ bool MatchModel::setDuplicates(QList<int> duplicatelist, int master, DuplicateMo
 		duplicate.setMetaData("duplicate", conf.index());
 	}
 
+	conf.setMetaData("duplicate", 0);
+
 	return true;
 }
 
@@ -227,7 +229,12 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 	QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
 
 	foreach (const SQLFragmentConf& c, list) {
-		c.setMetaData("duplicate", masterMatchId);
+		if (c.index() == masterMatchId) {
+			c.setMetaData("duplicate", 0);
+		}
+		else {
+			c.setMetaData("duplicate", masterMatchId);
+		}
 	}
 }
 

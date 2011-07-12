@@ -375,7 +375,7 @@ void MatchTileView::listDuplicates() {
 		int parent = match.getInt("duplicate", 0);
 		int master = (parent == 0) ? match.index() : parent;
 
-		qDebug() <<  "parent =" << parent << "and index =" << match.index();
+		qDebug() <<  "MatchTileView::listDuplicates: parent =" << parent << "and index =" << match.index();
 
 		mModel->genericFilter(
 			"duplicates",
@@ -429,6 +429,8 @@ void MatchTileView::markDuplicates() {
 			s().isSelectingMaster = true;
 			s().duplicateCandidates = mSelectionModel->selectedIndexes();
 
+			updateStatusBar();
+
 			QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor)); // will be restored once again in clicked()
 		}
 	}
@@ -448,19 +450,24 @@ void MatchTileView::updateStatusBar() {
 		--lastValidIndex;
 	}
 
+	QString message;
+
+	if (s().isSelectingMaster) {
+		message += "<b>Click on the item you want to be the master duplicate</b>";
+
+		if (lastValidIndex >= 0) message += " - ";
+	}
+
 	if (lastValidIndex >= 0) {
-		QString message = QString("Browsing %1 (%2) to %3 (%4) of %5")
+		message += QString("Browsing %1 (%2) to %3 (%4) of %5")
 			.arg(s().cur_pos + 1)
 			.arg(mModel->get(s().tindices[0]).getDouble("error"))
 			.arg(s().cur_pos + lastValidIndex + 1)
 			.arg(mModel->get(s().tindices[lastValidIndex]).getDouble("error"))
 			.arg(mModel->size());
+	}
 
-		mStatusBarLabel->setText(message);
-	}
-	else {
-		mStatusBarLabel->setText("");
-	}
+	mStatusBarLabel->setText(message);
 }
 
 void MatchTileView::updateThumbnail(int tidx, int fcidx) {
@@ -587,7 +594,9 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 		}
 
 		s().isSelectingMaster = false;
+
 		QApplication::restoreOverrideCursor();
+		updateStatusBar();
 	}
 
 	switch (event->buttons()) {
