@@ -483,7 +483,7 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	else {
 		const IFragmentConf& match = mModel->get(fcidx);
 
-		//int duplicates = 1;
+		//int duplicates = 0;
 		//QElapsedTimer timer;
 		//timer.start();
 
@@ -911,10 +911,10 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			int multiplier = -1; // one screen
 
 			if (event->modifiers() == Qt::ShiftModifier) {
-				multiplier = 10; // 10 screens
+				multiplier = -10; // 10 screens
 			}
 			else if (event->modifiers() == Qt::ControlModifier) {
-				multiplier = 100; // 100 screens
+				multiplier = -100; // 100 screens
 			}
 
 			scroll(multiplier * mNumThumbs);
