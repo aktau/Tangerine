@@ -998,6 +998,17 @@ void MatchTileView::scroll(int amount) {
 }
 
 void MatchTileView::refresh() {
+	// because updateThumbnail can call QApplication::processEvents(), we're going to perform some wizardry
+	// while looping it will constantly check the busy variable to see if another call to this method has
+	// been made. If it has, it will just stop all activity and be confident that the "new" one has handled everything
+	// note that this is not the only way in which the QApplication::processEvents() could be causing problems
+	// I believe. Suppose during the loading of the matches a new filter is instated (this is possible thanks to
+	// the extra events process). What will we do then? Should we just hope that the loading of thumbnails is
+	// more or less fast enough? Ouch...
+	static bool busy = false;
+
+	busy = true;
+
 	int max = mModel->size();
 
 	// update the current state
@@ -1011,6 +1022,9 @@ void MatchTileView::refresh() {
 	// reload thumbnails
 	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
 	for (int i = 0; i < mNumThumbs; ++i) {
+		// abort because another call of refresh() has superseded this one
+		if (!busy) return;
+
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
 	}
@@ -1018,6 +1032,8 @@ void MatchTileView::refresh() {
 	qDebug() << "Refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
 
 	updateStatusBar();
+
+	busy = false;
 }
 
 void MatchTileView::currentValidIndices(QVector<int>& valid) {
