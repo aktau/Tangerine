@@ -118,9 +118,11 @@ class MatchTileView : public QScrollArea {
 		int mNumThumbs;
 		float mScale;
 
-		// Detailed view
+#ifdef WITH_DETAILVIEW
+		// Detailed view in 3D
 		DetailView mDetailView;
 		DetailScene mDetailScene;
+#endif
 
 		thera::TabletopModel mTabletopModel;
 

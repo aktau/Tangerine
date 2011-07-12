@@ -11,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QToolButton>
 #include <QStyle>
+#include <QElapsedTimer>
 
 #include "Database.h"
 #include "Fragment.h"
@@ -27,7 +28,11 @@ using namespace thera;
 #define THUMB_GUTTER 10
 
 MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) :
-		QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale), mDetailScene(this) {
+		QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale)
+#ifdef WITH_DETAILVIEW
+		, mDetailScene(this)
+#endif
+{
 	setFrameShape(QFrame::NoFrame);
 	setObjectName("MainScrollArea");
 	setFocusPolicy(Qt::StrongFocus);
