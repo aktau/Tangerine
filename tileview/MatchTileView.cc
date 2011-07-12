@@ -166,6 +166,22 @@ QList<QWidget *> MatchTileView::statusBarWidgets() const {
 }
 
 void MatchTileView::createActions() {
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/resultset_previous.png"), tr("Go back"), this);
+	mActions.last()->setStatusTip(tr("Go back to the previous screen you were on (works as in a browser)"));
+	mActions.last()->setDisabled(true);
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(goBack()));
+	connect(this, SIGNAL(historyAvailable(bool)), mActions.last(), SLOT(setEnabled(bool)));
+
+	/*
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/resultset_next.png"), tr("Go forward"), this);
+	mActions.last()->setStatusTip(tr("Go forward to the screen you went back from (works as in a browser)"));
+	mActions.last()->setDisabled(true);
+	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(goBack()));
+	*/
+
+	mActions << new QAction(tr("Separator"), this);
+	mActions.last()->setSeparator(true);
+
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/sort_ascending.png"), tr("Sort ascending"), this);
 	mActions.last()->setStatusTip(tr("Sort matches ascending"));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(sortAscending()));
@@ -964,15 +980,28 @@ void MatchTileView::saveState() {
 	s().parameters = mModel->getParameters();
 
 	mStates.push_back(s());
+
+	if (mStates.size() == 2) {
+		emit historyAvailable(true);
+	}
 }
 
 void MatchTileView::goBack() {
+	qDebug() << "going back doc?";
+
 	if (mStates.size() > 1) {
 		mStates.pop_back();
+
+		if (mStates.size() <= 1) {
+			emit historyAvailable(false);
+		}
 
 		s().ignorePositionReset = true;
 
 		mModel->setParameters(s().parameters);
+	}
+	else {
+		qDebug() << "oops";
 	}
 }
 

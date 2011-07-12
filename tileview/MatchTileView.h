@@ -61,6 +61,12 @@ class MatchTileView : public QScrollArea {
 	    void markDuplicates();
 	    void markAsMaster();
 
+	    void saveState();
+		void goBack();
+
+	signals:
+		void historyAvailable(bool b);
+
 	protected:
 	    //virtual void resizeEvent(QResizeEvent *event);
 		virtual void keyPressEvent(QKeyEvent *event);
@@ -69,8 +75,6 @@ class MatchTileView : public QScrollArea {
 		void createActions();
 		void createStatusWidgets();
 
-		void saveState();
-		void goBack();
 		void scroll(int amount);
 		void refresh();
 
