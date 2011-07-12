@@ -21,6 +21,8 @@ class SQLFilter {
 		virtual QStringList clauses() const;
 
 		virtual bool isEmpty() const;
+		virtual bool hasFilter(const QString& key) const;
+		virtual bool hasFilter(const QString& key, const QString& filter) const; // tests if this SQLFilter has this exact combination
 
 		virtual void setDatabase(SQLDatabase *db);
 
@@ -30,6 +32,9 @@ class SQLFilter {
 		virtual void setFilter(const QString& key, const QString& filter);
 		virtual void removeFilter(const QString& key);
 		virtual void clear();
+
+		virtual bool operator==(const SQLFilter& other) const;
+		virtual bool operator!=(const SQLFilter& other) const;
 
 	protected:
 		virtual void updateDependencyInfo();

@@ -7,7 +7,8 @@
 
 using namespace thera;
 
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
+//MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -50,15 +51,7 @@ int MatchModel::size() const {
 }
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
-	// TODO: sanity check on field
-	if (!mDb->matchHasField(field)) {
-		qDebug() << "MatchModel::sort: Field" << field << "doesn't exist";
-	}
-	else if (mSortField != field || mSortOrder != order) {
-		mSortField = field;
-		mSortOrder = order;
-
-		// ask the database for a new, sorted, list
+	if (setSort(field, order)) {
 		populateModel();
 
 		emit orderChanged();
@@ -66,23 +59,7 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 }
 
 void MatchModel::filter(const QString& pattern) {
-	if (mNameFilter != pattern) {
-		if (!pattern.isEmpty()) {
-			QString normalizedFilter = pattern;
-
-			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
-			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
-
-			normalizedFilter = QString(normalizedFilter).replace("*","%").replace("?","_");
-
-			mFilter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
-		}
-		else {
-			mFilter.removeFilter("matchmodel_names");
-		}
-
-		mNameFilter = pattern;
-
+	if (setNameFilter(pattern)) {
 		requestRealSize();
 		populateModel();
 
@@ -91,17 +68,12 @@ void MatchModel::filter(const QString& pattern) {
 }
 
 void MatchModel::genericFilter(const QString& key, const QString& filter) {
-	if (!filter.isEmpty()) {
-		mFilter.setFilter(key, filter);
-	}
-	else {
-		mFilter.removeFilter(key);
-	}
+	if (setGenericFilter(key, filter)) {
+		requestRealSize();
+		populateModel();
 
-	requestRealSize();
-	populateModel();
-
-	emit modelChanged();
+		emit modelChanged();
+	}
 }
 
 thera::IFragmentConf& MatchModel::get(int index) {
@@ -111,6 +83,21 @@ thera::IFragmentConf& MatchModel::get(int index) {
 	}
 
 	return mMatches[index % mWindowSize];
+}
+
+void MatchModel::setParameters(const ModelParameters& parameters) {
+	if (parameters != mPar) {
+		mPar = parameters;
+
+		requestRealSize();
+		populateModel();
+
+		emit modelChanged();
+	}
+}
+
+const ModelParameters& MatchModel::getParameters() const {
+	return mPar;
 }
 
 bool MatchModel::addField(const QString& name, double defaultValue) {
@@ -134,7 +121,7 @@ QSet<QString> MatchModel::fieldList() const {
 }
 
 QString MatchModel::getFilter() const {
-	return mNameFilter;
+	return mPar.matchNameFilter;
 }
 
 /**
@@ -242,9 +229,10 @@ void MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter, mWindowBegin, mWindowSize);
+	mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
+	// without a window
 	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 	//mRealSize = mMatches.size();
 
@@ -255,7 +243,7 @@ void MatchModel::requestRealSize() {
 	QElapsedTimer timer;
 	timer.start();
 
-	mRealSize = mDb->getNumberOfMatches(mFilter);
+	mRealSize = mDb->getNumberOfMatches(mPar.filter);
 
 	qDebug() << "MatchModel::populateModel: Get # of matches," << timer.elapsed() << "milliseconds [result" << mRealSize << "matches]";
 }
@@ -269,16 +257,65 @@ void MatchModel::resetWindow() {
  * resets without firing signals
  */
 void MatchModel::resetSort() {
-	mSortField = QString();
-	mSortOrder = Qt::AscendingOrder;
+	mPar.sortField = QString();
+	mPar.sortOrder = Qt::AscendingOrder;
 }
 
 /**
  * resets without firing signals
  */
 void MatchModel::resetFilter() {
-	mNameFilter = QString();
-	mFilter.clear();
+	mPar.matchNameFilter = QString();
+	mPar.filter.clear();
+}
+
+bool MatchModel::setSort(const QString& field, Qt::SortOrder order) {
+	if (!mDb->matchHasField(field)) {
+		qDebug() << "MatchModel::setSort: Field" << field << "doesn't exist";
+	}
+	else if (mPar.sortField != field || mPar.sortOrder != order) {
+		mPar.sortField = field;
+		mPar.sortOrder = order;
+
+		return true;
+	}
+
+	return false;
+}
+
+bool MatchModel::setNameFilter(const QString& pattern) {
+	if (mPar.matchNameFilter != pattern) {
+		if (!pattern.isEmpty()) {
+			QString normalizedFilter = pattern;
+
+			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
+			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
+
+			normalizedFilter = QString(normalizedFilter).replace("*","%").replace("?","_");
+
+			mPar.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
+		}
+		else {
+			mPar.filter.removeFilter("matchmodel_names");
+		}
+
+		mPar.matchNameFilter = pattern;
+
+		return true;
+	}
+
+	return false;
+}
+
+bool MatchModel::setGenericFilter(const QString& key, const QString& filter) {
+	if (!mPar.filter.hasFilter(key, filter)) {
+		if (!filter.isEmpty()) mPar.filter.setFilter(key, filter);
+		else mPar.filter.removeFilter(key);
+
+		return true;
+	}
+
+	return false;
 }
 
 void MatchModel::databaseModified() {

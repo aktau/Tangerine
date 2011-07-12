@@ -68,6 +68,7 @@ class MatchTileView : public QScrollArea {
 		void createActions();
 		void createStatusWidgets();
 
+		void goBack();
 		void scroll(int amount);
 		void refresh();
 

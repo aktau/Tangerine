@@ -51,7 +51,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mNumThumbs = rows * columns;
 	mThumbs.resize(mNumThumbs);
 
-	mStates.append(State(mNumThumbs));
+	mStates << State(mNumThumbs);
 
 	for (int row = 0, i = 0; row < rows; row++) {
 		for (int col = 0; col < columns; col++, i++) {
@@ -453,7 +453,7 @@ void MatchTileView::updateStatusBar() {
 	QString message;
 
 	if (s().isSelectingMaster) {
-		message += "<b>Click on the item you want to be the master duplicate</b>";
+		message += "<b>Leftclick on the item you want to be the master duplicate, any other button to cancel</b>";
 
 		if (lastValidIndex >= 0) message += " - ";
 	}
@@ -921,6 +921,20 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 
 		default:
 			QScrollArea::keyPressEvent(event);
+	}
+}
+
+void MatchTileView::goBack() {
+	if (mStates.size() > 1) {
+		mStates.pop_back();
+
+		/*
+		for (int i = 0; i < num_thumbs; i++) {
+			updateThumbnail(i, s().tindices[i]);
+		}
+
+		updateStatusBar();
+		*/
 	}
 }
 

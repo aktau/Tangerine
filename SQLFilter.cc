@@ -38,6 +38,18 @@ bool SQLFilter::isEmpty() const {
 	return mFilters.isEmpty();
 }
 
+bool SQLFilter::hasFilter(const QString& key) const {
+	return mFilters.contains(key);
+}
+
+bool SQLFilter::hasFilter(const QString& key, const QString& filter) const {
+	if (mFilters.contains(key) && filter == mFilters.value(key)) {
+		return true;
+	}
+
+	return false;
+}
+
 void SQLFilter::setFilter(const QString& key, const QString& filter) {
 	if (mDb == NULL) {
 		qDebug() << "SQLFilter::addFilter: can't add filter while database is NULL, please use setDatabase() first";
@@ -59,6 +71,14 @@ void SQLFilter::removeFilter(const QString& key) {
 void SQLFilter::clear() {
 	mFilters.clear();
 	mDependencies.clear();
+}
+
+bool SQLFilter::operator==(const SQLFilter& other) const {
+	return mDb == other.mDb && mFilters == other.mFilters;
+}
+
+bool SQLFilter::operator!=(const SQLFilter& other) const {
+	return !(*this == other);
 }
 
 /**

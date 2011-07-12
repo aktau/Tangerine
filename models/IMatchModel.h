@@ -6,6 +6,7 @@
 #include <QStringList>
 
 #include "IFragmentConf.h"
+#include "ModelParameters.h"
 
 /**
  * The pure abstract interface for all match models
@@ -34,6 +35,10 @@ class IMatchModel : public QObject {
 		virtual void filter(const QString& pattern = QString()) = 0;
 		virtual void genericFilter(const QString& key, const QString& filter) = 0; // the syntax is the same as the SQL WHERE-clause syntax
 		virtual thera::IFragmentConf& get(int index) = 0;
+
+		// used to get and restore the state of the model completely
+		virtual void setParameters(const ModelParameters& parameters) = 0;
+		virtual const ModelParameters& getParameters() const = 0;
 
 		virtual bool addField(const QString& name, double defaultValue) = 0;
 		virtual bool addField(const QString& name, const QString& defaultValue) = 0;

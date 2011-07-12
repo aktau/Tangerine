@@ -30,6 +30,9 @@ class EmptyMatchModel : public IMatchModel {
 			return mFc;
 		}
 
+		void setParameters(const ModelParameters&) { qDebug() << "EmptyMatchModel::setParameters"; }
+		const ModelParameters& getParameters() const { qDebug() << "EmptyMatchModel::getParameters"; return mModelParameters; }
+
 		bool addField(const QString& name, double defaultValue) { qDebug() << "EmptyMatchModel::addField:" << name << "||" << defaultValue; return false; }
 		bool addField(const QString& name, const QString& defaultValue) { qDebug() << "EmptyMatchModel::addField:" << name << "||" << defaultValue; return false; }
 		bool addField(const QString& name, int defaultValue) { qDebug() << "EmptyMatchModel::addField:" << name << "||" << defaultValue; return false; }
@@ -46,6 +49,8 @@ class EmptyMatchModel : public IMatchModel {
 
 	private:
 		thera::InvalidFragmentConf mFc;
+
+		const ModelParameters mModelParameters;
 };
 
 #endif /* EMPTYMATCHMODEL_H_ */

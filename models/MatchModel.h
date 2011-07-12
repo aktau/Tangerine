@@ -31,6 +31,9 @@ class MatchModel : public IMatchModel {
 		virtual void genericFilter(const QString& key, const QString& filter);
 		virtual thera::IFragmentConf& get(int index);
 
+		virtual void setParameters(const ModelParameters& parameters);
+		virtual const ModelParameters& getParameters() const;
+
 		virtual bool addField(const QString& name, double defaultValue);
 		virtual bool addField(const QString& name, const QString& defaultValue);
 		virtual bool addField(const QString& name, int defaultValue);
@@ -52,6 +55,11 @@ class MatchModel : public IMatchModel {
 		void resetSort();
 		void resetFilter();
 
+		// versions without signal emitting that return whether anything changed
+		bool setSort(const QString& field, Qt::SortOrder order);
+		bool setNameFilter(const QString& pattern);
+		bool setGenericFilter(const QString& key, const QString& filter); // adds, replaces or removes said key
+
 		void convertGroupToMaster(int groupMatchId, int masterMatchId);
 
 	private slots:
@@ -59,14 +67,11 @@ class MatchModel : public IMatchModel {
 		void databaseModified();
 
 	private:
-		QList<thera::SQLFragmentConf> mMatches;
-
-		QString mNameFilter;
-		QString mSortField;
-		Qt::SortOrder mSortOrder;
-
 		SQLDatabase *mDb;
-		SQLFilter mFilter;
+
+		ModelParameters mPar;
+
+		QList<thera::SQLFragmentConf> mMatches;
 
 		int mRealSize;
 		int mWindowSize;
