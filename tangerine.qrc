@@ -25,6 +25,8 @@
     <file>rcc/fatcow/32x32/zoom.png</file>
     <file>rcc/fatcow/32x32/shape_ungroup.png</file>
     <file>rcc/fatcow/32x32/sql_join_inner.png</file>
+    <file>rcc/fatcow/32x32/sql_join_outer_exclude.png</file>
+    <file>rcc/fatcow/32x32/sql_join_outer.png</file>
     <file>rcc/fatcow/32x32/resultset_previous.png</file>
     <file>rcc/fatcow/32x32/resultset_next.png</file>
     <file>rcc/fatcow/32x32/table_select_all.png</file>

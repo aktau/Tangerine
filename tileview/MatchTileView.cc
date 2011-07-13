@@ -92,6 +92,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mDuplicatesMenu->addAction(mFindDuplicatesAction);
 	mDuplicatesMenu->addAction(mMarkAsDuplicateAction);
 	mDuplicatesMenu->addAction(mMarkAsMasterAction);
+	mStatusMenu->addAction(mAllNeighboursAction);
 	mStatusMenu->addAction(mFindConflictingAction);
 	mStatusMenu->addAction(mFindNonconflictingAction);
 
@@ -278,6 +279,10 @@ void MatchTileView::createActions() {
 	mMarkAsMasterAction = new QAction(tr("Mark as master"), this);
 	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate of it's group"));
 	connect(mMarkAsMasterAction, SIGNAL(triggered()), this, SLOT(markAsMaster()));
+
+	mAllNeighboursAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer.png"), tr("Find all neighbours"), this);
+	mAllNeighboursAction->setStatusTip(tr("Display all matches that also contain any of the fragments that this match contains"));
+	connect(mAllNeighboursAction, SIGNAL(triggered()), this, SLOT(comment()));
 
 	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting neighbours"), this);
 	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
@@ -478,6 +483,8 @@ void MatchTileView::findDuplicates() {
 
 void MatchTileView::markDuplicates() {
 	if (s().isSelectingMaster) {
+		s().isSelectingMaster = false;
+
 		if (s().duplicateCandidates.isEmpty()) {
 			QMessageBox::information(this, tr("Information"), tr("No duplicates were selected previously"));
 		}

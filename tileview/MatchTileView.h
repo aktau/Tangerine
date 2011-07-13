@@ -109,6 +109,7 @@ class MatchTileView : public QScrollArea {
 		QAction *mCopyAction;
 		QAction *mCommentAction;
 		QAction *mFindDuplicatesAction, *mListDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;
+		QAction *mAllNeighboursAction;
 		QAction *mFindConflictingAction;
 		QAction *mFindNonconflictingAction;
 		QList<QAction *> mStatusMenuActions;
