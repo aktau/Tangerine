@@ -99,7 +99,10 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	setSelectionModel(new MatchSelectionModel(model(), this));
 
 #ifdef WITH_DETAILVIEW
-	QTimer::singleShot(0, this, SLOT(initDetailView()));
+	// a small delay so the window can repaint at least once before
+	// we try to initialize the heavy GL view. This gives the
+	// smoothest user experience
+	QTimer::singleShot(50, this, SLOT(initDetailView()));
 #endif
 }
 
