@@ -34,6 +34,22 @@ Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : Q
 	mLoadFragDbAct->setEnabled(!Database::isValid());
 	mLoadMatchDbAct->setEnabled(Database::isValid());
 	mImportXMLAct->setEnabled(Database::isValid());
+
+	QSettings settings;
+
+	if (settings.contains(SETTINGS_DB_ROOT_KEY)) {
+		mFragDbLocations.enqueue(settings.value(SETTINGS_DB_ROOT_KEY, QString()).toString());
+	}
+
+	const char *env = getenv("THERA_DB");
+
+	if (env) {
+		mFragDbLocations.enqueue(settings.value(SETTINGS_DB_ROOT_KEY, QString()).toString());
+	}
+
+	connect(&mFragDbFutureWatcher, SIGNAL(finished()), this, SLOT(fragmentDatabaseLoadAttempted()));
+
+	loadFragmentDatabase();
 }
 
 Tangerine::~Tangerine() {
@@ -157,6 +173,8 @@ void Tangerine::setupWindow() {
 	setStyleSheet(styleSheet);
 	*/
 
+	//qDebug() << "setupWindow batch #2" << timer.restart() << "msec";
+
 	/* window geometry */
 
 	resize(MIN_WIDTH, MIN_HEIGHT);
@@ -244,22 +262,53 @@ void Tangerine::updateStatusBar() {
 }
 
 void Tangerine::loadFragmentDatabase() {
-	QSettings settings;
+	if (mFragDbLocations.isEmpty()) {
+		QString path = QFileDialog::getExistingDirectory(
+			this,
+			QObject::tr("Choose the fragment database root directory"),
+			QString(),
+			QFileDialog::ShowDirsOnly |
+			QFileDialog::DontResolveSymlinks |
+			QFileDialog::DontConfirmOverwrite
+		);
 
-	QString dbDir = QFileDialog::getExistingDirectory(
-		this,
-		QObject::tr("Choose the fragment database root directory"),
-		QString(),
-		QFileDialog::ShowDirsOnly |
-		QFileDialog::DontResolveSymlinks |
-		QFileDialog::DontConfirmOverwrite
-	);
+		if (path.isEmpty()) return;
 
-	if (!dbDir.isEmpty() && Database::init(dbDir, Database::FRAGMENT, true)) {
-		settings.setValue(SETTINGS_DB_ROOT_KEY, dbDir);
+		mFragDbLocations.enqueue(path);
+	}
+
+	QFuture<bool> future = QtConcurrent::run(this, &Tangerine::threadedDbInit, mFragDbLocations.head());
+	mFragDbFutureWatcher.setFuture(future);
+}
+
+void Tangerine::fragmentDatabaseLoadAttempted() {
+	// check QFutureWatcher status
+	if (mFragDbFutureWatcher.result() == false) {
+		qDebug() << "Tangerine::fragmentDatabaseLoadAttempted: Not successful: retrying";
+
+		mFragDbLocations.dequeue();
+
+		loadFragmentDatabase();
+	}
+	else {
+		qDebug() << "Tangerine::fragmentDatabaseLoadAttempted: Successful, storing data and enabling icons";
+
+		QSettings settings;
+
+		mLoadFragDbAct->setText(tr("Reload &fragment database"));
+		mLoadFragDbAct->setStatusTip(tr("Select and reload the fragment database"));
+
+		settings.setValue(SETTINGS_DB_ROOT_KEY, mFragDbLocations.dequeue());
 
 		emit fragmentDatabaseOpened();
 	}
+}
+
+bool Tangerine::threadedDbInit(const QDir& dbDir) {
+	// note: can't use Database:changeBaseDir() because that method can sprung up a QMessageBox
+	// this method is performed in another thread and can't create QWidget's
+
+	return Database::init(dbDir, Database::FRAGMENT, true);
 }
 
 
@@ -384,7 +433,7 @@ void Tangerine::nodeView() {
 }
 
 void Tangerine::fragmentDatabaseOpened() {
-	mLoadFragDbAct->setEnabled(false);
+	//mLoadFragDbAct->setEnabled(false);
 	mLoadMatchDbAct->setEnabled(true);
 	mImportXMLAct->setEnabled(true);
 }

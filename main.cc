@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <stdlib.h> // for getenv()
 
 #include <QtGui>
 #include <QApplication>
@@ -60,18 +60,17 @@ int main(int argc, char *argv[]) {
     Q_INIT_RESOURCE(tangerine);
 
 #ifdef Q_WS_MAX
-    QCoreApplication::setOrganizationName("princeton.edu"); // Mac OS X requires URL instead of name
+    QCoreApplication::setOrganizationName("kuleuven.be"); // Mac OS X requires URL instead of name
 #else
-    QCoreApplication::setOrganizationName("Princeton");
+    QCoreApplication::setOrganizationName("kuleuven.be");
 #endif
-    QCoreApplication::setOrganizationDomain("princeton.edu");
-    QCoreApplication::setApplicationName("browsematches");
+    QCoreApplication::setOrganizationDomain("kuleuven.be");
+    QCoreApplication::setApplicationName("Tangerine");
 
     QSettings settings;
     QApplication application(argc, argv);
     QDir thumbDir("C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606");
 
-    initializeFragmentDb();
     parseCommandLine(argc, argv, thumbDir);
 
     SQLDatabase *db = SQLDatabase::getDatabase(QCoreApplication::instance());

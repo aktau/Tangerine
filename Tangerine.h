@@ -41,8 +41,11 @@ class Tangerine : public QMainWindow {
 		void createActions();
 		void closeDatabase();
 
+		bool threadedDbInit(const QDir& dbDir);
+
 	private slots:
 		void loadFragmentDatabase();
+		void fragmentDatabaseLoadAttempted();
 		void matchCountChanged();
 		void loadMatchDatabase();
 		void saveDatabase();
@@ -74,6 +77,8 @@ class Tangerine : public QMainWindow {
 		MatchSelectionModel *mSelectionModel;
 
 		QDir mThumbDir;
+		QQueue<QString> mFragDbLocations;
+		QFutureWatcher<bool> mFragDbFutureWatcher;
 
 		/* GUI ELEMENTS */
 		QStackedWidget *mCentralWidget;
