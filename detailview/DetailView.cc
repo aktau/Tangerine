@@ -578,11 +578,11 @@ void DetailScene::updateDisplayInformation() {
 	mDescription->setHtml(html);
 }
 
-Mesh *DetailScene::getMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) const {
+inline Mesh *DetailScene::getMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) const {
 	return pf ? &*pf->fragment()->mesh(meshType) : NULL;
 }
 
-XF DetailScene::getXF(const PlacedFragment *pf) const {
+inline XF DetailScene::getXF(const PlacedFragment *pf) const {
 	return pf ? pf->accumXF() : XF();
 }
 
