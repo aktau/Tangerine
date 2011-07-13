@@ -54,6 +54,7 @@ class MatchTileView : public QScrollArea {
 	    void filter();
 	    void filterStatuses();
 	    void comment();
+	    void selectAll();
 
 	    void listDuplicates();
 	    void findDuplicates();
@@ -100,6 +101,7 @@ class MatchTileView : public QScrollArea {
 
 		QMenu *mStatusMenu;
 		QMenu *mDuplicatesMenu;
+		QAction *mSelectAllAction;
 		QAction *mCopyAction;
 		QAction *mCommentAction;
 		QAction *mFindDuplicatesAction, *mListDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;

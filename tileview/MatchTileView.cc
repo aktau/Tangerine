@@ -80,6 +80,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	connect(mStatusMenu, SIGNAL(triggered(QAction *)), this, SLOT(statusMenuTriggered(QAction *)));
 
 	mStatusMenu->addSeparator();
+	mStatusMenu->addAction(mSelectAllAction);
 	mStatusMenu->addAction(mCopyAction);
 
 	mStatusMenu->addSeparator();
@@ -237,7 +238,14 @@ void MatchTileView::createActions() {
 	//wb->setDefaultWidget(mFilterEdit);
 	mToolbarOnlyActions << wb;
 
+	mSelectAllAction = new QAction(QIcon(":/rcc/fatcow/32x32/table_select_all.png"), tr("Select All"), this);
+	addAction(mSelectAllAction);
+	mSelectAllAction->setShortcuts(QKeySequence::SelectAll);
+	mSelectAllAction->setStatusTip(tr("Select all visible matches"));
+	connect(mSelectAllAction, SIGNAL(triggered()), this, SLOT(selectAll()));
+
 	mCopyAction = new QAction(QIcon(":/rcc/fatcow/32x32/page_copy.png"), tr("Copy"), this);
+	addAction(mCopyAction);
 	mCopyAction->setShortcuts(QKeySequence::Copy);
 	mCopyAction->setStatusTip(tr("Copy this match to the clipboard"));
 	connect(mCopyAction, SIGNAL(triggered()), this, SLOT(copySelection()));
@@ -405,6 +413,18 @@ void MatchTileView::comment() {
 		qDebug() << "MatchTileView::comment: invalid model index" << current;
 	}
 }
+
+void MatchTileView::selectAll() {
+	QList<int> list;
+	list.reserve(mNumThumbs);
+
+	foreach (int modelIndex, s().tindices) {
+		list << modelIndex;
+	}
+
+	mSelectionModel->select(list, QItemSelectionModel::ClearAndSelect);
+}
+
 
 void MatchTileView::listDuplicates() {
 	int current = mSelectionModel->currentIndex();
@@ -871,33 +891,7 @@ void MatchTileView::resizeEvent(QResizeEvent *event) {
 
 void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
-		case Qt::Key_Backspace:
-		{
-			goBack();
-		}
-		break;
-
-		case Qt::Key_A:
-		{
-			if (event->modifiers() & Qt::ControlModifier) {
-				QList<int> list;
-
-				foreach (int modelIndex, s().tindices) {
-					list << modelIndex;
-				}
-
-				mSelectionModel->select(list, QItemSelectionModel::ClearAndSelect);
-			}
-		}
-		break;
-
-		case Qt::Key_C:
-		{
-			if (event->modifiers() & Qt::ControlModifier) {
-				copySelection();
-			}
-		}
-		break;
+		case Qt::Key_Backspace: goBack(); break;
 
 		case Qt::Key_S:
 		{
