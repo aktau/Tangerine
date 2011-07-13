@@ -99,18 +99,24 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	setSelectionModel(new MatchSelectionModel(model(), this));
 
 #ifdef WITH_DETAILVIEW
+	QTimer::singleShot(0, this, SLOT(initDetailView()));
+#endif
+}
+
+MatchTileView::~MatchTileView() {
+	qDebug() << "MatchTileView::~MatchTileView ran";
+}
+
+#ifdef WITH_DETAILVIEW
+void MatchTileView::initDetailView() {
 	QGLWidget *widget = new QGLWidget(QGLFormat(QGL::SampleBuffers));
 
 	widget->makeCurrent(); // The current context must be set before calling Scene's constructor
 	mDetailView.setViewport(widget);
 	mDetailView.setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 	mDetailView.setScene(&mDetailScene);
+}
 #endif
-}
-
-MatchTileView::~MatchTileView() {
-
-}
 
 void MatchTileView::setModel(IMatchModel *model) {
 	if (model != NULL) {

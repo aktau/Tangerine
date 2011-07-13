@@ -66,6 +66,10 @@ class MatchTileView : public QScrollArea {
 
 		void help();
 
+#ifdef WITH_DETAILVIEW
+		void initDetailView();
+#endif
+
 	signals:
 		void historyAvailable(bool b);
 
