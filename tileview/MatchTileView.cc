@@ -893,18 +893,15 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 	switch (event->key()) {
 		case Qt::Key_Backspace: goBack(); break;
 
-		case Qt::Key_S:
-		{
+		case Qt::Key_S: {
 			static bool order = true;
 
 			mModel->sort("error", order ? Qt::AscendingOrder : Qt::DescendingOrder);
 
 			order = !order;
-		}
-		break;
+		} break;
 
-		case Qt::Key_N:
-		{
+		case Qt::Key_N: {
 			// set all visible UNKNOWN's to NO
 		    bool changed = false;
 
@@ -928,13 +925,11 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 		    else {
 		    	//undo_list.pop_back();
 		    }
-		}
-		break;
+		} break;
 
 		case Qt::Key_PageDown:
 		case Qt::Key_Space:
-		case Qt::Key_Down:
-		{
+		case Qt::Key_Down: {
 			int multiplier = 1; // one screen
 
 			if (event->modifiers() == Qt::ShiftModifier) {
@@ -945,12 +940,10 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			}
 
 			scroll(multiplier * mNumThumbs);
-		}
-		break;
+		} break;
 
 		case Qt::Key_PageUp:
-		case Qt::Key_Up:
-		{
+		case Qt::Key_Up: {
 			int multiplier = -1; // one screen
 
 			if (event->modifiers() == Qt::ShiftModifier) {
@@ -961,8 +954,7 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			}
 
 			scroll(multiplier * mNumThumbs);
-		}
-		break;
+		} break;
 
 		default:
 			QScrollArea::keyPressEvent(event);
