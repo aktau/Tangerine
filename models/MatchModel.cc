@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 
 #include "SQLFilter.h"
+#include "MatchConflictChecker.h"
 
 using namespace thera;
 
@@ -114,15 +115,71 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 	}
 }
 
+void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) {
+	SQLFragmentConf& c = getSQL(index);
+
+	if (!keepParameters) mPar.filter.clear();
+
+	const QString allNeighboursFilter = QString("(target_name = '%1' OR source_name = '%2') OR (target_name = '%2' OR source_name = '%1')").arg(c.getSourceId()).arg(c.getTargetId());
+
+	switch (mode) {
+		case IMatchModel::ALL: {
+			genericFilter("filter", allNeighboursFilter);
+
+			qDebug() << "MatchModel::neighbours: got" << mRealSize << "matches to check for conflicts";
+		} break;
+
+		case IMatchModel::CONFLICTING: {
+			SQLFilter filter(mDb);
+			filter.setFilter("filter", allNeighboursFilter);
+
+			QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+
+			MatchConflictChecker checker(c, list);
+
+			mMatches = checker.getConflicting();
+			mRealSize = mMatches.size();
+			mWindowBegin = 0;
+			mWindowEnd = mRealSize - 1;
+
+			emit modelChanged();
+		} break;
+
+		case IMatchModel::NONCONFLICTING: {
+			SQLFilter filter(mDb);
+			filter.setFilter("filter", allNeighboursFilter);
+
+			QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+
+			MatchConflictChecker checker(c, list);
+
+			mMatches = checker.getNonconflicting();
+			mRealSize = mMatches.size();
+			mWindowBegin = 0;
+			mWindowEnd = mRealSize - 1;
+
+			emit modelChanged();
+		} break;
+
+		default:
+			qDebug() << "MatchModel::neighbours: Unknown neighbourmode";
+	}
+}
+
 thera::IFragmentConf& MatchModel::get(int index) {
-	//qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd;
+	return getSQL(index);
+}
+
+inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
+	qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd << "| mMatches.size() =" << mMatches.size() << "and window size =" << mWindowSize;
 
 	if (index < mWindowBegin || index > mWindowEnd) {
 		// if the index is outside of the window, request another window in which it fits
 		requestWindow((index - mWindowOffset) / mWindowSize);
 	}
 
-	return mMatches[index % mWindowSize];
+	//return mMatches[index % mWindowSize];
+	return mMatches[index % mMatches.size()];
 }
 
 void MatchModel::setParameters(const ModelParameters& parameters) {
@@ -131,10 +188,6 @@ void MatchModel::setParameters(const ModelParameters& parameters) {
 
 		resetWindow();
 		requestRealSize();
-
-		// don't populate the model yet, we don't know where the users of the model will look
-		// and thus we could be fetching a window for naught
-		//populateModel();
 
 		emit modelChanged();
 	}

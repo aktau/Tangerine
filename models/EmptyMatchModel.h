@@ -26,6 +26,7 @@ class EmptyMatchModel : public IMatchModel {
 		void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) { qDebug() << "EmptyMatchModel::sort: Attempted to sort, field:" << field << "| order:" << order; }
 		void filter(const QString& pattern = QString()) { qDebug() << "EmptyMatchModel::filter: Attempted to filter, pattern:" << pattern; }
 		void genericFilter(const QString& key, const QString& filter) { qDebug() << "EmptyMatchModel::genericFilter: Attempted to filter generically, key:" << key << "| filter" << filter; }
+		void neighbours(int, NeighbourMode, bool) {  qDebug() << "EmptyMatchModel::neighbours"; }
 		thera::IFragmentConf& get(int index) {
 			qDebug() << "EmptyMatchModel::get: Attempted to get fragmentconf:" << index;
 

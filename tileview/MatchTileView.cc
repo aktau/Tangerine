@@ -282,15 +282,15 @@ void MatchTileView::createActions() {
 
 	mAllNeighboursAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer.png"), tr("Find all neighbours"), this);
 	mAllNeighboursAction->setStatusTip(tr("Display all matches that also contain any of the fragments that this match contains"));
-	connect(mAllNeighboursAction, SIGNAL(triggered()), this, SLOT(comment()));
+	connect(mAllNeighboursAction, SIGNAL(triggered()), this, SLOT(listNeighbours()));
 
 	mFindConflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_inner.png"), tr("Find conflicting neighbours"), this);
 	mFindConflictingAction->setStatusTip(tr("Display matches that conflict with this one (i.e.: all matches that have some overlap with this one so that both can't be correct)"));
-	connect(mFindConflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
+	connect(mFindConflictingAction, SIGNAL(triggered()), this, SLOT(listConflicts()));
 
 	mFindNonconflictingAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer_exclude.png"), tr("Find non-conflicting neighbours"), this);
 	mFindNonconflictingAction->setStatusTip(tr("Display matches that do not conflict with this one (i.e.: all matches that have have a fragment in common but are not mutually exclusive)"));
-	connect(mFindNonconflictingAction, SIGNAL(triggered()), this, SLOT(comment()));
+	connect(mFindNonconflictingAction, SIGNAL(triggered()), this, SLOT(listNonconflicts()));
 }
 
 void MatchTileView::createStatusWidgets() {
@@ -521,6 +521,36 @@ void MatchTileView::markAsMaster() {
 
 	if (mModel->isValidIndex(current)) {
 		mModel->setMaster(current);
+	}
+}
+
+void MatchTileView::listNeighbours() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		saveState();
+
+		mModel->neighbours(current, IMatchModel::ALL, false);
+	}
+}
+
+void MatchTileView::listConflicts() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		saveState();
+
+		mModel->neighbours(current, IMatchModel::CONFLICTING, false);
+	}
+}
+
+void MatchTileView::listNonconflicts() {
+	int current = mSelectionModel->currentIndex();
+
+	if (mModel->isValidIndex(current)) {
+		saveState();
+
+		mModel->neighbours(current, IMatchModel::NONCONFLICTING, false);
 	}
 }
 

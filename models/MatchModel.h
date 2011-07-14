@@ -32,6 +32,7 @@ class MatchModel : public IMatchModel {
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder);
 		virtual void filter(const QString& pattern = QString());
 		virtual void genericFilter(const QString& key, const QString& filter);
+		virtual void neighbours(int index, NeighbourMode mode = IMatchModel::ALL, bool keepParameters = false);
 		virtual thera::IFragmentConf& get(int index);
 
 		virtual void setParameters(const ModelParameters& parameters);
@@ -48,6 +49,8 @@ class MatchModel : public IMatchModel {
 		virtual bool setMaster(int master);
 
 	private:
+		thera::SQLFragmentConf& getSQL(int index);
+
 		void requestWindow(int windowIndex);
 		void requestRealSize();
 

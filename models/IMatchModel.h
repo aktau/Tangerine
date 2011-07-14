@@ -18,8 +18,17 @@ class IMatchModel : public QObject {
 		typedef enum {
 			ABSORB,
 			ORPHAN,
+
 			DUPLICATE_MODES
 		} DuplicateMode;
+
+		typedef enum {
+			ALL,
+			CONFLICTING,
+			NONCONFLICTING,
+
+			NEIGHBOUR_MODES
+		} NeighbourMode;
 
 		enum Status { UNKNOWN, YES, MAYBE, NO, CONFLICT, NUM_STATUSES };
 		static QStringList STATUS_STRINGS;
@@ -36,6 +45,18 @@ class IMatchModel : public QObject {
 		virtual void sort(const QString& field = QString(), Qt::SortOrder order = Qt::AscendingOrder) = 0;
 		virtual void filter(const QString& pattern = QString()) = 0;
 		virtual void genericFilter(const QString& key, const QString& filter) = 0; // the syntax is the same as the SQL WHERE-clause syntax
+		virtual void neighbours(int index, NeighbourMode mode = IMatchModel::ALL, bool keepParameters = false) = 0;
+
+		// Arguably the most important method in the class. However, it has a problem
+		// It returns by reference, and this reference will not be good forever. In fact
+		// every new filter, sort, whatever will invalidate the reference. If this model
+		// has more than one client, this could be disastrous and lead to segmentation
+		// faults all the time. What we should be doing is returning by value. However,
+		// IFragmentConf is an abstract class, the actual value class would be SQLFragmentConf.
+		// This would impede the smooth integration of the new SQL-layer with any past and future
+		// layers however... which would be sad. Currently I have no idea how to solve this.
+		//
+		// TODO: Fix this! (first proposal: (Qt) smart pointers)
 		virtual thera::IFragmentConf& get(int index) = 0;
 
 		// used to get and restore the state of the model completely

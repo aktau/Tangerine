@@ -56,10 +56,16 @@ class MatchTileView : public QScrollArea {
 	    void comment();
 	    void selectAll();
 
+	    // duplicates
 	    void listDuplicates();
 	    void findDuplicates();
 	    void markDuplicates();
 	    void markAsMaster();
+
+	    // conflicts
+	    void listNeighbours();
+	    void listConflicts();
+	    void listNonconflicts();
 
 	    void saveState();
 		void goBack();
