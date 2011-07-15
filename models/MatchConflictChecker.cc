@@ -7,6 +7,11 @@
 
 using namespace thera;
 
+// http://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
+template <typename T> int nsign(T val) {
+    return (val > T(0)) - (val < T(0));
+}
+
 MatchConflictChecker::MatchConflictChecker(SQLFragmentConf master, QList<SQLFragmentConf> list) : mMaster(master), mList(list) { }
 
 static void compute_contour_overlaps(const thera::Poly2 &src, const thera::Poly2 &tgt, const thera::XF &xf, std::vector<bool> &src_used, std::vector<bool> &tgt_used) {
@@ -40,6 +45,8 @@ static void compute_contour_overlaps(const thera::Poly2 &src, const thera::Poly2
 				continue;
 
 			if (dist2(p, tgt[j]) < maxsqdist) {
+				qDebug("Oldway: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, tgt[j]), maxsqdist);
+
 				src_used[i] = 1;
 				tgt_used[j] = 1;
 				break;
@@ -113,12 +120,14 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 	QBitArray qbaSu((*sourceContour).size());
 	computeOverlap(*sourceContour, *targetContour, mMaster.mXF, qbaSu, qbaTu);
 
+	/*
 	for (int k = 0; k < 2000; ++k) {
 		QBitArray targetUsed((*targetContour).size());
 		QBitArray sourceUsed((*sourceContour).size());
 		computeOverlap(*sourceContour, *targetContour, mMaster.mXF, sourceUsed, targetUsed);
 	}
 	qDebug() << "Found" << 0 << "overlaps in" << t.restart() << "msec";
+	*/
 
 	std::vector<bool> tgtu;
 	tgtu.resize((*targetContour).size());
@@ -128,6 +137,7 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 
 	compute_contour_overlaps(*sourceContour, *targetContour, mMaster.mXF, srcu, tgtu);
 
+	/*
 	for (int k = 0; k < 2000; ++k) {
 	    std::vector<bool> tgt_used;
 	    tgt_used.resize((*targetContour).size());
@@ -139,6 +149,7 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 		compute_contour_overlaps(*sourceContour, *targetContour, mMaster.mXF, src_used, tgt_used);
 	}
 	qDebug() << "std::vector: found" << 0 << "overlaps in" << t.elapsed() << "msec";
+	*/
 
 	/*
 	for (int k = 0; k < 2000; ++k) {
@@ -158,8 +169,17 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 	assert(qbaTu.size() == tgtu.size());
 	for (int r = 0; r < qbaSu.size(); ++r) {
 		if (qbaSu.testBit(r) != srcu[r]) {
-			qDebug() << "FAIL FAIL FAIL FAIL FAIL";
-			assert(0 == 1);
+			qDebug() << "SOURCE FAIL FAIL FAIL FAIL FAIL" << r << "(type = " << ((srcu[r]) ? "NEW MISSES)" : "OLD MISSES)");
+			//assert(0 == 1);
+		}
+	}
+
+	qDebug() << "The sources are already the same";
+
+	for (int r = 0; r < qbaTu.size(); ++r) {
+		if (qbaTu.testBit(r) != tgtu[r]) {
+			qDebug() << "TARGET FAIL FAIL FAIL FAIL FAIL ON" << r << "(type = " << ((tgtu[r]) ? "NEW MISSES)" : "OLD MISSES)");
+			//assert(0 == 1);
 		}
 	}
 
@@ -192,38 +212,88 @@ inline void MatchConflictChecker::computeOverlap(const Poly2& source, const Poly
 	}
 
 	//std::cerr << mn << " | " << mx << std::endl;
+	int lastHit = 0;
+	int secondToLastHit = 0;
+	int hitCounter = 0;
+	bool directionDetermined = false;
 
-	for (register int i = 0, ii = source.size(), jj = target.size(); i < ii; ++i) {
+	// determine directionality of match
+	register int i = 0, ii = source.size(), jj = target.size();
+	for (; i < ii && !directionDetermined; ++i) {
 		// assuming planar transform
 		const vec2 p(
 			xf[0] * source[i][0] + xf[4] * source[i][1] + xf[12],
 			xf[1] * source[i][0] + xf[5] * source[i][1] + xf[13]
 		);
 
-		/* early fail checks */
+		// early fail checks
 		if (p[0] < mn[0] - maxsqdist) continue;
 		if (p[0] > mx[0] + maxsqdist) continue;
 		if (p[1] < mn[1] - maxsqdist) continue;
 		if (p[1] > mx[1] + maxsqdist) continue;
 
 		//qDebug() << "passed first continue tests";
+		//int delta = sgn(lastHit - secondToLastHit);
+		//qDebug("sgn(%d - %d) == %d", lastHit, secondToLastHit, delta);
 
 		for (register int j = 0; j < jj; ++j) {
 			if (sourceUsed.testBit(i) && targetUsed.testBit(j)) continue;
 
 			if (dist2(p, target[j]) < maxsqdist) {
-				//sourceUsed[i] = 1;
-				//targetUsed[j] = 1;
-
-				//qDebug("%f < %f < %f => %s", mn[0] - maxsqdist, p[0], mx[0] + maxsqdist, (mn[0] - maxsqdist < p[0] && p[0] < mx[0] + maxsqdist) ? "YES" : "NO");
-				//qDebug("%f < %f < %f => %s", mn[1] - maxsqdist, p[1], mx[1] + maxsqdist, (mn[1] - maxsqdist < p[1] && p[1] < mx[1] + maxsqdist) ? "YES" : "NO");
-				//qDebug() << "---------------------------------";
+				++hitCounter;
 
 				sourceUsed.setBit(i);
-				targetUsed.setBit(i);
+				targetUsed.setBit(j);
+
+				secondToLastHit = lastHit;
+				lastHit = j;
+
+				if (hitCounter >= 2 && lastHit - secondToLastHit != 0) directionDetermined = true;
+
+				qDebug("Initialization hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
 
 				break;
 			}
+		}
+	}
+
+	//qDebug() << "passed first continue tests";
+	const register int delta = sgn(lastHit - secondToLastHit);
+	//qDebug("sgn(%d - %d) == %d", lastHit, secondToLastHit, delta);
+
+	// the fast track
+	//for (register int i = 2, ii = source.size(), jj = target.size(); i < ii; ++i) {
+	for (; i < ii; ++i) {
+		// assuming planar transform
+		const vec2 p(
+			xf[0] * source[i][0] + xf[4] * source[i][1] + xf[12],
+			xf[1] * source[i][0] + xf[5] * source[i][1] + xf[13]
+		);
+
+		// early fail checks
+		if (p[0] < mn[0] - maxsqdist) continue;
+		if (p[0] > mx[0] + maxsqdist) continue;
+		if (p[1] < mn[1] - maxsqdist) continue;
+		if (p[1] > mx[1] + maxsqdist) continue;
+
+		//for (register int j = 0; j < jj; ++j) {
+		for (register int j = lastHit; j < jj && j >= 0; j += delta) {
+			if (sourceUsed.testBit(i) && targetUsed.testBit(j)) continue;
+
+			if (dist2(p, target[j]) < maxsqdist) {
+				sourceUsed.setBit(i);
+				targetUsed.setBit(j);
+
+				lastHit = j;
+
+				qDebug("Fast track: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
+				break;
+			}
+			/*
+			else if (j - lastHit) {
+
+			}
+			*/
 		}
 	}
 }
