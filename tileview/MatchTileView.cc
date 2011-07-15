@@ -947,6 +947,12 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			order = !order;
 		} break;
 
+		case Qt::Key_E: {
+			saveState();
+
+			mModel->sort("error", Qt::AscendingOrder);
+		} break;
+
 		case Qt::Key_N: {
 			// set all visible UNKNOWN's to NO
 		    bool changed = false;
