@@ -133,7 +133,7 @@ void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) 
 			SQLFilter filter(mDb);
 			filter.setFilter("filter", allNeighboursFilter);
 
-			QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
 
 			MatchConflictChecker checker(c, list);
 
@@ -149,7 +149,7 @@ void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) 
 			SQLFilter filter(mDb);
 			filter.setFilter("filter", allNeighboursFilter);
 
-			QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
 
 			MatchConflictChecker checker(c, list);
 
