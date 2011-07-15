@@ -48,6 +48,8 @@ Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : Q
 	}
 
 	connect(&mFragDbFutureWatcher, SIGNAL(finished()), this, SLOT(fragmentDatabaseLoadAttempted()));
+	connect(&mFragDbFutureWatcher, SIGNAL(finished()), this, SLOT(updateStatusBar()));
+	connect(&mFragDbFutureWatcher, SIGNAL(started()), this, SLOT(updateStatusBar()));
 
 	loadFragmentDatabase();
 }
@@ -258,6 +260,15 @@ void Tangerine::closeDatabase() {
 }
 
 void Tangerine::updateStatusBar() {
+	statusBar()->clearMessage();
+
+	if (!Database::isValid()) {
+		if (mFragDbFutureWatcher.isRunning())
+			statusBar()->showMessage(tr("Loading the fragment database, this could take a minute..."));
+		else
+			statusBar()->showMessage(tr("Please load a fragment database first, and then a match database to get started"));
+	}
+
 	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb.matchCount()));
 }
 
