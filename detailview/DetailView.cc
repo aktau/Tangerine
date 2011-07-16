@@ -2,7 +2,7 @@
 
 using namespace thera;
 
-DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(5040), mTranslateX(0.0) {
+DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mTabletopModel(NULL), mDistanceExponential(5040), mTranslateX(0.0), mThreaded(false) {
 	setSceneRect(0, 0, 800, 600);
 
 	mDescription = new QGraphicsTextItem;
@@ -92,20 +92,24 @@ void DetailScene::tabletopChanged() {
 		*/
 	}
 
+	updateDisplayInformation();
+	QApplication::processEvents();
+
 	qDebug() << "Spent" << timer.restart() << "msec";
 
-	QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList);
-	mWatcher.setFuture(future);
+	if (mThreaded) {
+		QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList);
+		mWatcher.setFuture(future);
+	}
+	else {
+		calcMeshData(fragmentList);
+	}
 
 	qDebug() << "Activating the concurrent run cost" << timer.elapsed() << "msec";
 
 	need_resetview &= !mPinnedFragments.isEmpty();
 
-	if (need_resetview) {
-		resetView();
-	}
-
-	updateDisplayInformation();
+	if (need_resetview) resetView();
 
 	update();
 }
@@ -124,7 +128,9 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 		m->need_bsphere();
 
 		mLoadedFragments.insert(pf, Fragment::LORES_MESH);
+
 		update();
+		QApplication::processEvents();
 	}
 
 	// now start loading high resolution data
@@ -141,6 +147,7 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 
 		mLoadedFragments.insert(pf, Fragment::HIRES_MESH);
 		update();
+		QApplication::processEvents();
 	}
 }
 
@@ -194,43 +201,14 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 	glEnd();
 	*/
 
-	// failed attempt at transparancy
-	//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
-
-	/*
-	if (mTabletopModel && mWatcher.isFinished()) {
-		int i = 0;
-
-		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it, ++i) {
-			//setup_lighting((*it)->id());
-			//qDebug() << "Drawing mesh" << i;
-
-			if (mState.draw_alternate > 0 && (i & 1)) continue;
-			if (mState.draw_alternate < 0 && !(i & 1)) continue;
-
-			//glColor3f(0.7f, 0.3f, 0.1f);
-			//glColor3f(0.2f + (float)i / 2, 0.5f, 1.0f - (float)i / 2);
-			glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
-			drawMesh(*it);
-		}
-	}
-	*/
-
 	int i = 0;
 
+	//qDebug("drawBackground: drawing %d meshes", mLoadedFragments.size());
 	for (QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it, ++i) {
+		//setup_lighting((*it)->id());
 		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
 		drawMesh(it.key(), it.value());
 	}
-
-	/*
-	foreach (const PlacedFragment *pf, mLoadedFragments) {
-		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.1);
-		drawMesh(pf);
-
-		++i;
-	}
-	*/
 
 	defaultStates();
 	painter->endNativePainting();
@@ -240,7 +218,7 @@ void DetailScene::initGL() {
 	//glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
 }
 
-void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) {
+void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) const {
 	const thera::Mesh *themesh = getMesh(pf, meshType);
 
 	glPushMatrix();
@@ -253,7 +231,8 @@ void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType
 
 	if (mState.draw_2side) {
 		glDisable(GL_CULL_FACE);
-	} else {
+	}
+	else {
 		glCullFace(GL_BACK);
 		glEnable(GL_CULL_FACE);
 	}
@@ -265,15 +244,13 @@ void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType
 	// Normals
 	if (!themesh->normals.empty() && !mState.draw_index) {
 		glEnableClientState(GL_NORMAL_ARRAY);
-		glNormalPointer(GL_FLOAT, sizeof(themesh->normals[0]),
-				&themesh->normals[0][0]);
+		glNormalPointer(GL_FLOAT, sizeof(themesh->normals[0]), &themesh->normals[0][0]);
 	} else {
 		glDisableClientState(GL_NORMAL_ARRAY);
 	}
 
 	// Colors
-	if (!themesh->colors.empty() && !mState.draw_falsecolor
-			&& !mState.draw_index && !mState.draw_ribbon) {
+	if (!themesh->colors.empty() && !mState.draw_falsecolor && !mState.draw_index && !mState.draw_ribbon) {
 		/*
 		glEnableClientState(GL_COLOR_ARRAY);
 		const float *c = &themesh->colors[0][0];
@@ -328,7 +305,7 @@ void DetailScene::drawMesh(const PlacedFragment *pf, Fragment::meshEnum meshType
 	glPopMatrix();
 }
 
-void DetailScene::drawTstrips(const thera::Mesh *themesh) {
+void DetailScene::drawTstrips(const thera::Mesh *themesh) const {
 	//qDebug() << "Tstrips size =" << themesh->tstrips.size() << "and" << &themesh->tstrips[0] << "|" << themesh->tstrips[0] << "and" << &themesh->tstrips[1] << "|" << themesh->tstrips[1];
 
 	const int *t = &themesh->tstrips[0];
@@ -506,11 +483,29 @@ void DetailScene::resetView() {
 }
 
 void DetailScene::updateBoundingSphere() {
+	qDebug() << "DetailScene::updateBoundingSphere: Going to update bounding sphere info";
+
 	point boxmin(1e38f, 1e38f, 1e38f);
 	point boxmax(-1e38f, -1e38f, -1e38f);
 	bool someVisible = false;
 
 	// adjust boxmin and boxmax
+	for (QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it) {
+		XF xf = getXF(it.key());
+		Mesh *m = getMesh(it.key(), it.value());
+
+		someVisible = true;
+
+		point c = xf * m->bsphere.center;
+		float r = m->bsphere.r;
+
+		for (int j = 0; j < 3; j++) {
+			boxmin[j] = qMin(boxmin[j], c[j] - r);
+			boxmax[j] = qMax(boxmax[j], c[j] + r);
+		}
+	}
+
+	/*
     if (mTabletopModel) {
 		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
 			XF xf = getXF(*it);
@@ -527,6 +522,7 @@ void DetailScene::updateBoundingSphere() {
 			}
 		}
 	}
+	*/
 
 	if (!someVisible) return;
 
@@ -536,6 +532,17 @@ void DetailScene::updateBoundingSphere() {
 	gr = 0.0f;
 
 	// adjust bounding sphere center and radius
+	for (QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it) {
+		XF xf = getXF(it.key());
+		Mesh *m = getMesh(it.key(), it.value());
+
+		point c = xf * m->bsphere.center;
+		float r = m->bsphere.r;
+
+		gr = qMax(gr, dist(c, gc) + r);
+	}
+
+	/*
 	if (mTabletopModel) {
 		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
 			XF xf = getXF(*it);
@@ -547,6 +554,7 @@ void DetailScene::updateBoundingSphere() {
 			gr = qMax(gr, dist(c, gc) + r);
 		}
 	}
+	*/
 
 	qDebug() << "DetailScene::updateBoundingSphere: Global bounding sphere updated";
 }
@@ -554,12 +562,14 @@ void DetailScene::updateBoundingSphere() {
 void DetailScene::updateDisplayInformation() {
 	QString match, xf;
 
-	for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
-		match += (*it)->id() + (it != end - 1 ? ", " : "");
+	if (mTabletopModel) {
+		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
+			match += (*it)->id() + (it != end - 1 ? ", " : "");
 
-		XF t = getXF(*it);
+			XF t = getXF(*it);
 
-		xf = QString() + t;
+			xf = QString() + t;
+		}
 	}
 
 	QString html = QString(
