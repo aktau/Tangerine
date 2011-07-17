@@ -10,6 +10,10 @@
 
 /**
  * The pure abstract interface for all match models
+ *
+ * VERY IMPORTANT: calling nearly any method on the model will invalidate the references obtained via get(). Luckily calling these functions will yield
+ * the modelChanged() signals et cetera, so you always know when this happens. However, take care not to get references, call methods and then keep using those
+ * references in the same method.
  */
 class IMatchModel : public QObject {
 		Q_OBJECT

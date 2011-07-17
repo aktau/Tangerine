@@ -113,7 +113,7 @@ MatchTileView::~MatchTileView() {
 
 #ifdef WITH_DETAILVIEW
 void MatchTileView::initDetailView() {
-	QGLWidget *widget = new QGLWidget(QGLFormat(QGL::SampleBuffers));
+	QGLWidget *widget = new QGLWidget(QGLFormat(QGL::SampleBuffers | QGL::AlphaChannel | QGL::Rgba));
 
 	widget->makeCurrent(); // The current context must be set before calling Scene's constructor
 	mDetailView.setViewport(widget);
@@ -550,7 +550,71 @@ void MatchTileView::listNonconflicts() {
 	if (mModel->isValidIndex(current)) {
 		saveState();
 
+#ifdef WITH_DETAILVIEW
+		mDetailView.show(); // make it visible
+
+		const IFragmentConf &master = mModel->get(current);
+
+		int masterTarget = master.mFragments[IFragmentConf::TARGET];
+		int masterSource = master.mFragments[IFragmentConf::SOURCE];
+		int masterIndex = master.index();
+
+		mTabletopModel.clear();
+		mTabletopModel.fragmentPlace(master.getTargetId(), XF());
+		mTabletopModel.fragmentPlace(master.getSourceId(), master.mXF);
+
+		const PlacedFragment *masterTargetPlacement = mTabletopModel.placedFragment(master.getTargetId());
+		const PlacedFragment *masterSourcePlacement = mTabletopModel.placedFragment(master.getSourceId());
+#endif
+
 		mModel->neighbours(current, IMatchModel::NONCONFLICTING, false);
+
+		qDebug("Ok done checking for conflicts, time to start adding them to the tabletop");
+
+#ifdef WITH_DETAILVIEW
+#endif
+		qDebug("About to enter THE LOOP");
+
+		for (int i = 0; i < mModel->size(); ++i) {
+			//if (i == 8) break;
+
+			//if (i != 0 && i != 2 && i != 6) continue;
+
+			const IFragmentConf &c = mModel->get(i);
+
+			qDebug() << "Looping, about to place" << c.getSourceId() << "and" << c.getTargetId();
+
+			if (c.index() == masterIndex) {
+				qDebug() << "Encountered master, continue'ing";
+
+				continue;
+			}
+
+			int target = c.mFragments[IFragmentConf::TARGET];
+			int source = c.mFragments[IFragmentConf::SOURCE];
+
+			// TODO: sanity check we haven't already placed this fragment!
+			if (mTabletopModel.contains(c.getSourceId()) && mTabletopModel.contains(c.getTargetId())) continue;
+
+			if (target == masterTarget) {
+				qDebug() << "target == masterTarget = Ok, placing" << c.getSourceId() << "against" << masterTargetPlacement->id();
+				mTabletopModel.fragmentPlace(c.getSourceId(), masterTargetPlacement->accumXF() * c.mXF);
+			}
+			if (target == masterSource) {
+				qDebug() << "target == masterSource = Ok, placing" << c.getSourceId() << "against" << masterSourcePlacement->id();
+				mTabletopModel.fragmentPlace(c.getSourceId(), masterSourcePlacement->accumXF() * c.mXF);
+			}
+			if (source == masterTarget) {
+				qDebug() << "source == masterTarget = Ok, placing" << c.getTargetId() << "against" << masterTargetPlacement->id();
+				mTabletopModel.fragmentPlace(c.getTargetId(), masterTargetPlacement->accumXF() * inv(c.mXF));
+			}
+			if (source == masterSource) {
+				qDebug() << "source == masterSource = Ok, placing" << c.getSourceId() << "against" << masterSourcePlacement->id();
+				mTabletopModel.fragmentPlace(c.getTargetId(), masterSourcePlacement->accumXF() * inv(c.mXF));
+			}
+		}
+
+		mDetailScene.init(&mTabletopModel);
 	}
 }
 
@@ -755,8 +819,9 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 	if (mModel->isValidIndex(current)) {
 		mDetailView.show(); // make it visible
 
-		const IFragmentConf &c = mModel->get(s().tindices[idx]);
+		const IFragmentConf &c = mModel->get(current);
 
+		mTabletopModel.clear();
 		mTabletopModel.fragmentPlace(c.getTargetId(), XF());
 		mTabletopModel.fragmentPlace(c.getSourceId(), c.mXF);
 

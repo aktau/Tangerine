@@ -58,7 +58,7 @@ void DetailScene::tabletopChanged() {
 		// the methods called from calcMeshData use OpenMP, the current combination Qt 4.7 and GCC 4.4 on windows
 		// doesn't play nice with that. It's very likely that this bug will be fixed in future versions. There
 		// are reports that it's been fixed for GCC 4.5.x and up.
-		QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList);
+		QFuture<void> future = QtConcurrent::run(this, &DetailScene::calcMeshData, fragmentList, true);
 		mWatcher.setFuture(future);
 	}
 	else {
@@ -68,15 +68,18 @@ void DetailScene::tabletopChanged() {
 		calcMeshData(fragmentList);
 	}
 
-	if (needResetView) resetView();
-
-	update();
+	if (needResetView) {
+		resetView();
+		update();
+	}
 }
 
-void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList) {
+void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList, bool updatePerFragment) {
 	// first load low resolution data for fast display
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
+
+		qDebug() << "---> pinning LORES" << pf->id();
 
 		f->mesh(Fragment::LORES_MESH).pin();
 
@@ -87,7 +90,7 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 
 		mLoadedFragments.insert(pf->id(), Fragment::LORES_MESH);
 
-		update();
+		if (updatePerFragment) update();
 
 		if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 	}
@@ -98,6 +101,8 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 		foreach (const PlacedFragment *pf, fragmentList) {
 			const Fragment *f = pf->fragment();
 
+			qDebug() << "---> pinning HIRES" << pf->id();
+
 			f->mesh(Fragment::HIRES_MESH).pin();
 
 			Mesh *m = &*f->mesh(Fragment::HIRES_MESH);
@@ -107,7 +112,7 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 
 			mLoadedFragments.insert(pf->id(), Fragment::HIRES_MESH);
 
-			update();
+			if (updatePerFragment) update();
 
 			if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		}
@@ -145,7 +150,6 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 void DetailScene::unloadMeshes() {
 	foreach (const QString& id, mLoadedFragments.keys()) {
 		if (!mTabletopModel || !mTabletopModel->contains(id)) {
-			qDebug() << "DetailScene::tabletopChanged: unpinning mesh" << id;
 			//qDebug("Currently %d meshes are loaded, %d meshes are pinned", mLoadedFragments.size(), mPinnedFragments.size());
 
 			if (mLoadedFragments.contains(id)) {
@@ -156,7 +160,7 @@ void DetailScene::unloadMeshes() {
 				Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
 				//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
 
-				qDebug() << "DetailScene::tabletopChanged: removed fragment" << id;
+				qDebug() << "<--- DetailScene::tabletopChanged: unpinning mesh" << id << "both LORES and HIRES";
 			}
 			else {
 				qDebug() << "DetailScene::tabletopChanged: Unable to remove fragment from loaded fragments. It possibly wasn't loaded yet if async loading wasn't use. TODO: code possibility to cancel() async loading if necessary";
@@ -451,12 +455,14 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 
 			if (mState.highQuality) {
 				// load hires data
-				calcMeshData(fragmentList);
+				calcMeshData(fragmentList, false);
 			}
 			else {
 				// unload hires data
 				foreach (const PlacedFragment *pf, fragmentList) {
 					pf->fragment()->mesh(Fragment::HIRES_MESH).unpin();
+
+					qDebug() << "<--- DetailScene::keyPressEvent: changing to lower resolution, unpinning HIRES of" << pf->id();
 				}
 			}
 		} break;

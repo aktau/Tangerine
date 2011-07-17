@@ -69,7 +69,7 @@ class DetailScene : public QGraphicsScene {
 	    void updateBoundingSphere();
 	    void updateDisplayInformation();
 
-	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList);
+	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList, bool update = true);
 
 	    // removes all meshes that are no longer on the tabletop (or remove all meshes if the tabletop no longer exists)
 	    void unloadMeshes();

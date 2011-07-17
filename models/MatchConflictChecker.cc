@@ -35,6 +35,103 @@ QList<SQLFragmentConf> MatchConflictChecker::getNonconflicting() const {
 	return filterList(false);
 }
 
+QList<SQLFragmentConf> MatchConflictChecker::getProgressiveNonconflicting() const {
+	bool conflicting = false;
+
+	QList<thera::SQLFragmentConf> matchList;
+	matchList.reserve(mList.size());
+
+	if (!conflicting) matchList << mMaster;
+
+	const int masterTargetId = mMaster.mFragments[IFragmentConf::TARGET];
+	const int masterSourceId = mMaster.mFragments[IFragmentConf::SOURCE];
+
+	CPoly2 targetContour = mContours[masterTargetId];
+	CPoly2 sourceContour = mContours[masterSourceId];
+
+    targetContour.pin();
+    sourceContour.pin();
+
+    QBitArray masterTargetUsed((*targetContour).size());
+    QBitArray masterSourceUsed((*sourceContour).size());
+    computeOverlap(*sourceContour, *targetContour, mMaster.mXF, masterSourceUsed, masterTargetUsed);
+
+    targetContour.unpin();
+    sourceContour.unpin();
+
+    //qDebug() << "Target:" << targetUsed.count(true);
+    //qDebug() << "Source:" << sourceUsed.count(true);
+
+    foreach (const SQLFragmentConf& c, mList) {
+    	const int targetId = c.mFragments[IFragmentConf::TARGET];
+		const int sourceId = c.mFragments[IFragmentConf::SOURCE];
+
+		const bool targetPossibleConflict = targetId == masterTargetId || targetId == masterSourceId;
+		const bool sourcePossibleConflict = sourceId == masterTargetId || sourceId == masterSourceId;
+
+    	if (targetPossibleConflict && sourcePossibleConflict) {
+    		// this is automatically a conflict because both fragment this match and the master match consist of the same fragments
+    		if (conflicting) matchList << c;
+
+    		continue;
+    	}
+
+    	CPoly2 tc = mContours[targetId];
+		CPoly2 sc = mContours[sourceId];
+
+		tc.pin();
+		sc.pin();
+
+		QBitArray targetUsed((*tc).size());
+		QBitArray sourceUsed((*sc).size());
+
+		//qDebug("MatchConflictChecker::getConflicting: Match %s with %s -> (%d,%d) and (%d,%d)", c.getTargetId().toAscii().data(), c.getSourceId().toAscii().data(), targetId, sourceId, masterTargetId, masterSourceId);
+		//qDebug("Sizes: %d (%d) and %d (%d)", (*tc).size(), targetUsed.count(), (*sc).size(), sourceUsed.count());
+
+		computeOverlap(*sc, *tc, c.mXF, sourceUsed, targetUsed);
+
+		//qDebug("Somehow we did get past it...");
+
+		QBitArray& correspondingMasterUsed = (targetId == masterTargetId || sourceId == masterTargetId) ? masterTargetUsed : masterSourceUsed;
+		QBitArray& correspondingUsed = (masterTargetId == targetId || masterSourceId == targetId) ? targetUsed : sourceUsed;
+
+		const int threshold = 5;
+		const int minimumUsed = 5; // the minimum amount of points that two fragments have to be close enough
+		const int pointsUsed = correspondingUsed.count(true);
+
+		if (pointsUsed < minimumUsed) {
+			qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: discarded match" << c.getSourceId() << "<->" << c.getTargetId() << "because only" << pointsUsed << "were used";
+			continue;
+		}
+
+		if (conflicts(correspondingMasterUsed, correspondingUsed, threshold)) {
+			if (conflicting) matchList << c;
+		}
+		else {
+			if (!conflicting) {
+				qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: apparently no conflict, adding..." << c.getSourceId() << "<->" << c.getTargetId() << "uses:" << pointsUsed;
+
+				matchList << c;
+
+				qDebug("MatchConflictChecker::getProgressiveNonconflicting: BEFORE USAGE: %d / %d, concordance = %d",
+						correspondingMasterUsed.count(true), correspondingMasterUsed.count(),
+						(correspondingMasterUsed & correspondingUsed).count(true));
+				correspondingMasterUsed |= correspondingUsed;
+				qDebug("MatchConflictChecker::getProgressiveNonconflicting: AFTER USAGE: %d / %d", correspondingMasterUsed.count(true), correspondingMasterUsed.count());
+			}
+		}
+
+		//qDebug("MatchConflictChecker::getConflicting: Match %s with %s\tBAD (%d,%d) and (%d,%d)", c.getTargetId().toAscii().data(), c.getSourceId().toAscii().data(), targetId, sourceId, masterTargetId, masterSourceId);
+    }
+
+    // TODO: unpin all
+
+    qDebug() << "Checking conflicts for" << mMaster.getTargetId() << "<->" << mMaster.getSourceId() << mMaster.index()
+    		<< "\nWe have" << mList.size() << "candidates and only" << matchList.size() << "are left";
+
+	return matchList;
+}
+
 inline QList<SQLFragmentConf> MatchConflictChecker::filterList(bool conflicting) const {
 	QList<thera::SQLFragmentConf> matchList;
 	matchList.reserve(mList.size());
@@ -166,9 +263,16 @@ inline void MatchConflictChecker::computeOverlap(const Poly2& source, const Poly
 inline bool MatchConflictChecker::conflicts(const QBitArray& a, const QBitArray& b, int threshold) const {
 	  assert(a.size() == b.size());
 
+	  /*
 	  for (register int i = 0, ii = a.size(); i < ii && threshold != 0; ++i) {
 		  threshold -= (a.testBit(i) & b.testBit(i));
 	  }
 
+	  qDebug("threshold = %d", threshold);
+
 	  return !threshold;
+	  */
+
+	  // alternatively and might actually be faster (look at the Qt source, the operators and count() have some neat bithacks:
+	  return (a & b).count(true) > threshold;
 }

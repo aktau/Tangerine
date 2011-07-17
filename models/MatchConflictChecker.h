@@ -15,6 +15,7 @@ class MatchConflictChecker {
 	public:
 		QList<thera::SQLFragmentConf> getConflicting() const;
 		QList<thera::SQLFragmentConf> getNonconflicting() const;
+		QList<thera::SQLFragmentConf> getProgressiveNonconflicting() const;
 
 	private:
 		QList<thera::SQLFragmentConf> filterList(bool conflicting = true) const;

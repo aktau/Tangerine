@@ -153,7 +153,8 @@ void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) 
 
 			MatchConflictChecker checker(c, list);
 
-			mMatches = checker.getNonconflicting();
+			//mMatches = checker.getNonconflicting();
+			mMatches = checker.getProgressiveNonconflicting();
 			mRealSize = mMatches.size();
 			mWindowBegin = 0;
 			mWindowEnd = mRealSize - 1;
@@ -171,7 +172,7 @@ thera::IFragmentConf& MatchModel::get(int index) {
 }
 
 inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
-	qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd << "| mMatches.size() =" << mMatches.size() << "and window size =" << mWindowSize;
+	//qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd << "| mMatches.size() =" << mMatches.size() << "and window size =" << mWindowSize;
 
 	if (index < mWindowBegin || index > mWindowEnd) {
 		// if the index is outside of the window, request another window in which it fits
