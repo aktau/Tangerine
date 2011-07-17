@@ -42,7 +42,7 @@ class DetailScene : public QGraphicsScene {
 
 		virtual void drawBackground(QPainter *painter, const QRectF &rect);
 
-		void init(const thera::TabletopModel *tabletopModel);
+		void init(thera::TabletopModel *tabletopModel);
 
 	public slots:
 		void tabletopChanged();
@@ -62,7 +62,7 @@ class DetailScene : public QGraphicsScene {
 	private:
 	    void initGL();
 
-	    void drawMesh(const thera::PlacedFragment *pf, thera::Fragment::meshEnum meshType) const;
+	    void drawMesh(const QString& id, thera::Fragment::meshEnum meshType) const;
 	    void drawTstrips(const thera::Mesh *themesh) const;
 
 	    void resetView();
@@ -71,8 +71,13 @@ class DetailScene : public QGraphicsScene {
 
 	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList);
 
+	    // removes all meshes that are no longer on the tabletop (or remove all meshes if the tabletop no longer exists)
+	    void unloadMeshes();
+
 	    thera::Mesh *getMesh(const thera::PlacedFragment *pf, thera::Fragment::meshEnum meshType) const;
+	    thera::Mesh *getMesh(const QString& id, thera::Fragment::meshEnum meshType) const;
 	    thera::XF getXF(const thera::PlacedFragment *pf) const;
+	    thera::XF getXF(const QString& id) const;
 
 	private slots:
 		void calcDone();
@@ -81,13 +86,11 @@ class DetailScene : public QGraphicsScene {
 	    thera::XF mGlobalXF;
 	    thera::Mesh::BSphere mGlobalBoundingSphere;
 
-	    const thera::TabletopModel *mTabletopModel;
+	    QPointer<thera::TabletopModel> mTabletopModel;
+	    //const thera::TabletopModel *mTabletopModel;
 
-	    QSet<QString> mPinnedFragments;
-	    QMap<const thera::PlacedFragment *, thera::Fragment::meshEnum> mLoadedFragments;
-	    //QSet<const thera::PlacedFragment *> mLoadedFragments;
-	    QVector<xform> mXforms;
-	    QVector<thera::Mesh *> mMeshes;
+	    typedef QMap<QString, thera::Fragment::meshEnum> FragmentMap;
+	    FragmentMap mLoadedFragments;
 
 	    QGraphicsTextItem *mDescription;
 
@@ -114,11 +117,13 @@ class DetailScene : public QGraphicsScene {
 			bool draw_points;
 			bool white_bg;
 
+			bool highQuality;
+
 			State(void) :
 				current_mesh(-1), draw_alternate(0), draw_ribbon(false),
 				draw_edges(false), draw_2side(true), draw_shiny(false),
 				draw_lit(false), draw_falsecolor(false), draw_index(false),
-				draw_points(false), white_bg(true) {
+				draw_points(false), white_bg(true), highQuality(false) {
 				// nothing
 			}
 		};
