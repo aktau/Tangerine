@@ -45,7 +45,7 @@ static void compute_contour_overlaps(const thera::Poly2 &src, const thera::Poly2
 				continue;
 
 			if (dist2(p, tgt[j]) < maxsqdist) {
-				qDebug("Oldway: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, tgt[j]), maxsqdist);
+				//qDebug("Oldway: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, tgt[j]), maxsqdist);
 
 				src_used[i] = 1;
 				tgt_used[j] = 1;
@@ -120,14 +120,12 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 	QBitArray qbaSu((*sourceContour).size());
 	computeOverlap(*sourceContour, *targetContour, mMaster.mXF, qbaSu, qbaTu);
 
-	/*
 	for (int k = 0; k < 2000; ++k) {
 		QBitArray targetUsed((*targetContour).size());
 		QBitArray sourceUsed((*sourceContour).size());
 		computeOverlap(*sourceContour, *targetContour, mMaster.mXF, sourceUsed, targetUsed);
 	}
 	qDebug() << "Found" << 0 << "overlaps in" << t.restart() << "msec";
-	*/
 
 	std::vector<bool> tgtu;
 	tgtu.resize((*targetContour).size());
@@ -137,7 +135,6 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 
 	compute_contour_overlaps(*sourceContour, *targetContour, mMaster.mXF, srcu, tgtu);
 
-	/*
 	for (int k = 0; k < 2000; ++k) {
 	    std::vector<bool> tgt_used;
 	    tgt_used.resize((*targetContour).size());
@@ -149,9 +146,7 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 		compute_contour_overlaps(*sourceContour, *targetContour, mMaster.mXF, src_used, tgt_used);
 	}
 	qDebug() << "std::vector: found" << 0 << "overlaps in" << t.elapsed() << "msec";
-	*/
 
-	/*
 	for (int k = 0; k < 2000; ++k) {
 		std::vector<bool> tgt_used;
 		tgt_used.resize((*targetContour).size());
@@ -163,7 +158,6 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 		compute_contour_overlaps_stupid(*sourceContour, *targetContour, mMaster.mXF, src_used, tgt_used);
 	}
 	qDebug() << "std::vector stupid: found" << 0 << "overlaps in" << t.elapsed() << "msec";
-	*/
 
 	assert(qbaSu.size() == srcu.size());
 	assert(qbaTu.size() == tgtu.size());
@@ -174,7 +168,7 @@ QList<SQLFragmentConf> MatchConflictChecker::getConflicting() const {
 		}
 	}
 
-	qDebug() << "The sources are already the same";
+	qDebug() << "The sources are already the same (or are they?)";
 
 	for (int r = 0; r < qbaTu.size(); ++r) {
 		if (qbaTu.testBit(r) != tgtu[r]) {
@@ -250,7 +244,7 @@ inline void MatchConflictChecker::computeOverlap(const Poly2& source, const Poly
 
 				if (hitCounter >= 2 && lastHit - secondToLastHit != 0) directionDetermined = true;
 
-				qDebug("Initialization hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
+				//qDebug("Initialization hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
 
 				break;
 			}
@@ -286,7 +280,7 @@ inline void MatchConflictChecker::computeOverlap(const Poly2& source, const Poly
 
 				lastHit = j;
 
-				qDebug("Fast track: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
+				//qDebug("Fast track: Hit found at (%d,%d)\t(%.3f < %.1f)", i, j, dist2(p, target[j]), maxsqdist);
 				break;
 			}
 			/*
