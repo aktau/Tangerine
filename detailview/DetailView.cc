@@ -89,7 +89,7 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 
 		update();
 
-		if (!mThreaded) QApplication::processEvents();
+		if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 	}
 
 	// now start loading high resolution data
@@ -109,7 +109,7 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 
 			update();
 
-			if (!mThreaded) QApplication::processEvents();
+			if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
 		}
 	}
 
