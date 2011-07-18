@@ -102,7 +102,6 @@ class DetailScene : public QGraphicsScene {
 	    thera::Mesh::BSphere mGlobalBoundingSphere;
 
 	    QPointer<thera::TabletopModel> mTabletopModel;
-	    //const thera::TabletopModel *mTabletopModel;
 
 	    typedef QMap<QString, thera::Fragment::meshEnum> FragmentMap;
 	    FragmentMap mLoadedFragments;

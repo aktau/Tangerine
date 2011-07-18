@@ -17,30 +17,31 @@ DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mDistanceExp
 }
 
 DetailScene::~DetailScene() {
+	// this will effectively unpin() all held meshes
+	// all other resources are on the stack so automatically destroyed
+	init(NULL);
 }
 
 void DetailScene::init(TabletopModel *tabletopModel) {
 	if (mTabletopModel != tabletopModel) {
-		if (mTabletopModel != NULL) {
-			disconnect(mTabletopModel, 0, this, 0);
-		}
+		if (mTabletopModel != NULL) disconnect(mTabletopModel, 0, this, 0);
 
 		mGlobalXF = XF();
 		mTabletopModel = tabletopModel;
 
-		connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
+		if (mTableTopModel) connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
 
 		tabletopChanged();
 	}
 }
 
 void DetailScene::tabletopChanged() {
+	unloadMeshes();
+
 	//if (!isVisible()) return;
 	if (!mTabletopModel) return;
 
 	bool needResetView = false;
-
-	unloadMeshes();
 
 	QList<const PlacedFragment *> fragmentList;
 
