@@ -79,20 +79,23 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
 
-		qDebug() << "---> pinning LORES" << pf->id();
+		//qDebug() << "---> pinning LORES" << pf->id();
 
-		f->mesh(Fragment::LORES_MESH).pin();
+		if (f->mesh(Fragment::LORES_MESH).pin()) {
+			Mesh *m = &*f->mesh(Fragment::LORES_MESH);
+			m->need_normals();
+			m->need_tstrips();
+			m->need_bsphere();
 
-		Mesh *m = &*f->mesh(Fragment::LORES_MESH);
-		m->need_normals();
-		m->need_tstrips();
-		m->need_bsphere();
+			mLoadedFragments.insert(pf->id(), Fragment::LORES_MESH);
 
-		mLoadedFragments.insert(pf->id(), Fragment::LORES_MESH);
+			if (updatePerFragment) update();
 
-		if (updatePerFragment) update();
-
-		if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+			if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+		}
+		else {
+			qDebug() << "DetailScene::calcMeshData: Pinning LORES_MESH of" << pf->id() << "was unsucessful";
+		}
 	}
 
 	// now start loading high resolution data
@@ -101,20 +104,23 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 		foreach (const PlacedFragment *pf, fragmentList) {
 			const Fragment *f = pf->fragment();
 
-			qDebug() << "---> pinning HIRES" << pf->id();
+			//qDebug() << "---> pinning HIRES" << pf->id();
 
-			f->mesh(Fragment::HIRES_MESH).pin();
+			if (f->mesh(Fragment::HIRES_MESH).pin()) {
+				Mesh *m = &*f->mesh(Fragment::HIRES_MESH);
+				m->need_normals();
+				m->need_tstrips();
+				m->need_bsphere();
 
-			Mesh *m = &*f->mesh(Fragment::HIRES_MESH);
-			m->need_normals();
-			m->need_tstrips();
-			m->need_bsphere();
+				mLoadedFragments.insert(pf->id(), Fragment::HIRES_MESH);
 
-			mLoadedFragments.insert(pf->id(), Fragment::HIRES_MESH);
+				if (updatePerFragment) update();
 
-			if (updatePerFragment) update();
-
-			if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+				if (!mThreaded) QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+			}
+			else {
+				qDebug() << "DetailScene::calcMeshData: Pinning HIRES_MESH of" << pf->id() << "was unsucessful";
+			}
 		}
 	}
 
@@ -153,14 +159,17 @@ void DetailScene::unloadMeshes() {
 			//qDebug("Currently %d meshes are loaded, %d meshes are pinned", mLoadedFragments.size(), mPinnedFragments.size());
 
 			if (mLoadedFragments.contains(id)) {
-				mLoadedFragments.remove(id);
-				//mPinnedFragments.remove(id);
+				Fragment::meshEnum type = mLoadedFragments[id];
 
+				mLoadedFragments.remove(id);
+
+				// general rule, don't unpin if you don't have, this leads to trouble
 				Database::fragment(id)->mesh(Fragment::LORES_MESH).unpin();
-				Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
+				if (type == Fragment::HIRES_MESH) Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
+
 				//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
 
-				qDebug() << "<--- DetailScene::tabletopChanged: unpinning mesh" << id << "both LORES and HIRES";
+				//qDebug() << "<--- DetailScene::tabletopChanged: unpinning mesh" << id << "both LORES and HIRES";
 			}
 			else {
 				qDebug() << "DetailScene::tabletopChanged: Unable to remove fragment from loaded fragments. It possibly wasn't loaded yet if async loading wasn't use. TODO: code possibility to cancel() async loading if necessary";
@@ -462,7 +471,7 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 				foreach (const PlacedFragment *pf, fragmentList) {
 					pf->fragment()->mesh(Fragment::HIRES_MESH).unpin();
 
-					qDebug() << "<--- DetailScene::keyPressEvent: changing to lower resolution, unpinning HIRES of" << pf->id();
+					//qDebug() << "<--- DetailScene::keyPressEvent: changing to lower resolution, unpinning HIRES of" << pf->id();
 				}
 			}
 		} break;
