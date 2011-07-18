@@ -90,6 +90,9 @@ QList<SQLFragmentConf> MatchConflictChecker::getProgressiveNonconflicting() cons
 
 		computeOverlap(*sc, *tc, c.mXF, sourceUsed, targetUsed);
 
+		tc.unpin();
+		sc.unpin();
+
 		//qDebug("Somehow we did get past it...");
 
 		QBitArray& correspondingMasterUsed = (targetId == masterTargetId || sourceId == masterTargetId) ? masterTargetUsed : masterSourceUsed;
