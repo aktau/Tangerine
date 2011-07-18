@@ -12,8 +12,6 @@ DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mDistanceExp
 	addItem(mDescription);
 
 	connect(&mWatcher, SIGNAL(finished()), this, SLOT(calcDone()));
-
-	initGL();
 }
 
 DetailScene::~DetailScene() {
@@ -214,12 +212,11 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_TEXTURE_2D);
 
-	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
-
+	/*
 	glBegin(GL_TRIANGLES);
 		glColor4f(1.0f, 0.0f, 0.0f, 0.5f); glVertex3f( 0.0f, 1.0f, 0.0f);
 		glColor3f(1.0f, 1.0f, 0.0f); glVertex3f(-1.0f,-1.0f, 0.0f);
-		glColor4f(0.0f, 1.0f, 1.0f, 0.8f); glVertex3f( 1.0f,-1.0f, 0.0f);
+		glColor4f(0.0f, 1.0f, 1.0f, 1.0f); glVertex3f( 1.0f,-1.0f, 0.0f);
 	glEnd();
 
 	glTranslatef(3.0f,0.0f,0.0f);
@@ -232,22 +229,31 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 		glColor3f(0.0f, 1.0f, 1.0f); glVertex3f( 1.0f,-1.0f, 0.0f);
 		glColor3f(0.8f, 0.3f, 1.0f);  glVertex3f( 0.0f, -1.0f - off, 0.0f);
 	glEnd();
+	*/
 
 	int i = 0;
 
 	qDebug("DetailScene::drawBackground: drawing %d meshes", mLoadedFragments.size());
+
+	glDepthFunc(GL_LESS);
+	glEnable(GL_DEPTH_TEST);
+
+	if (mState.drawBothSides) {
+		glDisable(GL_CULL_FACE);
+	}
+	else {
+		glCullFace(GL_BACK);
+		glEnable(GL_CULL_FACE);
+	}
+
 	for (QMap<QString, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it, ++i) {
 		//setup_lighting((*it)->id());
-		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.5);
+		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 1.0f - mState.transparancy);
 		drawMesh(it.key(), it.value());
 	}
 
 	defaultStates();
 	painter->endNativePainting();
-}
-
-void DetailScene::initGL() {
-	glBlendFunc(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA);
 }
 
 void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const {
@@ -260,17 +266,6 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 
 	glPushMatrix();
 	glMultMatrixd(getXF(id));
-
-	glDepthFunc(GL_LESS);
-	glEnable(GL_DEPTH_TEST);
-
-	if (mState.draw_2side) {
-		glDisable(GL_CULL_FACE);
-	}
-	else {
-		glCullFace(GL_BACK);
-		glEnable(GL_CULL_FACE);
-	}
 
 	// Vertices
 	glEnableClientState(GL_VERTEX_ARRAY);
@@ -321,6 +316,10 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 	if (mState.draw_edges) {
 		glPolygonMode(GL_FRONT, GL_LINE);
 		glDisableClientState(GL_COLOR_ARRAY);
+
+		/*
+		glPolygonMode(GL_FRONT, GL_LINE);
+		glDisableClientState(GL_COLOR_ARRAY);
 		glDisable(GL_COLOR_MATERIAL);
 		GLfloat global_ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
 		GLfloat light0_diffuse[] = { 0.8f, 0.8f, 0.8f, 0.0f };
@@ -332,6 +331,8 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 		glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
 		GLfloat mat_diffuse[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, mat_diffuse);
+		*/
+
 		glColor3f(0, 0, 1); // Used iff unlit
 		drawTstrips(mesh);
 		glPolygonMode(GL_FRONT, GL_FILL);
@@ -364,6 +365,15 @@ void DetailScene::setStates() {
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_NORMALIZE);
+
+    if (mState.transparancyEnabled) {
+    	//glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_DST_ALPHA);
+    	glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
+		glEnable(GL_BLEND);
+    }
+    else {
+    	glDisable(GL_BLEND);
+    }
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -417,29 +427,18 @@ void DetailScene::setLights() {
 void DetailScene::keyPressEvent(QKeyEvent *event) {
 	int key = event->key();
 	Qt::KeyboardModifiers keystate = event->modifiers();
-	if (keystate == Qt::NoModifier) {
+
+	if ((keystate & ~(Qt::KeypadModifier | Qt::NoModifier)) == Qt::NoModifier) {
+
 		switch (key) {
-		case Qt::Key_Space:
-			resetView();
-			break;
-		case Qt::Key_Down:
-			mDistanceExponential -= 500;
-			break;
-		case Qt::Key_Up:
-			mDistanceExponential += 500;
-			break;
-		case Qt::Key_Left:
-			mTranslateX += 50;
-			break;
-		case Qt::Key_Right:
-			mTranslateX -= 50;
-			break;
-		case Qt::Key_A:
-			mState.draw_alternate = !mState.draw_alternate;
-			break;
-		case Qt::Key_I:
-			mState.draw_alternate = !mState.draw_alternate;
-			break;
+		case Qt::Key_Space: resetView(); break;
+		case Qt::Key_Down: mDistanceExponential -= 500; break;
+		case Qt::Key_Up: mDistanceExponential += 500; break;
+		case Qt::Key_Left: mTranslateX += 50; break;
+		case Qt::Key_Right: mTranslateX -= 50; break;
+		case Qt::Key_Plus: mState.transparancy = qMin(1.0, qMax(0.0, mState.transparancy + 0.1)); break;
+		case Qt::Key_Minus: mState.transparancy = qMin(1.0, qMax(0.0, mState.transparancy - 0.1)); break;
+		case Qt::Key_A: mState.draw_alternate = !mState.draw_alternate; break;
 		case Qt::Key_H: {
 			mState.highQuality = !mState.highQuality;
 
@@ -474,39 +473,23 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 				}
 			}
 		} break;
-		case Qt::Key_R:
-			mState.draw_ribbon = !mState.draw_ribbon;
-			break;
-		case Qt::Key_E:
-			mState.draw_edges = !mState.draw_edges;
-			break;
-		case Qt::Key_F:
-			mState.draw_falsecolor = !mState.draw_falsecolor;
-			break;
-		case Qt::Key_L:
-			mState.draw_lit = !mState.draw_lit;
-			break;
-		case Qt::Key_Q:
-			// case Qt::Key_Escape:
-			// die();
-			// break;
-		case Qt::Key_S:
-			mState.draw_shiny = !mState.draw_shiny;
-			break;
-		case Qt::Key_W:
-			mState.white_bg = !mState.white_bg;
-			break;
-		case Qt::Key_P:
-			mState.draw_points = !mState.draw_points;
-			break;
+		case Qt::Key_R: mState.draw_ribbon = !mState.draw_ribbon; break;
+		case Qt::Key_E: mState.draw_edges = !mState.draw_edges; break;
+		case Qt::Key_T: mState.transparancyEnabled = !mState.transparancyEnabled; break;
+		case Qt::Key_F: mState.draw_falsecolor = !mState.draw_falsecolor; break;
+		case Qt::Key_L: mState.draw_lit = !mState.draw_lit; break;
+		case Qt::Key_S: mState.draw_shiny = !mState.draw_shiny; break;
+		case Qt::Key_W: mState.white_bg = !mState.white_bg; break;
+		case Qt::Key_P: mState.draw_points = !mState.draw_points; break;
 		default:
+			//qDebug() << "Unrecognized key:" << key << "vs" << Qt::Key_Plus << "and" << Qt::Key_Minus;
 			break;
 		}
 	}
 	else if (keystate == Qt::ShiftModifier) {
 		switch (key) {
 		case Qt::Key_2:
-			mState.draw_2side = !mState.draw_2side;
+			mState.drawBothSides = !mState.drawBothSides;
 			break;
 		}
 	}

@@ -43,8 +43,6 @@ class DetailScene : public QGraphicsScene {
 		virtual void wheelEvent(QGraphicsSceneWheelEvent * event);
 
 	private:
-	    void initGL();
-
 	    void drawMesh(const QString& id, thera::Fragment::meshEnum meshType) const;
 	    void drawTstrips(const thera::Mesh *themesh) const;
 
@@ -91,7 +89,6 @@ class DetailScene : public QGraphicsScene {
 
 			bool draw_ribbon;
 			bool draw_edges;
-			bool draw_2side;
 			bool draw_shiny;
 			bool draw_lit;
 			bool draw_falsecolor;
@@ -100,12 +97,17 @@ class DetailScene : public QGraphicsScene {
 			bool white_bg;
 
 			bool highQuality;
+			bool transparancyEnabled;
+			bool drawBothSides;
+
+			float transparancy;
 
 			State(void) :
 				current_mesh(-1), draw_alternate(0), draw_ribbon(false),
-				draw_edges(false), draw_2side(true), draw_shiny(false),
+				draw_edges(false), draw_shiny(false),
 				draw_lit(false), draw_falsecolor(false), draw_index(false),
-				draw_points(false), white_bg(true), highQuality(false) {
+				draw_points(false), white_bg(true), highQuality(false), transparancyEnabled(false), drawBothSides(false),
+				transparancy(0.2) {
 				// nothing
 			}
 		};
