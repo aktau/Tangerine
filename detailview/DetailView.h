@@ -16,38 +16,6 @@
 #include "GLCamera.h"
 #include "TabletopModel.h"
 
-class DetailView: public QGraphicsView {
-	public:
-		DetailView(QWidget *parent = NULL) : QGraphicsView(parent) {
-			setWindowTitle(tr("View details of match"));
-			setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-		}
-
-	protected:
-		void resizeEvent(QResizeEvent *event) {
-			if (scene()) {
-				scene()->setSceneRect(QRect(QPoint(0, 0), event->size()));
-			}
-
-			QGraphicsView::resizeEvent(event);
-		}
-
-		void keyPressEvent(QKeyEvent *event) {
-			int key = event->key();
-			Qt::KeyboardModifiers keystate = event->modifiers();
-
-			if (keystate == Qt::NoModifier) {
-				switch (key) {
-					case Qt::Key_Escape:
-						close();
-					break;
-				}
-			}
-
-			QGraphicsView::keyPressEvent(event);
-		}
-};
-
 class DetailScene : public QGraphicsScene {
 	Q_OBJECT
 
@@ -143,6 +111,51 @@ class DetailScene : public QGraphicsScene {
 		};
 
 	    State mState;
+};
+
+class DetailView: public QGraphicsView {
+	Q_OBJECT
+
+	public:
+		DetailView(QWidget *parent = NULL) : QGraphicsView(parent) {
+			setWindowTitle(tr("View details of match"));
+			setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+		}
+
+	protected:
+		void resizeEvent(QResizeEvent *event) {
+			if (scene()) {
+				scene()->setSceneRect(QRect(QPoint(0, 0), event->size()));
+			}
+
+			QGraphicsView::resizeEvent(event);
+		}
+
+		void keyPressEvent(QKeyEvent *event) {
+			int key = event->key();
+			Qt::KeyboardModifiers keystate = event->modifiers();
+
+			if (keystate == Qt::NoModifier) {
+				switch (key) {
+					case Qt::Key_Escape:
+						close();
+					break;
+				}
+			}
+
+			QGraphicsView::keyPressEvent(event);
+		}
+
+		void closeEvent(QCloseEvent *event) {
+			if (DetailScene *detailScene = qobject_cast<DetailScene *>(scene())) {
+				// unpin resources
+				detailScene->init(NULL);
+
+				qDebug() << "DetailView::closeEvent: window closed, unpinned resources";
+			}
+
+			QGraphicsView::closeEvent(event);
+		}
 };
 
 #endif /* DETAILVIEW_H_ */

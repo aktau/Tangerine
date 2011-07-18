@@ -235,7 +235,7 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 
 	int i = 0;
 
-	qDebug("drawBackground: drawing %d meshes", mLoadedFragments.size());
+	qDebug("DetailScene::drawBackground: drawing %d meshes", mLoadedFragments.size());
 	for (QMap<QString, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it, ++i) {
 		//setup_lighting((*it)->id());
 		glColor4f(0.8f, 0.3f, 1.0f - (float)i / 2, 0.5);
