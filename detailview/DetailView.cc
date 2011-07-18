@@ -519,6 +519,7 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 		}
 	}
 
+	updateDisplayInformation();
 	update();
 }
 
@@ -641,10 +642,11 @@ void DetailScene::updateDisplayInformation() {
 		"<h1>Detailed match information</h1> "
 		"<b>Showing match %1</b>"
 		"<hr />"
-		"<h2>Properties</h2>"
-		"<ul><li>Error: %2</li><li>Volume: %3</li></ul> "
-		"<p>Zoom: %4</p>"
-	).arg(match).arg(0.9812).arg(14.5).arg(mDistanceExponential);
+		"<ul>"
+		"<li>Quality: <b>%2</b></li>"
+		"<li>Zoom: <b>%3</b></li>"
+		"</ul>"
+	).arg(match).arg(mState.highQuality ? "high" : "low").arg(mDistanceExponential);
 
 	if (mWatcher.isRunning()) {
 		html = QString("<h1>Loading data, please be patient</h1>") + html;
