@@ -24,12 +24,12 @@ DetailScene::~DetailScene() {
 
 void DetailScene::init(TabletopModel *tabletopModel) {
 	if (mTabletopModel != tabletopModel) {
-		if (mTabletopModel != NULL) disconnect(mTabletopModel, 0, this, 0);
+		if (mTabletopModel) disconnect(mTabletopModel, 0, this, 0);
 
 		mGlobalXF = XF();
 		mTabletopModel = tabletopModel;
 
-		if (mTableTopModel) connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
+		if (tabletopModel) connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
 
 		tabletopChanged();
 	}
@@ -251,17 +251,15 @@ void DetailScene::initGL() {
 }
 
 void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const {
-	const thera::Mesh *themesh = getMesh(id, meshType);
+	const Mesh *mesh = getMesh(id, meshType);
 
-	if (!themesh) {
+	if (!mesh) {
 		qDebug() << "DetailScene::drawMesh: mesh was NULL";
 		return;
 	}
 
 	glPushMatrix();
 	glMultMatrixd(getXF(id));
-
-	//qDebug() << QString("XF = ") + getXF(pf);
 
 	glDepthFunc(GL_LESS);
 	glEnable(GL_DEPTH_TEST);
@@ -276,18 +274,18 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 
 	// Vertices
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glVertexPointer(3, GL_FLOAT, sizeof(themesh->vertices[0]), &themesh->vertices[0][0]);
+	glVertexPointer(3, GL_FLOAT, sizeof(mesh->vertices[0]), &mesh->vertices[0][0]);
 
 	// Normals
-	if (!themesh->normals.empty() && !mState.draw_index) {
+	if (!mesh->normals.empty() && !mState.draw_index) {
 		glEnableClientState(GL_NORMAL_ARRAY);
-		glNormalPointer(GL_FLOAT, sizeof(themesh->normals[0]), &themesh->normals[0][0]);
+		glNormalPointer(GL_FLOAT, sizeof(mesh->normals[0]), &mesh->normals[0][0]);
 	} else {
 		glDisableClientState(GL_NORMAL_ARRAY);
 	}
 
 	// Colors
-	if (!themesh->colors.empty() && !mState.draw_falsecolor && !mState.draw_index && !mState.draw_ribbon) {
+	if (!mesh->colors.empty() && !mState.draw_falsecolor && !mState.draw_index && !mState.draw_ribbon) {
 		/*
 		glEnableClientState(GL_COLOR_ARRAY);
 		const float *c = &themesh->colors[0][0];
@@ -302,11 +300,11 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 	}
 
 	// Main drawing pass
-	if (themesh->tstrips.empty() || mState.draw_points) {
+	if (mesh->tstrips.empty() || mState.draw_points) {
 	//if (true) {
 		// No triangles - draw as points
 		glPointSize(1);
-		glDrawArrays(GL_POINTS, 0, themesh->vertices.size());
+		glDrawArrays(GL_POINTS, 0, mesh->vertices.size());
 		glPopMatrix();
 		return;
 	}
@@ -316,7 +314,7 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 		glEnable(GL_POLYGON_OFFSET_FILL);
 	}
 
-	drawTstrips(themesh);
+	drawTstrips(mesh);
 	glDisable(GL_POLYGON_OFFSET_FILL);
 
 	// Edge drawing pass
@@ -335,7 +333,7 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 		GLfloat mat_diffuse[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 		glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, mat_diffuse);
 		glColor3f(0, 0, 1); // Used iff unlit
-		drawTstrips(themesh);
+		drawTstrips(mesh);
 		glPolygonMode(GL_FRONT, GL_FILL);
 	}
 
