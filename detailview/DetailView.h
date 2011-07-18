@@ -31,6 +31,21 @@ class DetailView: public QGraphicsView {
 
 			QGraphicsView::resizeEvent(event);
 		}
+
+		void keyPressEvent(QKeyEvent *event) {
+			int key = event->key();
+			Qt::KeyboardModifiers keystate = event->modifiers();
+
+			if (keystate == Qt::NoModifier) {
+				switch (key) {
+					case Qt::Key_Escape:
+						close();
+					break;
+				}
+			}
+
+			QGraphicsView::keyPressEvent(event);
+		}
 };
 
 class DetailScene : public QGraphicsScene {

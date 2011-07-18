@@ -501,14 +501,7 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 			mState.draw_points = !mState.draw_points;
 			break;
 		default:
-#if 0
-			if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-				int m = key - Qt::Key_1;
-				toggle_vis(m);
-			}
-#else
 			break;
-#endif
 		}
 	}
 	else if (keystate == Qt::ShiftModifier) {
