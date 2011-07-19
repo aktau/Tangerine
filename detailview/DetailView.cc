@@ -1,5 +1,7 @@
 #include "DetailView.h"
 
+#include "Color.h"
+
 using namespace thera;
 
 DetailScene::DetailScene(QObject *parent) : QGraphicsScene(parent), mDistanceExponential(5040), mTranslateX(0.0), mThreaded(false) {
@@ -34,10 +36,18 @@ void DetailScene::init(TabletopModel *tabletopModel) {
 }
 
 void DetailScene::tabletopChanged() {
+	qDebug() << "Tabletopchanged 1 (before procEv)";
+
+	QApplication::processEvents();
+
 	unloadMeshes();
+
+	qDebug() << "Tabletopchanged 2";
 
 	//if (!isVisible()) return;
 	if (!mTabletopModel) return;
+
+	qDebug() << "Tabletopchanged 3";
 
 	bool needResetView = false;
 
@@ -46,12 +56,16 @@ void DetailScene::tabletopChanged() {
 	for (TabletopModel::const_iterator it = mTabletopModel->begin(); it != mTabletopModel->end(); ++it) {
 		const PlacedFragment *pf = *it;
 
+		qDebug() << "Tabletopchanged 3.5" << pf->id();
+
 		if (mLoadedFragments.contains(pf->id())) continue;
 
 		needResetView = true;
 
 		fragmentList << pf;
 	}
+
+	qDebug() << "Tabletopchanged 4";
 
 	if (mThreaded) {
 		// the methods called from calcMeshData use OpenMP, the current combination Qt 4.7 and GCC 4.4 on windows
@@ -61,19 +75,34 @@ void DetailScene::tabletopChanged() {
 		mWatcher.setFuture(future);
 	}
 	else {
+		qDebug() << "Tabletopchanged 5";
+
 		updateDisplayInformation();
-		QApplication::processEvents();
+
+		qDebug() << "Tabletopchanged 5.5" << mLoadedFragments.size();
+
+		//QApplication::processEvents();
+
+		qDebug() << "Tabletopchanged 6";
 
 		calcMeshData(fragmentList);
+
+		qDebug() << "Tabletopchanged 7";
 	}
 
 	if (needResetView) {
+		qDebug() << "DetailScene::tabletopChanged: resetting view";
+
 		resetView();
 		update();
+
+		qDebug() << "DetailScene::tabletopChanged: Updated";
 	}
 }
 
 void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList, bool updatePerFragment) {
+	qDebug() << "Are we loading?";
+
 	// first load low resolution data for fast display
 	foreach (const PlacedFragment *pf, fragmentList) {
 		const Fragment *f = pf->fragment();
@@ -98,7 +127,6 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 	}
 
 	// now start loading high resolution data
-
 	if (mState.highQuality) {
 		foreach (const PlacedFragment *pf, fragmentList) {
 			const Fragment *f = pf->fragment();
@@ -111,6 +139,37 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 				m->need_tstrips();
 				m->need_bsphere();
 
+				const MMImage *mmimg = f->color(Fragment::FRONT);
+
+				if (mmimg && m->colors.size()) {
+					const CImage &cimg = mmimg->fetchImageFromLevel(0);
+					const CImage &cmask = f->masks(Fragment::FRONT);
+
+					// pin now and unpin automatically when going out of scope
+					AutoPin p1(cimg);
+					AutoPin p2(cmask);
+
+					Image *img = &(*cimg);
+					Image *mask = &(*cmask);
+
+					mMeshColors[f->id()] = m->colors;
+					std::vector<Color> &c = mMeshColors[f->id()];
+					for (size_t i = 0; i < m->vertices.size(); ++i) {
+						vec &v = m->vertices[i];
+						//vec &n = m->normals[i];  // not used
+
+						// if (n[2] < 0) continue; // only do up-pointing vertices
+						if (v[2] < -2) continue;
+
+						vec4 mc = mask->bilinMM(v[0], v[1]);
+
+						if (mc[Fragment::FMASK] != 1) continue;
+						vec4 nc = img->bilinMM(v[0], v[1]);
+
+						c[i] = Color(nc[0], nc[1], nc[2]);
+					}
+				}
+
 				mLoadedFragments.insert(pf->id(), Fragment::HIRES_MESH);
 
 				if (updatePerFragment) update();
@@ -122,64 +181,49 @@ void DetailScene::calcMeshData(const QList<const PlacedFragment *>& fragmentList
 			}
 		}
 	}
-
-	// now set up the mesh colors properly
-	/*
-	const MMImage *mmimg = f->color(Fragment::FRONT);
-	if (mmimg && m->colors.size()) {
-		const CImage &cimg = mmimg->fetchImageFromLevel(0);
-		const CImage &cmask = f->masks(Fragment::FRONT);
-		AutoPin p1(cimg), p2(cmask);
-		Image *img = &(*cimg), *mask = &(*cmask);
-		mesh_colors[f->id()] = m->colors;
-		vector < Color > &c = mesh_colors[f->id()];
-		for (size_t i = 0; i < m->vertices.size(); i++) {
-			vec &v = m->vertices[i];
-			//vec &n = m->normals[i];  // not used
-
-			// if (n[2] < 0) continue; // only do up-pointing vertices
-			if (v[2] < -2)
-				continue;
-			vec4 mc = mask->bilinMM(v[0], v[1]);
-			if (mc[Fragment::FMASK] != 1)
-				continue;
-			vec4 nc = img->bilinMM(v[0], v[1]);
-			// if (nc[3] == 0 || (nc[0] == 0 && nc[1] == 0 & nc[2] == 0)) continue;
-			// c[i] = Color(1.0f, 0.0f, 0.0f);
-			c[i] = Color(nc[0], nc[1], nc[2]);
-		}
-	}
-	*/
 }
 
 void DetailScene::unloadMeshes() {
+	qDebug() << "DetailScene::unloadMeshes: unloadmeshes begin";
+
+	QList<QString> toRemove;
+
 	foreach (const QString& id, mLoadedFragments.keys()) {
 		if (!mTabletopModel || !mTabletopModel->contains(id)) {
-			//qDebug("Currently %d meshes are loaded, %d meshes are pinned", mLoadedFragments.size(), mPinnedFragments.size());
-
-			if (mLoadedFragments.contains(id)) {
-				Fragment::meshEnum type = mLoadedFragments[id];
-
-				mLoadedFragments.remove(id);
-
-				// general rule, don't unpin if you don't have, this leads to trouble
-				Database::fragment(id)->mesh(Fragment::LORES_MESH).unpin();
-				if (type == Fragment::HIRES_MESH) Database::fragment(id)->mesh(Fragment::HIRES_MESH).unpin();
-
-				//Database::fragment(id)->mesh(Fragment::RIBBON_MESH_FORMAT_STRING).unpin();
-
-				//qDebug() << "<--- DetailScene::tabletopChanged: unpinning mesh" << id << "both LORES and HIRES";
-			}
-			else {
-				qDebug() << "DetailScene::tabletopChanged: Unable to remove fragment from loaded fragments. It possibly wasn't loaded yet if async loading wasn't use. TODO: code possibility to cancel() async loading if necessary";
-			}
-
-			//mesh_colors.remove(id);
+			toRemove << id;
+		}
+		else {
+			qDebug() << "DetailScene::unloadMeshes: could not remove" << id;
 		}
 	}
+
+	foreach (const QString& id, toRemove) {
+		Fragment::meshEnum type = mLoadedFragments[id];
+
+		mLoadedFragments.remove(id);
+
+		const Fragment *fragment = Database::fragment(id);
+
+		if (fragment) {
+			fragment->mesh(Fragment::LORES_MESH).unpin();
+
+			if (type == Fragment::HIRES_MESH) {
+				fragment->mesh(Fragment::HIRES_MESH).unpin();
+				mMeshColors.remove(id);
+				qDebug() << "DetailScene::unloadMeshes: Removed mesh colors" << id;
+			}
+		}
+		else {
+			qDebug() << "DetailScene::unloadMeshes: fragment" << id << "didn't even exist in the database, removing without unpinning";
+		}
+	}
+
+	qDebug() << "DetailScene::unloadMeshes: unloadmeshes end";
 }
 
 void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
+	qDebug() << "DetailScene::drawBackground: begin!";
+
 	if (!mTabletopModel) unloadMeshes();
 
 	float width = float(painter->device()->width());
@@ -192,7 +236,6 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
-	//gluPerspective(60.0, width / height, 0.01, 15.0);
 	gluPerspective(60.0, width / height, 0.01, 1000.0);
 
 	glMatrixMode(GL_MODELVIEW);
@@ -209,9 +252,6 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
     for (int index = 0; index < 16; ++index) mat[index] = data[index];
     glLoadMatrixf(mat);
 
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glDisable(GL_TEXTURE_2D);
-
 	/*
 	glBegin(GL_TRIANGLES);
 		glColor4f(1.0f, 0.0f, 0.0f, 0.5f); glVertex3f( 0.0f, 1.0f, 0.0f);
@@ -227,7 +267,7 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 		glColor3f(1.0f, 0.0f, 0.0f); glVertex3f( 0.0f, 1.0f, 0.0f);
 		glColor3f(1.0f, 1.0f, 0.0f); glVertex3f(-1.0f,-1.0f, 0.0f);
 		glColor3f(0.0f, 1.0f, 1.0f); glVertex3f( 1.0f,-1.0f, 0.0f);
-		glColor3f(0.8f, 0.3f, 1.0f);  glVertex3f( 0.0f, -1.0f - off, 0.0f);
+		glColor3f(0.8f, 0.3f, 1.0f); glVertex3f( 0.0f, -1.0f - off, 0.0f);
 	glEnd();
 	*/
 
@@ -254,13 +294,18 @@ void DetailScene::drawBackground(QPainter *painter, const QRectF &) {
 
 	defaultStates();
 	painter->endNativePainting();
+
+	qDebug() << "DetailScene::drawBackground: end" << mTabletopModel << "|" << mLoadedFragments.size();
 }
 
-void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const {
+void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) {
+	qDebug() << "DetailScene::drawMesh: drawing a mesh!";
+
 	const Mesh *mesh = getMesh(id, meshType);
 
 	if (!mesh) {
 		qDebug() << "DetailScene::drawMesh: mesh was NULL";
+
 		return;
 	}
 
@@ -280,15 +325,18 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 	}
 
 	// Colors
-	if (!mesh->colors.empty() && !mState.draw_falsecolor && !mState.draw_index && !mState.draw_ribbon) {
-		/*
+	if (!mesh->colors.empty() && !mState.draw_falsecolor) {
 		glEnableClientState(GL_COLOR_ARRAY);
-		const float *c = &themesh->colors[0][0];
-		if (mesh_colors.contains(id)) {
-			c = &mesh_colors[id][0][0];
+		const float *c = &mesh->colors[0][0];
+
+		if (mMeshColors.contains(id)) {
+			c = &(mMeshColors[id][0][0]);
 		}
-		*/
-		//glColorPointer(3, GL_FLOAT, sizeof(themesh->colors[0]), c /* &themesh->colors[0][0] */);
+		else {
+			qDebug("DetailScene::drawMesh: no local copy of the colors found, reverting to ugly default colors");
+		}
+
+		glColorPointer(3, GL_FLOAT, sizeof(mesh->colors[0]), c);
 	}
 	else {
 		glDisableClientState(GL_COLOR_ARRAY);
@@ -341,7 +389,7 @@ void DetailScene::drawMesh(const QString& id, Fragment::meshEnum meshType) const
 	glPopMatrix();
 }
 
-void DetailScene::drawTstrips(const thera::Mesh *themesh) const {
+inline void DetailScene::drawTstrips(const thera::Mesh *themesh) const {
 	//qDebug() << "Tstrips size =" << themesh->tstrips.size() << "and" << &themesh->tstrips[0] << "|" << themesh->tstrips[0] << "and" << &themesh->tstrips[1] << "|" << themesh->tstrips[1];
 
 	const int *t = &themesh->tstrips[0];
@@ -355,15 +403,17 @@ void DetailScene::drawTstrips(const thera::Mesh *themesh) const {
 	}
 }
 
-void DetailScene::setStates() {
+inline void DetailScene::setStates() {
     //glClearColor(0.25f, 0.25f, 0.5f, 1.0f);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_LIGHTING);
     glEnable(GL_COLOR_MATERIAL);
-    glEnable(GL_TEXTURE_2D);
     glEnable(GL_NORMALIZE);
 
     if (mState.transparancyEnabled) {
@@ -390,8 +440,11 @@ void DetailScene::setStates() {
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 32.0f);
 }
 
-void DetailScene::defaultStates() {
-    //glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+inline void DetailScene::defaultStates() {
+	// Qt manages to error out in some corner cases if we don't disable these explicitly
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_NORMAL_ARRAY);
+	glDisableClientState(GL_COLOR_ARRAY);
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
@@ -413,7 +466,7 @@ void DetailScene::defaultStates() {
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0.0f);
 }
 
-void DetailScene::setLights() {
+inline void DetailScene::setLights() {
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
     	//float lightColour[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float lightDir[] = {0.0f, 0.0f, 1.0f, 0.0f};
@@ -439,6 +492,7 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 		case Qt::Key_Plus: mState.transparancy = qMin(1.0, qMax(0.0, mState.transparancy + 0.1)); break;
 		case Qt::Key_Minus: mState.transparancy = qMin(1.0, qMax(0.0, mState.transparancy - 0.1)); break;
 		case Qt::Key_A: mState.draw_alternate = !mState.draw_alternate; break;
+		case Qt::Key_D: Cache::instance()->print(); break;
 		case Qt::Key_H: {
 			mState.highQuality = !mState.highQuality;
 
@@ -516,11 +570,14 @@ void DetailScene::wheelEvent(QGraphicsSceneWheelEvent *event) {
 }
 
 void DetailScene::resetView() {
+	qDebug() << "DetailScene::resetView: begin";
     //camera.stopspin();
 
     updateBoundingSphere();
 
     mGlobalXF = xform::trans(0, 0, -5.0f * mGlobalBoundingSphere.r) * xform::rot(M_PI / 4, -1, 0, 0) * xform::trans(-mGlobalBoundingSphere.center);
+
+    qDebug() << "DetailScene::resetView: end";
 }
 
 void DetailScene::updateBoundingSphere() {
@@ -532,8 +589,14 @@ void DetailScene::updateBoundingSphere() {
 
 	// adjust boxmin and boxmax
 	for (QMap<QString, thera::Fragment::meshEnum>::const_iterator it = mLoadedFragments.constBegin(), end = mLoadedFragments.constEnd(); it != end; ++it) {
-		XF xf = getXF(it.key());
 		Mesh *m = getMesh(it.key(), it.value());
+		XF xf = getXF(it.key());
+
+		if (!m) {
+			qDebug() << "DetailScene::updateBoundingSphere: encountered NULL mesh for id" << it.key();
+
+			continue;
+		}
 
 		someVisible = true;
 
@@ -545,25 +608,6 @@ void DetailScene::updateBoundingSphere() {
 			boxmax[j] = qMax(boxmax[j], c[j] + r);
 		}
 	}
-
-	/*
-    if (mTabletopModel) {
-		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
-			XF xf = getXF(*it);
-			Mesh *m = getMesh(*it);
-
-			someVisible = true;
-
-			point c = xf * m->bsphere.center;
-			float r = m->bsphere.r;
-
-			for (int j = 0; j < 3; j++) {
-				boxmin[j] = qMin(boxmin[j], c[j] - r);
-				boxmax[j] = qMax(boxmax[j], c[j] + r);
-			}
-		}
-	}
-	*/
 
 	if (!someVisible) return;
 
@@ -577,30 +621,24 @@ void DetailScene::updateBoundingSphere() {
 		XF xf = getXF(it.key());
 		Mesh *m = getMesh(it.key(), it.value());
 
+		if (!m) {
+			qDebug() << "DetailScene::updateBoundingSphere: encountered NULL mesh for id" << it.key();
+
+			continue;
+		}
+
 		point c = xf * m->bsphere.center;
 		float r = m->bsphere.r;
 
 		gr = qMax(gr, dist(c, gc) + r);
 	}
 
-	/*
-	if (mTabletopModel) {
-		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
-			XF xf = getXF(*it);
-			Mesh *m = getMesh(*it);
-
-			point c = xf * m->bsphere.center;
-			float r = m->bsphere.r;
-
-			gr = qMax(gr, dist(c, gc) + r);
-		}
-	}
-	*/
-
 	qDebug() << "DetailScene::updateBoundingSphere: Global bounding sphere updated";
 }
 
 void DetailScene::updateDisplayInformation() {
+	qDebug() << "DetailScene::updateDisplayInformation: begin";
+
 	QString match, xf;
 
 	if (mTabletopModel) {
@@ -631,22 +669,32 @@ void DetailScene::updateDisplayInformation() {
 }
 
 inline Mesh *DetailScene::getMesh(const PlacedFragment *pf, Fragment::meshEnum meshType) const {
+	qDebug() << "DetailScene::getMesh 2: begin";
+
 	return pf ? &*pf->fragment()->mesh(meshType) : NULL;
 }
 
 inline Mesh *DetailScene::getMesh(const QString& id, Fragment::meshEnum meshType) const {
+	qDebug() << "DetailScene::getMesh 1: begin";
+
 	return mTabletopModel ? getMesh(mTabletopModel->placedFragment(id), meshType) : NULL;
 }
 
 inline XF DetailScene::getXF(const PlacedFragment *pf) const {
+	qDebug() << "DetailScene::getXF 2: begin";
+
 	return pf ? pf->accumXF() : XF();
 }
 
 inline XF DetailScene::getXF(const QString& id) const {
+	qDebug() << "DetailScene::getXF 1: begin";
+
 	return mTabletopModel ? getXF(mTabletopModel->placedFragment(id)) : XF();
 }
 
 void DetailScene::calcDone() {
+	qDebug() << "DetailScene::calcDone: begin";
+
 	updateBoundingSphere();
 	updateDisplayInformation();
 	update();

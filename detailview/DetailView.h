@@ -4,12 +4,16 @@
 #include <QObject>
 #include <QVector>
 #include <QSet>
+#include <QMap>
+#include <QHash>
 #include <QString>
 #include <QGraphicsView>
 #include <QGraphicsScene>
 #include <QtOpenGL>
 #include <QFuture>
 #include <QFutureWatcher>
+
+//#include <vector>
 
 #include "CMesh.h"
 #include "XF.h"
@@ -43,7 +47,12 @@ class DetailScene : public QGraphicsScene {
 		virtual void wheelEvent(QGraphicsSceneWheelEvent * event);
 
 	private:
-	    void drawMesh(const QString& id, thera::Fragment::meshEnum meshType) const;
+		// WARNING: do not EVER make drawMesh const even though it seems as if
+		// one could. The fact of the matter is that when you do this, mMeshColors
+		// will also be const and then it's .value()/[] methods start returning
+		// copies instead of references, which is a really nice way to waste time
+		// bughunting
+	    void drawMesh(const QString& id, thera::Fragment::meshEnum meshType);
 	    void drawTstrips(const thera::Mesh *themesh) const;
 
 	    void resetView();
@@ -71,6 +80,8 @@ class DetailScene : public QGraphicsScene {
 
 	    typedef QMap<QString, thera::Fragment::meshEnum> FragmentMap;
 	    FragmentMap mLoadedFragments;
+
+	    QHash< QString, std::vector<Color> > mMeshColors;
 
 	    QGraphicsTextItem *mDescription;
 
@@ -150,6 +161,8 @@ class DetailView: public QGraphicsView {
 
 		void closeEvent(QCloseEvent *event) {
 			if (DetailScene *detailScene = qobject_cast<DetailScene *>(scene())) {
+				qDebug() << "DetailView::closeEvent: window closed, unpinning resources";
+
 				// unpin resources
 				detailScene->init(NULL);
 
