@@ -20,6 +20,8 @@
 #include "GLCamera.h"
 #include "TabletopModel.h"
 
+#include "FragmentResources.h"
+
 class DetailScene : public QGraphicsScene {
 	Q_OBJECT
 
@@ -52,14 +54,15 @@ class DetailScene : public QGraphicsScene {
 		// will also be const and then it's .value()/[] methods start returning
 		// copies instead of references, which is a really nice way to waste time
 		// bughunting
-	    void drawMesh(const QString& id, thera::Fragment::meshEnum meshType);
+	    //void drawMesh(const QString& id, thera::Fragment::meshEnum meshType);
+		void drawMesh(const FragmentResources& resources);
 	    void drawTstrips(const thera::Mesh *themesh) const;
 
 	    void resetView();
 	    void updateBoundingSphere();
 	    void updateDisplayInformation();
 
-	    void calcMeshData(const QList<const thera::PlacedFragment *>& fragmentList, bool update = true);
+	    void calcMeshData(const QStringList& fragmentList, bool update = true);
 
 	    // removes all meshes that are no longer on the tabletop (or remove all meshes if the tabletop no longer exists)
 	    void unloadMeshes();
@@ -78,10 +81,10 @@ class DetailScene : public QGraphicsScene {
 
 	    QPointer<thera::TabletopModel> mTabletopModel;
 
-	    typedef QMap<QString, thera::Fragment::meshEnum> FragmentMap;
-	    FragmentMap mLoadedFragments;
+	    typedef QMap<QString, FragmentResources *> FragmentMap;
+		FragmentMap mLoadedFragments;
 
-	    QHash< QString, std::vector<Color> > mMeshColors;
+	    //QHash< QString, std::vector<Color> > mMeshColors;
 
 	    QGraphicsTextItem *mDescription;
 

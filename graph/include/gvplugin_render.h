@@ -51,7 +51,7 @@ extern "C" {
 	void (*begin_label) (GVJ_t * job, label_type type);
 	void (*end_label) (GVJ_t * job);
 	void (*textpara) (GVJ_t * job, pointf p, textpara_t * str);
-	void (*resolve_color) (GVJ_t * job, gvcolor_t * color);
+	void (*resolve_color) (GVJ_t * job, gvcolor_t * colors);
 	void (*ellipse) (GVJ_t * job, pointf * A, int filled);
 	void (*polygon) (GVJ_t * job, pointf * A, int n, int filled);
 	void (*beziercurve) (GVJ_t * job, pointf * A, int n,
