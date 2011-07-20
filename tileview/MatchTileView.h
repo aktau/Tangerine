@@ -133,8 +133,8 @@ class MatchTileView : public QScrollArea {
 
 #ifdef WITH_DETAILVIEW
 		// Detailed view in 3D
-		DetailView mDetailView;
-		DetailScene mDetailScene;
+		DetailView *mDetailView;
+		DetailScene *mDetailScene;
 #endif
 
 		thera::TabletopModel mTabletopModel;

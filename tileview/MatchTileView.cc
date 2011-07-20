@@ -30,7 +30,8 @@ using namespace thera;
 MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) :
 		QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale)
 #ifdef WITH_DETAILVIEW
-		, mDetailScene(this)
+		//, mDetailScene(this)
+	, mDetailView(NULL), mDetailScene(NULL)
 #endif
 {
 	setFrameShape(QFrame::NoFrame);
@@ -109,6 +110,10 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 
 MatchTileView::~MatchTileView() {
 	qDebug() << "MatchTileView::~MatchTileView ran";
+
+#ifdef WITH_DETAILVIEW
+	if (mDetailView) delete mDetailView;
+#endif
 }
 
 #ifdef WITH_DETAILVIEW
@@ -116,9 +121,19 @@ void MatchTileView::initDetailView() {
 	QGLWidget *widget = new QGLWidget(QGLFormat(QGL::SampleBuffers | QGL::AlphaChannel | QGL::Rgba));
 
 	widget->makeCurrent(); // The current context must be set before calling Scene's constructor
+	/*
 	mDetailView.setViewport(widget);
 	mDetailView.setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 	mDetailView.setScene(&mDetailScene);
+	*/
+
+	if (mDetailView) delete mDetailView;
+	if (mDetailScene) delete mDetailScene;
+	mDetailScene = new DetailScene(this);
+	mDetailView = new DetailView();
+	mDetailView->setViewport(widget);
+	mDetailView->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+	mDetailView->setScene(mDetailScene);
 }
 #endif
 
@@ -551,7 +566,8 @@ void MatchTileView::listNonconflicts() {
 		saveState();
 
 #ifdef WITH_DETAILVIEW
-		mDetailView.show(); // make it visible
+		//mDetailView.show(); // make it visible
+		mDetailView->show();
 
 		const IFragmentConf &master = mModel->get(current);
 
@@ -614,7 +630,8 @@ void MatchTileView::listNonconflicts() {
 			}
 		}
 
-		mDetailScene.init(&mTabletopModel);
+		//mDetailScene.init(&mTabletopModel);
+		mDetailScene->init(&mTabletopModel);
 	}
 }
 
@@ -817,15 +834,19 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 	int current = mSelectionModel->currentIndex();
 
 	if (mModel->isValidIndex(current)) {
-		mDetailView.show(); // make it visible
+		//mDetailView.show(); // make it visible
+		mDetailView->show();
 
 		const IFragmentConf &c = mModel->get(current);
+
+		qDebug() << "MatchTileView::doubleClicked: current:" << current << "== idx:" << idx << "fragments" << c.getTargetId() << "and" << c.getSourceId();
 
 		mTabletopModel.clear();
 		mTabletopModel.fragmentPlace(c.getTargetId(), XF());
 		mTabletopModel.fragmentPlace(c.getSourceId(), c.mXF);
 
-		mDetailScene.init(&mTabletopModel);
+		//mDetailScene.init(&mTabletopModel);
+		mDetailScene->init(&mTabletopModel);
 	}
 #endif
 }
@@ -1072,6 +1093,17 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 			}
 
 			scroll(multiplier * mNumThumbs);
+		} break;
+
+		case Qt::Key_C: {
+#ifdef WITH_DETAILVIEW
+			initDetailView();
+#endif
+			bool listValid = (event->modifiers() & Qt::ShiftModifier) ? false : true;
+
+			Cache::instance()->print(listValid);
+			Cache::instance()->minimizeSize();
+			Cache::instance()->print(listValid);
 		} break;
 
 		default:
