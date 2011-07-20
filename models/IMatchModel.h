@@ -6,7 +6,9 @@
 #include <QStringList>
 
 #include "IFragmentConf.h"
-#include "ModelParameters.h"
+//#include "ModelParameters.h"
+
+class ModelParameters;
 
 /**
  * The pure abstract interface for all match models

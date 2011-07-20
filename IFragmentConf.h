@@ -21,6 +21,14 @@ namespace thera {
 				mXF(illegal<XF>()),
 				mCP(illegal<vec3>()),
 				mCPRadius(illegal<float>()) {}
+			IFragmentConf(int *fragments, float relevance, const XF& xf, const vec3& CP, float CPRadius) :
+				QObject(),
+				mRelev(relevance),
+				mXF(xf),
+				mCP(CP),
+				mCPRadius(CPRadius) {
+				for (int i = 0; i < MAX_FRAGMENTS; ++i) mFragments[i] = fragments[i];
+			}
 			virtual ~IFragmentConf() {}
 			IFragmentConf(const IFragmentConf& that) :
 				QObject(),

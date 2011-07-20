@@ -1107,7 +1107,7 @@ void MatchTileView::keyPressEvent(QKeyEvent *event) {
 #ifdef WITH_DETAILVIEW
 			initDetailView();
 #endif
-			bool listValid = (event->modifiers() & Qt::ShiftModifier) ? false : true;
+			bool listValid = !(event->modifiers() & Qt::ShiftModifier);
 
 			Cache::instance()->print(listValid);
 			Cache::instance()->minimizeSize();

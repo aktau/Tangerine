@@ -8,8 +8,8 @@
 #include <QRegExp>
 
 #include "SQLFragmentConf.h"
-
 #include "SQLDatabase.h"
+#include "ModelParameters.h"
 
 /**
  * The main implementation of a match model
@@ -69,6 +69,8 @@ class MatchModel : public IMatchModel {
 		bool setSort(const QString& field, Qt::SortOrder order, ModelParameters& p);
 		bool setNameFilter(const QString& pattern, ModelParameters& p);
 		bool setGenericFilter(const QString& key, const QString& filter, ModelParameters& p); // adds, replaces or removes said key
+
+		void neighbours(const thera::SQLFragmentConf& match, NeighbourMode mode = IMatchModel::ALL, bool keepParameters = false);
 
 		void convertGroupToMaster(int groupMatchId, int masterMatchId);
 

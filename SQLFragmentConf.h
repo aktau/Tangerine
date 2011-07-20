@@ -10,7 +10,9 @@ class SQLDatabase;
 namespace thera {
 	class SQLFragmentConf: public IFragmentConf {
 		public:
-			SQLFragmentConf(SQLDatabase *db, int id);
+			SQLFragmentConf(SQLDatabase *db = NULL, int id = -1);
+			SQLFragmentConf(SQLDatabase *db, int id, int *fragments, float relevance, const XF& xf, const vec3& CP = illegal<vec3>(), float CPRadius = illegal<float>());
+
 			virtual ~SQLFragmentConf();
 			SQLFragmentConf(const SQLFragmentConf&);
 			virtual SQLFragmentConf& operator=(const SQLFragmentConf&);
@@ -30,6 +32,8 @@ namespace thera {
 			virtual QString getString(const QString &field, const QString &deflt = "") const;
 			virtual double getDouble(const QString &field, double deflt = 0.0) const;
 			virtual int getInt(const QString &field, int deflt = 0) const;
+
+			bool isValid() const;
 
 		private:
 			template<typename T> T get(const QString &field, T deflt) const;

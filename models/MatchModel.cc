@@ -130,7 +130,16 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) {
 	SQLFragmentConf& c = getSQL(index);
 
-	if (!keepParameters) mPar.filter.clear();
+	neighbours(c, mode, keepParameters);
+
+	/*
+	if (!keepParameters) {
+		mPar.filter.clear();
+		mPar.matchNameFilter.clear();
+		mPar.sortField.clear();
+	}
+
+	mPar.neighbourIndex(index);
 
 	const QString allNeighboursFilter = QString("(target_name = '%1' OR source_name = '%2') OR (target_name = '%2' OR source_name = '%1')").arg(c.getSourceId()).arg(c.getTargetId());
 
@@ -164,6 +173,64 @@ void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) 
 			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
 
 			MatchConflictChecker checker(c, list);
+
+			//mMatches = checker.getNonconflicting();
+			mMatches = checker.getProgressiveNonconflicting();
+			mRealSize = mMatches.size();
+			mWindowBegin = 0;
+			mWindowEnd = mRealSize - 1;
+
+			emit modelChanged();
+		} break;
+
+		default:
+			qDebug() << "MatchModel::neighbours: Unknown neighbourmode";
+	}
+	*/
+}
+
+inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, NeighbourMode mode, bool keepParameters) {
+	if (!keepParameters) {
+		mPar.filter.clear();
+		mPar.matchNameFilter.clear();
+		mPar.sortField.clear();
+	}
+
+	mPar.neighbourMatchId = match.index();
+	mPar.neighbourMode = mode;
+
+	const QString allNeighboursFilter = QString("(target_name = '%1' OR source_name = '%2') OR (target_name = '%2' OR source_name = '%1')").arg(match.getSourceId()).arg(match.getTargetId());
+
+	switch (mode) {
+		case IMatchModel::ALL: {
+			genericFilter("filter", allNeighboursFilter);
+
+			qDebug() << "MatchModel::neighbours: got" << mRealSize << "matches to check for conflicts";
+		} break;
+
+		case IMatchModel::CONFLICTING: {
+			SQLFilter filter(mDb);
+			filter.setFilter("filter", allNeighboursFilter);
+
+			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
+
+			MatchConflictChecker checker(match, list);
+
+			mMatches = checker.getConflicting();
+			mRealSize = mMatches.size();
+			mWindowBegin = 0;
+			mWindowEnd = mRealSize - 1;
+
+			emit modelChanged();
+		} break;
+
+		case IMatchModel::NONCONFLICTING: {
+			SQLFilter filter(mDb);
+			filter.setFilter("filter", allNeighboursFilter);
+
+			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
+
+			MatchConflictChecker checker(match, list);
 
 			//mMatches = checker.getNonconflicting();
 			mMatches = checker.getProgressiveNonconflicting();
@@ -230,10 +297,18 @@ void MatchModel::setParameters(const ModelParameters& parameters) {
 	if (parameters != mPar) {
 		mPar = parameters;
 
-		resetWindow();
-		requestRealSize();
+		if (mPar.neighbourMatchId != -1) {
+			qDebug() << "Super special neighbourMatch mode!" << mPar.neighbourMatchId;
 
-		emit modelChanged();
+			neighbours(mDb->getMatch(mPar.neighbourMatchId), mPar.neighbourMode, true);
+		}
+		else {
+			resetWindow();
+			requestRealSize();
+
+			emit modelChanged();
+		}
+
 	}
 }
 

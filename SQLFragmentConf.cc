@@ -4,6 +4,8 @@
 
 namespace thera {
 	SQLFragmentConf::SQLFragmentConf(SQLDatabase *db, int id) : mDb(db), mId(id) { }
+	SQLFragmentConf::SQLFragmentConf(SQLDatabase *db, int id, int *fragments, float relevance, const XF& xf, const vec3& CP, float CPRadius)
+		: IFragmentConf(fragments, relevance, xf, CP, CPRadius), mDb(db), mId(id) {}
 	SQLFragmentConf::~SQLFragmentConf() { }
 	SQLFragmentConf::SQLFragmentConf(const SQLFragmentConf& that) : IFragmentConf(that), mDb(that.mDb), mId(that.mId) { }
 	SQLFragmentConf& SQLFragmentConf::operator=(const SQLFragmentConf& that) {
@@ -81,5 +83,9 @@ namespace thera {
     	qDebug() << "SQLFragmentConf::get: match doesn't have field" << field;
 
     	return deflt;
+    }
+
+    bool SQLFragmentConf::isValid() const {
+    	return (mId != -1) && (mDb != NULL);
     }
 }

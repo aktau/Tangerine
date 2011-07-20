@@ -6,6 +6,7 @@
 #include <QDebug>
 
 #include "InvalidFragmentConf.h"
+#include "ModelParameters.h"
 
 /**
  * Represents an empty match model to which nothing can be added, good for initializing classes that use

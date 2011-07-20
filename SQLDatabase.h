@@ -37,10 +37,11 @@ class SQLDatabase : public QObject {
 		virtual bool addMetaMatchField(const QString& name, const QString& sql); // a metafield is a field computed from other fields, it is implemented through an SQL view
 		virtual bool removeMatchField(const QString& name);
 
-		// in the filters map, the key is the field dependencies and the value is the SQL clause that will be put into a WHERE, they will be concatenated with AND
+		// in the filters QMap, the key is the field dependencies and the value is the SQL clause that will be put into a WHERE, they will be concatenated with AND
 		// one could perfectly also include AND's and OR's inside of the value component
 		// example: Key = "error" -> Value = "error < 0.25 OR error > 0.50"
 		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
+		thera::SQLFragmentConf getMatch(int id);
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
