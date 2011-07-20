@@ -83,15 +83,32 @@ void DetailScene::tabletopChanged() {
 void DetailScene::calcMeshData(const QStringList& fragmentList, bool updatePerFragment) {
 	foreach (const QString& id, fragmentList) {
 		if (!mLoadedFragments.contains(id)) {
-			qDebug() << "inserting" << id;
-			mLoadedFragments.insert(id, new FragmentResources(id, mState.highQuality ? Fragment::HIRES_MESH : Fragment::LORES_MESH));
+			qDebug() << "DetailScene::calcMeshData: inserting" << id;
+			mLoadedFragments.insert(id, new FragmentResources(id, Fragment::LORES_MESH));
+			//mLoadedFragments.insert(id, new FragmentResources(id, mState.highQuality ? Fragment::HIRES_MESH : Fragment::LORES_MESH));
+			//FragmentResources *resources = new FragmentResources(id, Fragment::LORES_MESH);
+			//mLoadedFragments.insert(id, resources);
 		}
 		else {
-			qDebug() << "altering" << id;
+			qDebug() << "DetailScene::calcMeshData: altering" << id;
 			mLoadedFragments[id]->loadOnly(mState.highQuality ? Fragment::HIRES_MESH : Fragment::LORES_MESH);
 		}
 
-		if (updatePerFragment) QApplication::processEvents();
+		if (updatePerFragment) {
+			update();
+			QApplication::processEvents();
+		}
+	}
+
+	if (mState.highQuality) {
+		foreach (const QString& id, fragmentList) {
+			mLoadedFragments[id]->loadOnly(Fragment::HIRES_MESH);
+		}
+
+		if (updatePerFragment) {
+			update();
+			QApplication::processEvents();
+		}
 	}
 }
 
@@ -375,10 +392,11 @@ void DetailScene::keyPressEvent(QKeyEvent *event) {
 		case Qt::Key_Minus: mState.transparancy = qMin(1.0, qMax(0.0, mState.transparancy - 0.1)); break;
 		case Qt::Key_A: mState.draw_alternate = !mState.draw_alternate; break;
 		case Qt::Key_D: Cache::instance()->print(); break;
+		case Qt::Key_C: Cache::instance()->minimizeSize(); break;
 		case Qt::Key_H: {
 			mState.highQuality = !mState.highQuality;
 
-			calcMeshData(mLoadedFragments.keys());
+			calcMeshData(mLoadedFragments.keys(), true);
 		} break;
 		case Qt::Key_R: mState.draw_ribbon = !mState.draw_ribbon; break;
 		case Qt::Key_E: mState.draw_edges = !mState.draw_edges; break;

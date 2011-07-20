@@ -468,10 +468,13 @@ void MatchTileView::listDuplicates() {
 
 		qDebug() <<  "MatchTileView::listDuplicates: parent =" << parent << "and index =" << match.index();
 
+		mModel->initBatchModification();
+		mModel->filter(QString());
 		mModel->genericFilter(
 			"duplicates",
 			QString("duplicate = %1 OR matches.match_id = %1").arg(master)
 		);
+		mModel->endBatchModification();
 	}
 	else {
 		qDebug() << "MatchTileView::listDuplicates: invalid model index" << current;
@@ -486,10 +489,13 @@ void MatchTileView::findDuplicates() {
 
 		IFragmentConf &match = mModel->get(current);
 
+		mModel->initBatchModification();
+		mModel->filter(QString());
 		mModel->genericFilter(
 			"duplicates",
 			QString("(target_name = '%1' AND source_name = '%2') OR (target_name = '%2' AND source_name = '%1')").arg(match.getSourceId()).arg(match.getTargetId())
 		);
+		mModel->endBatchModification();
 	}
 	else {
 		qDebug() << "MatchTileView::findDuplicates: invalid model index" << current;
@@ -674,6 +680,8 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	else {
 		const IFragmentConf& match = mModel->get(fcidx);
 
+		//qDebug() << "MatchTileView::updateThumbnail: updating thumb" << tidx << "," << fcidx << "which contains" << match.getTargetId() << "and" << match.getSourceId();
+
 		//int duplicates = 0;
 		//QElapsedTimer timer;
 		//timer.start();
@@ -839,7 +847,7 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 
 		const IFragmentConf &c = mModel->get(current);
 
-		qDebug() << "MatchTileView::doubleClicked: current:" << current << "== idx:" << idx << "fragments" << c.getTargetId() << "and" << c.getSourceId();
+		//qDebug() << "MatchTileView::doubleClicked: current:" << current << "== idx:" << idx << "fragments" << c.getTargetId() << "and" << c.getSourceId();
 
 		mTabletopModel.clear();
 		mTabletopModel.fragmentPlace(c.getTargetId(), XF());
@@ -1196,53 +1204,15 @@ void MatchTileView::refresh() {
 		if (!busy) return;
 
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
+		//qDebug() << "MatchTileView::refresh:" << i << ((max > i + new_pos) ? i + new_pos : -1);
 		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
 	}
 
-	qDebug() << "Refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
+	qDebug() << "MatchTileView::refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
 
 	updateStatusBar();
 
 	busy = false;
-}
-
-void MatchTileView::currentValidIndices(QVector<int>& valid) {
-	// it's possible the vector still contains data, better to make sure and clear it
-	valid.clear();
-
-	if (s().conflict_index < 0) {
-		// this means we're not looking for all conflicts to s().conflict_index, business as usual
-	}
-	else {
-		// in this case (s().conflict_index >= 0), load everything that conflicts with s().conflict_index, and the element itself
-
-		/*
-		QStringList conflicts;
-
-		conflicts << fc[s().conflict_index].getString("id").trimmed(); // select the element
-		conflicts
-				<< fc[s().conflict_index].getString("conflict", QString()).split(
-						" "); // select the elements it conflicts with
-
-		//qDebug() << "matchBrowser::currentValidIndices: conflict_index =" << s().conflict_index << ">= 0:"
-		//    << "id of conflict search fragment:" << fc[s().conflict_index].getString("id")
-		//    << "conflicts with:" << conflicts;
-
-		for (int i = conflicts.size() - 1; i >= 0; i--) {
-			// remove all id's that are not legal
-
-			bool isNum;
-			int id = conflicts[i].toInt(&isNum);
-			if (isNum && idmap.contains(id)) {
-				assert(idmap[i] < fc.size());
-
-				valid.push_back(idmap[id]);
-
-				//qDebug() << "matchBrowser::currentValidIndices: pushed back idmap[" << id << "] =" << idmap[id];
-			}
-		}
-		*/
-	}
 }
 
 int MatchTileView::modelToViewIndex(int modelIndex) const {

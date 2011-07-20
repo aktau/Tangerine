@@ -9,7 +9,7 @@
 using namespace thera;
 
 //MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0), mDelayed(false), mDirty(false) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mNextWindowOffset(0), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0), mDelayed(false), mDirty(false) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -34,7 +34,7 @@ void MatchModel::prefetchHint(int start, int end) {
 	assert(end > start);
 
 	setWindowSize(end - start + 1);
-	mWindowOffset = start % mWindowSize;
+	mNextWindowOffset = start % mWindowSize;
 
 	//qDebug() << "Asked for prefetch of" << start << "to" << end << "(windowsize = " << mWindowSize << "and offset =" << mWindowOffset << ")";
 }
@@ -55,14 +55,17 @@ void MatchModel::requestWindow(int windowIndex) {
 		windowIndex = 0;
 	}
 
-	mWindowBegin = windowIndex * mWindowSize + mWindowOffset;
+	//qDebug("(1) Requested new window [old: %d, %d] [new: %d, %d], size: %d | offset = %d", mWindowBegin, mWindowEnd, windowIndex * mWindowSize + mWindowOffset, mWindowEnd, mWindowSize, mWindowOffset);
+
+	mWindowBegin = windowIndex * mWindowSize + mNextWindowOffset;
+	mWindowOffset = mNextWindowOffset;
 
 	// gets overriden in populateModel, why bother?
 	//mWindowEnd = (windowIndex + 1) * mWindowSize;
 
-	//qDebug() << "Requested new window" << mWindowBegin << "," << mWindowEnd << "," << mWindowSize;
-
 	populateModel();
+
+	//qDebug("(2) Requested new window [old: %d, %d] [new: %d, %d], size: %d | offset = %d", mWindowBegin, mWindowEnd, windowIndex * mWindowSize + mWindowOffset, mWindowEnd, mWindowSize, mWindowOffset);
 }
 
 bool MatchModel::isValidIndex(int index) const {
@@ -215,11 +218,12 @@ inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 
 	if (index < mWindowBegin || index > mWindowEnd) {
 		// if the index is outside of the window, request another window in which it fits
-		requestWindow((index - mWindowOffset) / mWindowSize);
+		requestWindow((index - mNextWindowOffset) / mWindowSize);
 	}
 
-	//return mMatches[index % mWindowSize];
-	return mMatches[index % mMatches.size()];
+	//qDebug("MatchModel::getSQL: (%d - %d) %% %d = %d, ", index, mWindowOffset, mMatches.size(), (index - mWindowOffset) % mMatches.size());
+
+	return mMatches[(index - mWindowOffset) % mMatches.size()];
 }
 
 void MatchModel::setParameters(const ModelParameters& parameters) {

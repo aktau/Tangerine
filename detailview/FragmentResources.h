@@ -104,7 +104,9 @@ struct FragmentResources {
 		}
 
 		// the colordata is automatically removed because the color vector is on the stack
-		//loadedMeshes.clear(); <--- will happend automatically
+
+		//loadedMeshes.clear(); // <--- will happen automatically
+		//colors.clear(); // <--- will happen automatically (just making sure because there have been some memory leak problems)
 	}
 
 	private:

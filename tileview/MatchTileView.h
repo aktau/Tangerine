@@ -93,7 +93,6 @@ class MatchTileView : public QScrollArea {
 		void updateStatusBar();
 		void updateThumbnail(int tidx, int fcidx);
 		void setStatus(IMatchModel::Status status);
-		void currentValidIndices(QVector<int>& valid);
 
 		void sort(Qt::SortOrder order);
 

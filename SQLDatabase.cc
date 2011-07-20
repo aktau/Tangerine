@@ -41,6 +41,8 @@ SQLDatabase::~SQLDatabase() {
 	// object calling close() for us
 	// TODO: re-evaluate this decision
 
+	qDebug() << "SQLDatabase::~SQLDatabase: running, database is currently still" << (isOpen() ? "open" : "closed");
+
 	close();
 }
 

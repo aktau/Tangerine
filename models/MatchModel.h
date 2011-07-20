@@ -85,7 +85,7 @@ class MatchModel : public IMatchModel {
 		QList<thera::SQLFragmentConf> mMatches;
 
 		int mRealSize;
-		int mWindowSize, mWindowOffset;
+		int mWindowSize, mNextWindowOffset, mWindowOffset;
 		int mWindowBegin, mWindowEnd;
 
 		bool mDelayed, mDirty;
