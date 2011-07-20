@@ -21,10 +21,10 @@ struct ModelParameters {
 	IMatchModel::NeighbourMode neighbourMode;
 
 	ModelParameters(SQLDatabase *db)
-		: filter(db), matchNameFilter(QString()), sortField(QString()), sortOrder(Qt::AscendingOrder), neighbourMatchId(-1) {}
+		: filter(db), matchNameFilter(QString()), sortField(QString()), sortOrder(Qt::AscendingOrder), neighbourMatchId(-1), neighbourMode(IMatchModel::NEIGHBOUR_MODES) {}
 
 	ModelParameters(SQLFilter _filter = SQLFilter(), QString _matchNameFilter = QString(), QString _sortField = QString(), Qt::SortOrder _sortOrder = Qt::AscendingOrder)
-		: filter(_filter), matchNameFilter(_matchNameFilter), sortField(_sortField), sortOrder(_sortOrder), neighbourMatchId(-1) {}
+		: filter(_filter), matchNameFilter(_matchNameFilter), sortField(_sortField), sortOrder(_sortOrder), neighbourMatchId(-1), neighbourMode(IMatchModel::NEIGHBOUR_MODES) {}
 
 	inline bool operator==(const ModelParameters& other) const {
 		return sortOrder == other.sortOrder &&
@@ -32,11 +32,20 @@ struct ModelParameters {
 				matchNameFilter == other.matchNameFilter &&
 				filter == other.filter &&
 				neighbourMatchId == other.neighbourMatchId &&
-				neighbourMatchId == other.neighbourMode;
+				neighbourMode == other.neighbourMode;
 	}
 
 	inline bool operator!=(const ModelParameters& other) const {
 		return !(*this == other);
+	}
+
+	QString toString() const {
+		return QString("filter = ?, name filter = %1, sort field = %2, sort order = %3, neighbour id = %4, neighbour mode = %5")
+			.arg(matchNameFilter)
+			.arg(sortField)
+			.arg(sortOrder)
+			.arg(neighbourMatchId)
+			.arg(neighbourMode);
 	}
 };
 
