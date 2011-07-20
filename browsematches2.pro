@@ -46,6 +46,11 @@ SOURCES += models/*.cc
 HEADERS += models/*.h
 INCLUDEPATH += models
 
+SOURCES += sql/*.cc
+HEADERS += sql/*.h
+INCLUDEPATH += sql
+
+
 tileview {
 	message(Tangerine: Tileview support was added)
 
