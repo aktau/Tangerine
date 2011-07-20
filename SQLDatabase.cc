@@ -316,40 +316,29 @@ int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
 thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 	const QString queryString = QString("SELECT matches.match_id, source_name, target_name, transformation FROM matches WHERE match_id = %1").arg(id);
 
+	int matchId = -1;
+	SQLDatabase *db = NULL;
 	int fragments[IFragmentConf::MAX_FRAGMENTS];
+	XF xf;
 
 	QSqlQuery query(database());
 	if (query.exec(queryString) && query.first()) {
-		//SQLFragmentConf fc(this, query.value(0).toInt());
+		assert(matchId == id);
 
-		//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
+		db = this;
+		id = query.value(0).toInt();
 
-		/*
-		fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
-		fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
-		fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
-
-		XF xf;
-		QTextStream ts(query.value(3).toString().toAscii());
-		ts >> xf;
-
-		fc.mXF = xf;
-		*/
-
-		XF xf;
 		QTextStream ts(query.value(3).toString().toAscii());
 		ts >> xf;
 
 		fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
 		fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
-
-		return SQLFragmentConf(this, query.value(0).toInt(), fragments, 1.0f, xf);
 	}
 	else {
 		qDebug() << "SQLDatabase::getNumberOfMatches: problem with query:" << query.lastError();
-
-		return SQLFragmentConf();
 	}
+
+	return SQLFragmentConf(db, matchId, fragments, 1.0f, xf);
 }
 
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
@@ -386,25 +375,20 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 
 	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString;
 
+	int fragments[IFragmentConf::MAX_FRAGMENTS];
+	XF xf;
+
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
 	if (query.exec(queryString)) {
 		while (query.next()) {
-			SQLFragmentConf fc(this, query.value(0).toInt());
-
-			//qDebug() << query.value(1).toString() << "->" << Database::entryIndex(query.value(1).toString()) << "||" << query.value(2).toString() << "->" << Database::entryIndex(query.value(2).toString());
-
-			fc.mFragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
-			fc.mFragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
-			fc.mRelev = 1.0f; // placeholder; we should compute relev based on err here
-
-			XF xf;
 			QTextStream ts(query.value(3).toString().toAscii());
 			ts >> xf;
 
-			fc.mXF = xf;
+			fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
 
-			list.append(fc);
+			list << SQLFragmentConf(this, query.value(0).toInt(), fragments, 1.0f, xf);
 		}
 	}
 	else {

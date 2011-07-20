@@ -295,12 +295,12 @@ inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 
 void MatchModel::setParameters(const ModelParameters& parameters) {
 	if (parameters != mPar) {
-		qDebug() << "MatchModel::setParameters:\n\t" << mPar.toString() << "!=\n\t" << parameters.toString();
+		//qDebug() << "MatchModel::setParameters:\n\t" << mPar.toString() << "!=\n\t" << parameters.toString();
 
 		mPar = parameters;
 
 		if (mPar.neighbourMatchId != -1) {
-			qDebug() << "MatchModel::setParameters: Super special neighbourMatch mode!" << mPar.neighbourMatchId;
+			//qDebug() << "MatchModel::setParameters: Super special neighbourMatch mode!" << mPar.neighbourMatchId;
 
 			neighbours(mDb->getMatch(mPar.neighbourMatchId), mPar.neighbourMode, true);
 		}
