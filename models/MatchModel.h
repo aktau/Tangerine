@@ -33,6 +33,10 @@ class MatchModel : public IMatchModel {
 		virtual void filter(const QString& pattern = QString());
 		virtual void genericFilter(const QString& key, const QString& filter);
 		virtual void neighbours(int index, NeighbourMode mode = IMatchModel::ALL, bool keepParameters = false);
+
+		virtual void initBatchModification();
+		virtual void endBatchModification();
+
 		virtual thera::IFragmentConf& get(int index);
 
 		virtual void setParameters(const ModelParameters& parameters);
@@ -62,9 +66,9 @@ class MatchModel : public IMatchModel {
 		void resetFilter();
 
 		// versions without signal emitting that return whether anything changed
-		bool setSort(const QString& field, Qt::SortOrder order);
-		bool setNameFilter(const QString& pattern);
-		bool setGenericFilter(const QString& key, const QString& filter); // adds, replaces or removes said key
+		bool setSort(const QString& field, Qt::SortOrder order, ModelParameters& p);
+		bool setNameFilter(const QString& pattern, ModelParameters& p);
+		bool setGenericFilter(const QString& key, const QString& filter, ModelParameters& p); // adds, replaces or removes said key
 
 		void convertGroupToMaster(int groupMatchId, int masterMatchId);
 
@@ -76,12 +80,15 @@ class MatchModel : public IMatchModel {
 		SQLDatabase *mDb;
 
 		ModelParameters mPar;
+		ModelParameters mDelayedPar;
 
 		QList<thera::SQLFragmentConf> mMatches;
 
 		int mRealSize;
 		int mWindowSize, mWindowOffset;
 		int mWindowBegin, mWindowEnd;
+
+		bool mDelayed, mDirty;
 };
 
 #endif /* MATCHMODEL_H_ */

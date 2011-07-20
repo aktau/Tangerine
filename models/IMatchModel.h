@@ -51,6 +51,16 @@ class IMatchModel : public QObject {
 		virtual void genericFilter(const QString& key, const QString& filter) = 0; // the syntax is the same as the SQL WHERE-clause syntax
 		virtual void neighbours(int index, NeighbourMode mode = IMatchModel::ALL, bool keepParameters = false) = 0;
 
+		// these methods will delay the changing (and notification thereof) of the model
+		// an example:
+		// 	model.initBatchModification();
+		//	model.filter(...)
+		//	model.sort(...)
+		//  model.endBBatchModification();
+		// This promotes efficient usage of resources
+		virtual void initBatchModification() = 0;
+		virtual void endBatchModification() = 0;
+
 		// Arguably the most important method in the class. However, it has a problem
 		// It returns by reference, and this reference will not be good forever. In fact
 		// every new filter, sort, whatever will invalidate the reference. If this model

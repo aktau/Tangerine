@@ -9,7 +9,7 @@
 using namespace thera;
 
 //MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0) {
+MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0), mDelayed(false), mDirty(false) {
 	if (mDb == NULL) {
 		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
 	}
@@ -74,7 +74,10 @@ int MatchModel::size() const {
 }
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
-	if (setSort(field, order)) {
+	if (mDelayed) {
+		mDirty |= setSort(field, order, mDelayedPar);
+	}
+	else if (setSort(field, order, mPar)) {
 		resetWindow();
 
 		// don't populate the model yet, we don't know where the users of the model will look
@@ -86,10 +89,13 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 }
 
 void MatchModel::filter(const QString& pattern) {
-	qDebug() << "in model, pattern:" << pattern;
+	qDebug() << "MatchModel::filter: in model, pattern:" << pattern;
 
-	if (setNameFilter(pattern)) {
-		qDebug() << "Apparently change...";
+	if (mDelayed) {
+		mDirty |= setNameFilter(pattern, mDelayedPar);
+	}
+	else if (setNameFilter(pattern, mPar)) {
+		qDebug() << "MatchModel::filter: Apparently change...";
 
 		resetWindow();
 		requestRealSize();
@@ -103,7 +109,10 @@ void MatchModel::filter(const QString& pattern) {
 }
 
 void MatchModel::genericFilter(const QString& key, const QString& filter) {
-	if (setGenericFilter(key, filter)) {
+	if (mDelayed) {
+		mDirty |= setGenericFilter(key, filter, mDelayedPar);
+	}
+	else if (setGenericFilter(key, filter, mPar)) {
 		resetWindow();
 		requestRealSize();
 
@@ -164,6 +173,36 @@ void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) 
 
 		default:
 			qDebug() << "MatchModel::neighbours: Unknown neighbourmode";
+	}
+}
+
+void MatchModel::initBatchModification() {
+	if (!mDelayed) {
+		mDelayedPar = mPar;
+
+		mDelayed = true;
+		mDirty = false;
+	}
+}
+
+void MatchModel::endBatchModification() {
+	if (mDelayed) {
+		mPar = mDelayedPar;
+
+		mDelayed = false;
+
+		if (mDirty) {
+			mDirty = false;
+
+			resetWindow();
+			requestRealSize();
+
+			// don't populate the model yet, we don't know where the users of the model will look
+			// and thus we could be fetching a window for naught
+			//populateModel();
+
+			emit modelChanged();
+		}
 	}
 }
 
@@ -368,13 +407,13 @@ void MatchModel::resetFilter() {
 	mPar.filter.clear();
 }
 
-bool MatchModel::setSort(const QString& field, Qt::SortOrder order) {
+bool MatchModel::setSort(const QString& field, Qt::SortOrder order, ModelParameters& p) {
 	if (!mDb->matchHasField(field)) {
 		qDebug() << "MatchModel::setSort: Field" << field << "doesn't exist";
 	}
-	else if (mPar.sortField != field || mPar.sortOrder != order) {
-		mPar.sortField = field;
-		mPar.sortOrder = order;
+	else if (p.sortField != field || p.sortOrder != order) {
+		p.sortField = field;
+		p.sortOrder = order;
 
 		return true;
 	}
@@ -382,8 +421,8 @@ bool MatchModel::setSort(const QString& field, Qt::SortOrder order) {
 	return false;
 }
 
-bool MatchModel::setNameFilter(const QString& pattern) {
-	if (mPar.matchNameFilter != pattern) {
+bool MatchModel::setNameFilter(const QString& pattern, ModelParameters& p) {
+	if (p.matchNameFilter != pattern) {
 		if (!pattern.isEmpty()) {
 			QString normalizedFilter = pattern;
 
@@ -392,13 +431,13 @@ bool MatchModel::setNameFilter(const QString& pattern) {
 
 			normalizedFilter = QString(normalizedFilter).replace("*","%").replace("?","_");
 
-			mPar.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
+			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
 		}
 		else {
-			mPar.filter.removeFilter("matchmodel_names");
+			p.filter.removeFilter("matchmodel_names");
 		}
 
-		mPar.matchNameFilter = pattern;
+		p.matchNameFilter = pattern;
 
 		return true;
 	}
@@ -406,10 +445,10 @@ bool MatchModel::setNameFilter(const QString& pattern) {
 	return false;
 }
 
-bool MatchModel::setGenericFilter(const QString& key, const QString& filter) {
-	if (!mPar.filter.hasFilter(key, filter)) {
-		if (!filter.isEmpty()) mPar.filter.setFilter(key, filter);
-		else mPar.filter.removeFilter(key);
+bool MatchModel::setGenericFilter(const QString& key, const QString& filter, ModelParameters& p) {
+	if (!p.filter.hasFilter(key, filter)) {
+		if (!filter.isEmpty()) p.filter.setFilter(key, filter);
+		else p.filter.removeFilter(key);
 
 		return true;
 	}
