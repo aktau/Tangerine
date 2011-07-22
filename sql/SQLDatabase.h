@@ -30,7 +30,7 @@ class SQLDatabase : public QObject {
 		// if the file is .xml or .dbd it will be read as a database connection parameters description
 		// file. If the extension is .db the function will directly assume that the it's an SQLite database
 		static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
-		virtual void writeDbm(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
+		virtual void saveConnectionInfo(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
 
 		//virtual void setParameters(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
 		//virtual void setParameters(const QString& dbname);

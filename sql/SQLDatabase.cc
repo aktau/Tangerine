@@ -6,7 +6,10 @@
 #include "XF.h"
 
 #include "SQLiteDatabase.h"
+#include "SQLMySqlDatabase.h"
 #include "SQLNullDatabase.h"
+
+#include "SQLConnectionDescription.h"
 
 using namespace thera;
 
@@ -35,6 +38,7 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	QFileInfo fi(f);
 	QString extension = fi.suffix();
 
+
 	if (extension == "db") {
 		// assuming ".db" extension means SQLite database
 		qDebug() << "SQLDatabase::openDb: opening new SQLite db, file =" << file;
@@ -49,8 +53,16 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 		// load data from the XML file
 		// open database of the right type with this data
 
-		// the database type is in the file formats
-		db = new SQLNullDatabase(parent);
+		SQLConnectionDescription dbd = SQLConnectionDescription(file);
+
+		if (dbd.isValid()) {
+			db = new SQLMySqlDatabase(parent);
+			//set according to dbd
+		}
+		else {
+			db = new SQLNullDatabase(parent);
+		}
+
 	}
 	else {
 		qDebug() << "SQLDatabase::openDb: unrecognized type of file to load";
@@ -60,7 +72,7 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	return db;
 }
 
-void SQLDatabase::writeDbm(const QString& file) const {
+void SQLDatabase::saveConnectionInfo(const QString& file) const {
 	if (!isOpen()) return;
 	// will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
 }
