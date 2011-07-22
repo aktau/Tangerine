@@ -12,6 +12,7 @@ class SQLNullDatabase : public SQLDatabase {
 
 		//virtual QSqlDatabase open(const QString& file);
 	protected:
+		virtual QString createViewQuery(const QString&, const QString&) const { return QString(); }
 		virtual void setPragmas() { }
 		virtual QSet<QString> tableFields(const QString&) const { return QSet<QString>(); }
 

@@ -43,6 +43,10 @@ void MatchModel::setDatabase(SQLDatabase *db) {
 			if (!mDb->isOpen()) {
 				qDebug() << "MatchModel::setDatabase: Database was succesfully set, but it is still unopened";
 			}
+			else {
+				// can't hurt
+				mDb->addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
+			}
 		}
 		else {
 			qDebug() << "MatchModel::setDatabase: passed database was NULL";

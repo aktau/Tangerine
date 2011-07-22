@@ -84,7 +84,7 @@ class SQLDatabase : public QObject {
 
 		virtual bool hasCorrectCapabilities() const;
 
-		//virtual QSqlDatabase open(const QString& file) = 0;
+		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 		virtual void setPragmas() = 0;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
 

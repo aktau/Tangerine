@@ -11,8 +11,9 @@ class SQLMySqlDatabase : public SQLDatabase {
 		virtual ~SQLMySqlDatabase();
 
 	protected:
+		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual void setPragmas() { }
-		virtual QSet<QString> tableFields(const QString& /*tableName*/) const { return QSet<QString>(); }
+		virtual QSet<QString> tableFields(const QString& tableName) const;
 
 	private:
 		// disabling copy-constructor and copy-assignment for now

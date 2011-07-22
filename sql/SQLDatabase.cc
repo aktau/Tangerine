@@ -38,6 +38,10 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	QFileInfo fi(f);
 	QString extension = fi.suffix();
 
+	SQLConnectionDescription dbd1(SQLConnectionDescription::MYSQL, "127.0.0.1", 3306, "tang", "root", QString());
+	dbd1.save("db/mysql.dbd");
+	SQLConnectionDescription dbd2("db/mysql.dbd");
+	qDebug() << "IS OF TYPE" << SQLConnectionDescription::dbTypeToString(dbd2.getType()) << "and connects to" << dbd2.getHost() << "and is" << dbd2.isValid();
 
 	if (extension == "db") {
 		// assuming ".db" extension means SQLite database
@@ -58,6 +62,7 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 		if (dbd.isValid()) {
 			db = new SQLMySqlDatabase(parent);
 			//set according to dbd
+			db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
 		}
 		else {
 			db = new SQLNullDatabase(parent);
@@ -78,7 +83,7 @@ void SQLDatabase::saveConnectionInfo(const QString& file) const {
 }
 
 bool SQLDatabase::open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port) {
-	return open(host + port + dbname, dbname, false, host, user, pass, port);
+	return open(host + ":" + QString::number(port) + "/" + dbname, dbname, false, host, user, pass, port);
 }
 
 bool SQLDatabase::open(const QString& dbname) {
@@ -129,10 +134,14 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 		if (db.open()) {
 			setPragmas();
 
-			if (db.tables().isEmpty()) {
+			if (!db.tables().contains("matches")) {
+				qDebug() << "SQLDatabase::open: database opened correctly but was found to be empty, setting up Thera schema";
+
 				setup(SCHEMA_FILE);
 			}
 			else {
+				qDebug() << "SQLDatabase::open: database opened correctly and already contained tables: " << db.tables();
+
 				emit matchFieldsChanged();
 			}
 
@@ -359,7 +368,8 @@ bool SQLDatabase::addMetaMatchField(const QString& name, const QString& sql) {
 
 	db.transaction();
 
-	success = query.exec(QString("CREATE VIEW IF NOT EXISTS %1 AS %2").arg(name).arg(sql));
+	success = query.exec(createViewQuery(name, sql));
+	//success = query.exec(QString("CREATE VIEW IF NOT EXISTS %1 AS %2").arg(name).arg(sql));
 	if (success) {
 		qDebug() << "SQLDatabase::addMetaMatchField: Create view appears to have been succesful, query:" << query.lastQuery();
 		emit matchFieldsChanged();
