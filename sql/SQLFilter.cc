@@ -26,6 +26,10 @@ void SQLFilter::setDatabase(SQLDatabase *db) {
 	mDb = db;
 }
 
+SQLDatabase *SQLFilter::getDatabase() const {
+	return mDb;
+}
+
 QStringList SQLFilter::dependencies() const {
 	return QStringList::fromSet(mDependencies);
 }
@@ -86,9 +90,10 @@ bool SQLFilter::operator!=(const SQLFilter& other) const {
  * it works out to be much less error prone and simpler than partial updates
  */
 void SQLFilter::updateDependencyInfo() {
-	assert(mFilters.isEmpty() || mDb != NULL);
-
 	mDependencies.clear();
+
+	assert(!(mDb == NULL && !mFilters.isEmpty()));
+	if (mFilters.isEmpty() || mDb == NULL) return;
 
 	// yes we could streamline this loop a little by continue'ing once we've added a certain field
 	// but that's low priority

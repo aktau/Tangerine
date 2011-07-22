@@ -15,25 +15,14 @@ const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
 const int Tangerine::MIN_WIDTH = 1280;
 const int Tangerine::MIN_HEIGHT = 600;
 
-Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(*db), mModel(db), mSelectionModel(NULL), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+Tangerine::Tangerine(const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(NULL), mModel(NULL), mSelectionModel(NULL), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
 	mSelectionModel = new MatchSelectionModel(&mModel, this);
 
 	setupWindow();
 
-	// the ordering is important, the slots use instances made in setupWindow() et cetera
-
-	connect(&mDb, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
-	connect(&mDb, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
-	connect(&mDb, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
-	connect(&mDb, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
-	connect(&mDb, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-	connect(&mDb, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
-
 	databaseClosed();
 
-	mLoadFragDbAct->setEnabled(!Database::isValid());
-	mLoadMatchDbAct->setEnabled(Database::isValid());
-	mImportXMLAct->setEnabled(Database::isValid());
+	setMainDatabase(QString());
 
 	QSettings settings;
 
@@ -55,7 +44,7 @@ Tangerine::Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent) : Q
 }
 
 Tangerine::~Tangerine() {
-	closeDatabase();
+	//closeDatabase();
 
 	qDebug() << "Tangerine::~Tangerine: ran";
 }
@@ -251,8 +240,8 @@ void Tangerine::createActions() {
  */
 void Tangerine::closeDatabase() {
 	/*
-	if (mDb != NULL) {
-		//delete mDb;
+	if (mDb) {
+		delete mDb;
 
 		mDb = NULL;
 	}
@@ -269,7 +258,7 @@ void Tangerine::updateStatusBar() {
 			statusBar()->showMessage(tr("Please load a fragment database first, and then a match database to get started"));
 	}
 
-	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb.matchCount()));
+	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb->matchCount()));
 }
 
 void Tangerine::loadFragmentDatabase() {
@@ -322,17 +311,73 @@ bool Tangerine::threadedDbInit(const QDir& dbDir) {
 	return Database::init(dbDir, Database::FRAGMENT, true);
 }
 
+void Tangerine::setMainDatabase(const QString& file) {
+	SQLDatabase *db = SQLDatabase::getDb(file, this);
+
+	if (!db) return;
+
+	if (mDb) disconnect(mDb, 0, this, 0);
+
+	connect(db, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
+	connect(db, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
+	connect(db, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
+	connect(db, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
+	connect(db, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
+	connect(db, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
+
+	mModel.setDatabase(db);
+
+	if (mDb) delete mDb;
+
+	mDb = db;
+
+	if (!db->isOpen()) {
+		if (!file.isEmpty()) QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
+	}
+	else {
+		databaseOpened();
+	}
+
+	matchCountChanged();
+
+	/*
+	if (!file.isEmpty()) {
+		SQLDatabase *db = SQLDatabase::getDb(file, this);
+
+		if (!db) return;
+
+		if (!db->isOpen()) {
+			QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
+
+			delete db;
+		}
+		else {
+			if (mDb) disconnect(mDb, 0, this, 0);
+
+			connect(db, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
+			connect(db, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
+			connect(db, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
+			connect(db, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
+			connect(db, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
+			connect(db, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
+
+			mModel.setDatabase(db);
+
+			delete mDb;
+
+			mDb = db;
+
+			databaseOpened();
+			matchCountChanged();
+		}
+	}
+	*/
+}
 
 void Tangerine::loadMatchDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
 
-	if (fileName != "") {
-		mDb.connect(fileName);
-
-		if (!mDb.isOpen()) {
-			QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
-		}
-	}
+	setMainDatabase(fileName);
 }
 
 void Tangerine::saveDatabase() {
@@ -345,7 +390,14 @@ void Tangerine::importDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Choose an XML file to import"), QString(), tr("XML files (*.xml)"), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (fileName != "") {
-		mDb.loadFromXML(fileName);
+		if (mDb == NULL || !mDb->isOpen()) {
+			// turn this into a dialog where the user can decide where to store the imported db
+			QFileInfo fi(fileName);
+
+			setMainDatabase(fi.absolutePath() + "/" + fi.baseName() + ".db");
+		}
+
+		mDb->loadFromXML(fileName);
 	}
 }
 
@@ -353,7 +405,7 @@ void Tangerine::exportDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("To which file do you want to export?"), QString(), tr("XML files (*.xml)"), 0);
 
 	if (fileName != "") {
-		mDb.saveToXML(fileName);
+		mDb->saveToXML(fileName);
 	}
 }
 

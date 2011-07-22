@@ -6,12 +6,13 @@
 #include "XF.h"
 
 #include "SQLiteDatabase.h"
+#include "SQLNullDatabase.h"
 
 using namespace thera;
 
-const QString SQLDatabase::CONN_NAME = "TheraSQL";
+//const QString SQLDatabase::CONN_NAME = "TheraSQL";
 const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
-const QString SQLDatabase::DB_HOST = "localhost";
+//const QString SQLDatabase::DB_HOST = "localhost";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
 const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
@@ -19,6 +20,134 @@ const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
 SQLDatabase * SQLDatabase::mSingleton = NULL;
+
+SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
+	// check if the database wasn't open already
+	// for now we'll return NULL, but we could build a map with all currently active connections
+	if (QSqlDatabase::database(file).isValid()) {
+		qDebug() << "SQLDatabase::openDb: connection with database referenced by '" << file << "' already exists";
+
+		return NULL;
+	}
+
+	QFile f(file);
+
+	if (!f.exists()) return new SQLNullDatabase(parent);
+
+	SQLDatabase *db = NULL;
+
+	QFileInfo fi(f);
+	QString extension = fi.suffix();
+
+	if (extension == "db") {
+		// assuming ".db" extension means SQLite database
+		qDebug() << "SQLDatabase::openDb: opening new SQLite db, file =" << file;
+
+		db = new SQLiteDatabase(parent);
+
+		if (!db->open(file)) {
+			qDebug() << "SQLDatabase::getDb: the open() call did not succeed, will return unopened SQLiteDatabase";
+		}
+	}
+	else if (extension == "dbd" || extension == "xml") {
+		// load data from the XML file
+		// open database of the right type with this data
+
+		// the database type is in the file formats
+		db = new SQLNullDatabase(parent);
+	}
+	else {
+		qDebug() << "SQLDatabase::openDb: unrecognized type of file to load";
+		db = new SQLNullDatabase(parent);
+	}
+
+	return db;
+}
+
+void SQLDatabase::writeDbm(const QString& file) const {
+	if (!isOpen()) return;
+	// will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
+}
+
+bool SQLDatabase::open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port) {
+	return open(host + port + dbname, dbname, false, host, user, pass, port);
+}
+
+bool SQLDatabase::open(const QString& dbname) {
+	return open(dbname, dbname, true);
+}
+
+bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host, const QString& user, const QString& pass, int port) {
+	if (mConnectionName != connName && QSqlDatabase::database(connName, false).isOpen()) {
+		qDebug() << "SQLDatabase::open: Another database with connection name" << connName << "was already opened, close that one first";
+
+		return false;
+	}
+
+	if (isOpen()) {
+		qDebug() << "SQLDatabase::open: database was already open, closing first";
+
+		close();
+	}
+
+	//mConnectionName = (dbnameOnly) ? "TheraSQL" : host + port + dbname;
+	//mConnectionName = (dbnameOnly) ? dbname : host + port + dbname;
+	mConnectionName = connName;
+
+	qDebug() << "SQLDatabase::open: Trying to open database with connection name" << mConnectionName << "and driver" << mType;
+
+	QSqlDatabase db = QSqlDatabase::addDatabase(mType, mConnectionName);
+
+	if (db.isValid()) {
+		if (!hasCorrectCapabilities()) {
+			qDebug() << "SQLDatabase::open:" << mType << "Did not have all the correct capabilities, certain methods may fail";
+		}
+
+		if (dbnameOnly) {
+			// for SQLite-like business
+			db.setHostName("localhost");
+			db.setDatabaseName(dbname);
+		}
+		else {
+			// normal SQL RDBMS
+			db.setHostName(host);
+			db.setPort(port);
+
+			db.setDatabaseName(dbname);
+			db.setUserName(user);
+			db.setPassword(pass);
+		}
+
+		if (db.open()) {
+			setPragmas();
+
+			if (db.tables().isEmpty()) {
+				setup(SCHEMA_FILE);
+			}
+			else {
+				emit matchFieldsChanged();
+			}
+
+			// the order is actually important, because for example the models react to matchCountChanged, but matchFieldsChanged needs to have ran by then
+			emit databaseOpened();
+			emit matchCountChanged();
+
+			return true;
+		}
+		else {
+			qDebug() << "SQLDatabase::open: Could not open connection to database:" << db.lastError();;
+		}
+	}
+	else {
+		qDebug() << QString("SQLDatabase::open: Connection to database was invalid, driver = %1, connection name = %2").arg(mType).arg(mConnectionName);
+	}
+
+	return false;
+}
+
+QString SQLDatabase::connectionName() const {
+	return database().connectionName();
+}
 
 /**
  * TODO: this is _very_ un-threadsafe
@@ -31,7 +160,8 @@ SQLDatabase* SQLDatabase::getDatabase(QObject *parent) {
 	return mSingleton;
 }
 
-SQLDatabase::SQLDatabase(QObject *parent) : QObject(parent) {
+SQLDatabase::SQLDatabase(QObject *parent, const QString& type)
+	: QObject(parent), mType(type) {
 	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
 }
@@ -323,10 +453,10 @@ thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 
 	QSqlQuery query(database());
 	if (query.exec(queryString) && query.first()) {
-		assert(matchId == id);
-
 		db = this;
-		id = query.value(0).toInt();
+		matchId = query.value(0).toInt();
+
+		assert(matchId == id);
 
 		QTextStream ts(query.value(3).toString().toAscii());
 		ts >> xf;
@@ -626,7 +756,7 @@ void SQLDatabase::close() {
 		qDebug() << "SQLDatabase::close: Closing database";
 
 		database().close();
-		QSqlDatabase::removeDatabase(CONN_NAME);
+		QSqlDatabase::removeDatabase(mConnectionName);
 
 		emit databaseClosed();
 	}
@@ -649,8 +779,7 @@ void SQLDatabase::makeFieldsSet() {
 	// clear just in case
 	mMatchFields.clear();
 
-	QSqlDatabase db = database();
-	QSqlQuery query(db);
+	QSqlDatabase db(database());
 
 	foreach (const QString& table, db.tables()) {
 		// check if the tables name is not the 'matches' table itself

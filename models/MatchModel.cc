@@ -9,25 +9,45 @@
 using namespace thera;
 
 //MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
-MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mPar(db), mRealSize(0), mWindowSize(20), mNextWindowOffset(0), mWindowOffset(0), mWindowBegin(0), mWindowEnd(0), mDelayed(false), mDirty(false) {
-	if (mDb == NULL) {
-		qDebug() << "MatchModel::MatchModel: passed database was NULL, this will lead to trouble";
-	}
-	else {
-		//connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
-		connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(databaseModified()));
-
-		if (!mDb->isOpen()) {
-			qDebug() << "MatchModel::MatchModel: Closed database was passed, this will lead to trouble...";
-		}
-		else {
-			databaseModified();
-		}
-	}
+MatchModel::MatchModel(SQLDatabase *db, QObject *parent)
+	: IMatchModel(parent),
+	  mDb(NULL),
+	  mPar(db),
+	  mRealSize(0),
+	  mWindowSize(20),
+	  mNextWindowOffset(0),
+	  mWindowOffset(0),
+	  mWindowBegin(0),
+	  mWindowEnd(0),
+	  mDelayed(false),
+	  mDirty(false) {
+	setDatabase(db);
 }
 
 MatchModel::~MatchModel() {
 
+}
+
+void MatchModel::setDatabase(SQLDatabase *db) {
+	if (mDb != db) {
+		if (mDb) disconnect(mDb, 0, this, 0);
+
+		mPar = ModelParameters(db);
+		mDb = db;
+
+		databaseModified();
+
+		if (mDb) {
+			connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(databaseModified()));
+
+			if (!mDb->isOpen()) {
+				qDebug() << "MatchModel::setDatabase: Database was succesfully set, but it is still unopened";
+			}
+		}
+		else {
+			qDebug() << "MatchModel::setDatabase: passed database was NULL";
+		}
+	}
 }
 
 void MatchModel::prefetchHint(int start, int end) {
@@ -77,6 +97,8 @@ int MatchModel::size() const {
 }
 
 void MatchModel::sort(const QString& field, Qt::SortOrder order) {
+	if (!mDb) return;
+
 	if (mDelayed) {
 		mDirty |= setSort(field, order, mDelayedPar);
 	}
@@ -92,6 +114,8 @@ void MatchModel::sort(const QString& field, Qt::SortOrder order) {
 }
 
 void MatchModel::filter(const QString& pattern) {
+	if (!mDb) return;
+
 	qDebug() << "MatchModel::filter: in model, pattern:" << pattern;
 
 	if (mDelayed) {
@@ -112,6 +136,12 @@ void MatchModel::filter(const QString& pattern) {
 }
 
 void MatchModel::genericFilter(const QString& key, const QString& filter) {
+	if (!mDb) {
+		qDebug() << "MatchModel::genericFilter: attempted to place generic filter on a model with an empty database";
+
+		return;
+	}
+
 	if (mDelayed) {
 		mDirty |= setGenericFilter(key, filter, mDelayedPar);
 	}
@@ -128,65 +158,11 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 }
 
 void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) {
+	if (!mDb) return;
+
 	SQLFragmentConf& c = getSQL(index);
 
 	neighbours(c, mode, keepParameters);
-
-	/*
-	if (!keepParameters) {
-		mPar.filter.clear();
-		mPar.matchNameFilter.clear();
-		mPar.sortField.clear();
-	}
-
-	mPar.neighbourIndex(index);
-
-	const QString allNeighboursFilter = QString("(target_name = '%1' OR source_name = '%2') OR (target_name = '%2' OR source_name = '%1')").arg(c.getSourceId()).arg(c.getTargetId());
-
-	switch (mode) {
-		case IMatchModel::ALL: {
-			genericFilter("filter", allNeighboursFilter);
-
-			qDebug() << "MatchModel::neighbours: got" << mRealSize << "matches to check for conflicts";
-		} break;
-
-		case IMatchModel::CONFLICTING: {
-			SQLFilter filter(mDb);
-			filter.setFilter("filter", allNeighboursFilter);
-
-			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
-
-			MatchConflictChecker checker(c, list);
-
-			mMatches = checker.getConflicting();
-			mRealSize = mMatches.size();
-			mWindowBegin = 0;
-			mWindowEnd = mRealSize - 1;
-
-			emit modelChanged();
-		} break;
-
-		case IMatchModel::NONCONFLICTING: {
-			SQLFilter filter(mDb);
-			filter.setFilter("filter", allNeighboursFilter);
-
-			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
-
-			MatchConflictChecker checker(c, list);
-
-			//mMatches = checker.getNonconflicting();
-			mMatches = checker.getProgressiveNonconflicting();
-			mRealSize = mMatches.size();
-			mWindowBegin = 0;
-			mWindowEnd = mRealSize - 1;
-
-			emit modelChanged();
-		} break;
-
-		default:
-			qDebug() << "MatchModel::neighbours: Unknown neighbourmode";
-	}
-	*/
 }
 
 inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, NeighbourMode mode, bool keepParameters) {
@@ -247,6 +223,8 @@ inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, Neighbou
 }
 
 void MatchModel::initBatchModification() {
+	if (!mDb) return;
+
 	if (!mDelayed) {
 		mDelayedPar = mPar;
 
@@ -256,6 +234,8 @@ void MatchModel::initBatchModification() {
 }
 
 void MatchModel::endBatchModification() {
+	if (!mDb) return;
+
 	if (mDelayed) {
 		mPar = mDelayedPar;
 
@@ -294,10 +274,12 @@ inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 }
 
 void MatchModel::setParameters(const ModelParameters& parameters) {
-	if (parameters != mPar) {
+	if (parameters != mPar && parameters.db() == mDb) {
 		//qDebug() << "MatchModel::setParameters:\n\t" << mPar.toString() << "!=\n\t" << parameters.toString();
 
 		mPar = parameters;
+
+		if (!mDb) return;
 
 		if (mPar.neighbourMatchId != -1) {
 			//qDebug() << "MatchModel::setParameters: Super special neighbourMatch mode!" << mPar.neighbourMatchId;
@@ -310,7 +292,6 @@ void MatchModel::setParameters(const ModelParameters& parameters) {
 
 			emit modelChanged();
 		}
-
 	}
 }
 
@@ -319,23 +300,23 @@ const ModelParameters& MatchModel::getParameters() const {
 }
 
 bool MatchModel::addField(const QString& name, double defaultValue) {
-	return mDb->addMatchField(name, defaultValue);
+	return (mDb) ? mDb->addMatchField(name, defaultValue) : false;
 }
 
 bool MatchModel::addField(const QString& name, const QString& defaultValue) {
-	return mDb->addMatchField(name, defaultValue);
+	return (mDb) ? mDb->addMatchField(name, defaultValue) : false;
 }
 
 bool MatchModel::addField(const QString& name, int defaultValue) {
-	return mDb->addMatchField(name, defaultValue);
+	return (mDb) ? mDb->addMatchField(name, defaultValue) : false;
 }
 
 bool MatchModel::removeField(const QString& name) {
-	return mDb->removeMatchField(name);
+	return (mDb) ? mDb->removeMatchField(name) : false;
 }
 
 QSet<QString> MatchModel::fieldList() const {
-	return mDb->matchFields();
+	return (mDb) ? mDb->matchFields() : QSet<QString>();
 }
 
 QString MatchModel::getFilter() const {
@@ -542,8 +523,14 @@ void MatchModel::databaseModified() {
 	resetFilter();
 	resetWindow();
 
-	requestRealSize();
-	populateModel();
+	if (mDb) {
+		requestRealSize();
+		populateModel();
+	}
+	else {
+		mRealSize = 0;
+		mMatches.clear();
+	}
 
 	emit modelChanged();
 

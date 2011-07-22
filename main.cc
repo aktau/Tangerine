@@ -67,15 +67,18 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationDomain("kuleuven.be");
     QCoreApplication::setApplicationName("Tangerine");
 
+    qDebug() << "Available SQL drivers:" << QSqlDatabase::drivers();
+
     QSettings settings;
     QApplication application(argc, argv);
     QDir thumbDir("C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606");
 
     parseCommandLine(argc, argv, thumbDir);
 
-    SQLDatabase *db = SQLDatabase::getDatabase(QCoreApplication::instance());
+    //SQLDatabase *db = SQLDatabase::getDatabase(QCoreApplication::instance());
 
-    Tangerine window(db, thumbDir);
+    //Tangerine window(db, thumbDir);
+    Tangerine window(thumbDir);
     window.show();
 
     return application.exec();

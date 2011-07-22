@@ -39,6 +39,10 @@ struct ModelParameters {
 		return !(*this == other);
 	}
 
+	inline SQLDatabase *db() const {
+		return filter.getDatabase();
+	}
+
 	QString toString() const {
 		return QString("filter = ?, name filter = %1, sort field = %2, sort order = %3, neighbour id = %4, neighbour mode = %5")
 			.arg(matchNameFilter)

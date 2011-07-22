@@ -33,7 +33,7 @@ class Tangerine : public QMainWindow {
 	Q_OBJECT
 
 	public:
-		Tangerine(SQLDatabase *db, const QDir& thumbDir, QWidget *parent = 0);
+		Tangerine(const QDir& thumbDir, QWidget *parent = 0);
 		virtual ~Tangerine();
 
 	private:
@@ -42,6 +42,8 @@ class Tangerine : public QMainWindow {
 		void closeDatabase();
 
 		bool threadedDbInit(const QDir& dbDir);
+
+		void setMainDatabase(const QString& file);
 
 	private slots:
 		void loadFragmentDatabase();
@@ -71,7 +73,7 @@ class Tangerine : public QMainWindow {
 		void databaseOpEnded();
 
 	private:
-		SQLDatabase& mDb;
+		SQLDatabase *mDb;
 
 		MatchModel mModel;
 		MatchSelectionModel *mSelectionModel;

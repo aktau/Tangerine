@@ -25,6 +25,7 @@ class SQLFilter {
 		virtual bool hasFilter(const QString& key, const QString& filter) const; // tests if this SQLFilter has this exact combination
 
 		virtual void setDatabase(SQLDatabase *db);
+		virtual SQLDatabase *getDatabase() const;
 
 		// for example:
 		// 	key: "sourcetargetfilter"
@@ -36,7 +37,7 @@ class SQLFilter {
 		virtual bool operator==(const SQLFilter& other) const;
 		virtual bool operator!=(const SQLFilter& other) const;
 
-	protected:
+	protected slots:
 		virtual void updateDependencyInfo();
 
 	private:

@@ -2,7 +2,7 @@
 
 const QString SQLiteDatabase::DB_TYPE = "QSQLITE";
 
-SQLiteDatabase::SQLiteDatabase(QObject *parent) : SQLDatabase(parent) {
+SQLiteDatabase::SQLiteDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) {
 	// TODO Auto-generated constructor stub
 }
 
@@ -10,11 +10,12 @@ SQLiteDatabase::~SQLiteDatabase() {
 	// TODO Auto-generated destructor stub
 }
 
+/*
 void SQLiteDatabase::connect(const QString& dbFilename) {
-	// if there is already a database opened, close it
-	close();
-
 	if (dbFilename != "") {
+		// if there is already a database opened, close it
+		close();
+
 		QFile dbFile(dbFilename);
 
 		// check if the given file is a valid SQLite file
@@ -44,9 +45,11 @@ void SQLiteDatabase::connect(const QString& dbFilename) {
 		qDebug("Did not receive valid database filename");
 	}
 }
+*/
 
+/*
 QSqlDatabase SQLiteDatabase::open(const QString& file) {
-	QSqlDatabase db = QSqlDatabase::addDatabase(DB_TYPE, CONN_NAME);
+	QSqlDatabase db = QSqlDatabase::addDatabase(DB_TYPE, mConnectionName);
 	db.setHostName(DB_HOST);
 	db.setDatabaseName(file);
 
@@ -59,7 +62,7 @@ QSqlDatabase SQLiteDatabase::open(const QString& file) {
 		}
 
 		if (db.isValid()) {
-			/* a tiny bit of performance tuning */
+			// performance...
 			setPragmas();
 
 			emit databaseOpened();
@@ -73,7 +76,9 @@ QSqlDatabase SQLiteDatabase::open(const QString& file) {
 
 	return db;
 }
+*/
 
+/*
 void SQLiteDatabase::loadFromXML(const QString& XMLFile) {
 	if (!isOpen()) {
 		QFileInfo fi(XMLFile);
@@ -83,6 +88,7 @@ void SQLiteDatabase::loadFromXML(const QString& XMLFile) {
 
 	SQLDatabase::loadFromXML(XMLFile);
 }
+*/
 
 void SQLiteDatabase::setPragmas() {
 	QSqlQuery query(database());

@@ -40,7 +40,7 @@ class IMatchModel : public QObject {
 		static QStringList STATUS_STRINGS;
 
 	public:
-		IMatchModel() {}
+		IMatchModel(QObject *parent) : QObject(parent) {}
 		virtual ~IMatchModel() { }
 
 	public:

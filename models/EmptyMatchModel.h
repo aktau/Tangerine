@@ -16,7 +16,7 @@ class EmptyMatchModel : public IMatchModel {
 		Q_OBJECT
 
 	public:
-		EmptyMatchModel() { }
+		EmptyMatchModel(QObject *parent = NULL) : IMatchModel(parent) { }
 		virtual ~EmptyMatchModel() { }
 
 	public:

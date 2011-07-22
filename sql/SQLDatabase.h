@@ -17,8 +17,7 @@ class SQLDatabase : public QObject {
 	public:
 		static SQLDatabase* getDatabase(QObject *parent = QCoreApplication::instance());
 
-	protected:
-		SQLDatabase(QObject *parent);
+		SQLDatabase(QObject *parent, const QString& type);
 		virtual ~SQLDatabase();
 
 	public:
@@ -26,7 +25,30 @@ class SQLDatabase : public QObject {
 		bool isOpen() const;
 
 		// we could probably provide a base implementation for all non-SQLite db's
-		virtual void connect(const QString& name) = 0;
+		//virtual void connect(const QString& name) = 0;
+
+		// reads connection data from a .dbd file describing the database to connect to
+		// returns NULL in case of failure (file not found, badly formatted, db not found, ...)
+		// if the file is .xml or .dbd it will be read as a database connection parameters description
+		// file. If the extension is .db the function will directly assume that the it's an SQLite database
+		static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
+		virtual void writeDbm(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
+
+		//virtual void setParameters(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
+		//virtual void setParameters(const QString& dbname);
+		virtual bool open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
+		virtual bool open(const QString& dbname); // convencience for SQLite databases who don't really need that much options (and who can be directly instantiated from a file)
+
+		virtual QString connectionName() const;
+
+		/*
+		virtual void setDatabaseName(const QString& name);
+		virtual void setUserName(const QString& name);
+		virtual void setPassword(const QString& password);
+		virtual void setHostName(const QString& host);
+		virtual void setPort(int port);
+		*/
+		//bool open(const QString& host, const QString& user, const QString& pass, const QString& dbname, const QString& port);
 
 		virtual void loadFromXML(const QString& XMLFile);
 		virtual void saveToXML(const QString& XMLFile);
@@ -60,9 +82,11 @@ class SQLDatabase : public QObject {
 		void matchFieldsChanged();
 
 	protected:
+		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
+
 		virtual bool hasCorrectCapabilities() const;
 
-		virtual QSqlDatabase open(const QString& file) = 0;
+		//virtual QSqlDatabase open(const QString& file) = 0;
 		virtual void setPragmas() = 0;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
 
@@ -90,6 +114,9 @@ class SQLDatabase : public QObject {
 		SQLDatabase& operator=(const SQLDatabase&);
 
 	protected:
+		QString mConnectionName;
+		QString mType;
+
 		// a map that will store prepared queries, for performance reasons
 		typedef QMap<QString, QSqlQuery *> FieldQueryMap;
 		FieldQueryMap mFieldQueryMap;
@@ -100,9 +127,9 @@ class SQLDatabase : public QObject {
 		MatchFieldSet mNormalMatchFields; // fields that exist as real database tables
 		MatchFieldSet mViewMatchFields; // fiels that exists solely as views
 
-		static const QString CONN_NAME;
+		//static const QString CONN_NAME;
 		static const QString SCHEMA_FILE;
-		static const QString DB_HOST;
+		//static const QString DB_HOST;
 
 	private:
 		static const QString MATCHES_ROOTTAG;
@@ -183,7 +210,7 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 }
 
 inline QSqlDatabase SQLDatabase::database() const {
-	return QSqlDatabase::database(CONN_NAME);
+	return QSqlDatabase::database(mConnectionName, false);
 }
 
 inline const QSet<QString>& SQLDatabase::matchFields() const {

@@ -18,8 +18,10 @@ class MatchModel : public IMatchModel {
 		Q_OBJECT
 
 	public:
-		MatchModel(SQLDatabase *db);
+		MatchModel(SQLDatabase *db, QObject *parent = NULL);
 		virtual ~MatchModel();
+
+		void setDatabase(SQLDatabase *db);
 
 	public:
 		virtual void prefetchHint(int start, int end);
