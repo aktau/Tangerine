@@ -10,16 +10,12 @@
 
 using namespace thera;
 
-//const QString SQLDatabase::CONN_NAME = "TheraSQL";
 const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
-//const QString SQLDatabase::DB_HOST = "localhost";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
 const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
-
-SQLDatabase * SQLDatabase::mSingleton = NULL;
 
 SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	// check if the database wasn't open already
@@ -147,17 +143,6 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 
 QString SQLDatabase::connectionName() const {
 	return database().connectionName();
-}
-
-/**
- * TODO: this is _very_ un-threadsafe
- */
-SQLDatabase* SQLDatabase::getDatabase(QObject *parent) {
-	if (!mSingleton) {
-		mSingleton = new SQLiteDatabase(parent);
-	}
-
-	return mSingleton;
 }
 
 SQLDatabase::SQLDatabase(QObject *parent, const QString& type)

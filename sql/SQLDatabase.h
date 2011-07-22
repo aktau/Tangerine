@@ -15,8 +15,6 @@ class SQLDatabase : public QObject {
 		Q_OBJECT
 
 	public:
-		static SQLDatabase* getDatabase(QObject *parent = QCoreApplication::instance());
-
 		SQLDatabase(QObject *parent, const QString& type);
 		virtual ~SQLDatabase();
 
@@ -136,8 +134,6 @@ class SQLDatabase : public QObject {
 		static const QString MATCHES_DOCTYPE;
 		static const QString OLD_MATCHES_VERSION;
 		static const QString MATCHES_VERSION;
-
-		static SQLDatabase *mSingleton;
 
 	private:
 		friend class thera::SQLFragmentConf;

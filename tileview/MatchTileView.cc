@@ -138,8 +138,6 @@ void MatchTileView::initDetailView() {
 #endif
 
 void MatchTileView::setModel(IMatchModel *model) {
-	qDebug() << "SET MODEL";
-
 	if (model != NULL) {
 		if (mModel != NULL) {
 			disconnect(mModel, 0, this, 0);
