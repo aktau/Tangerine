@@ -523,16 +523,18 @@ void MatchModel::databaseModified() {
 	resetFilter();
 	resetWindow();
 
-	if (mDb) {
+	if (mDb && mDb->isOpen()) {
 		requestRealSize();
 		populateModel();
+
+		emit modelChanged();
 	}
-	else {
+	else if (mRealSize != 0 || mMatches.size() != 0) {
 		mRealSize = 0;
 		mMatches.clear();
-	}
 
-	emit modelChanged();
+		emit modelChanged();
+	}
 
 	qDebug() << "MatchModel::databaseModified: apparently, the database was modified, now available:" << size();
 }

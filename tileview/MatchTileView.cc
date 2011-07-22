@@ -138,6 +138,8 @@ void MatchTileView::initDetailView() {
 #endif
 
 void MatchTileView::setModel(IMatchModel *model) {
+	qDebug() << "SET MODEL";
+
 	if (model != NULL) {
 		if (mModel != NULL) {
 			disconnect(mModel, 0, this, 0);
@@ -349,13 +351,9 @@ void MatchTileView::sort(Qt::SortOrder order) {
 void MatchTileView::filter() {
 	saveState();
 
-	qDebug() << "filter 1";
-
 	QString filter = mFilterEdit->text().trimmed();
 
 	mModel->filter(filter);
-
-	qDebug() << "filter 2";
 }
 
 void MatchTileView::filterStatuses() {

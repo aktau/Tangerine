@@ -377,7 +377,9 @@ void Tangerine::setMainDatabase(const QString& file) {
 void Tangerine::loadMatchDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
 
-	setMainDatabase(fileName);
+	if (!fileName.isEmpty()) {
+		setMainDatabase(fileName);
+	}
 }
 
 void Tangerine::saveDatabase() {
