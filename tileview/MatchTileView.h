@@ -39,6 +39,8 @@ class MatchTileView : public QScrollArea {
 		QList<QWidget *> statusBarWidgets() const;
 
 	public slots:
+		void thumbDirectoryChanged(QDir thumbDir);
+
 	    void clicked(int idx, QMouseEvent *event);
 	    void doubleClicked(int idx, QMouseEvent *event);
 	    void copySelection();

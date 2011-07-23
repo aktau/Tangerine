@@ -24,6 +24,8 @@
 #endif
 
 #define SETTINGS_DB_ROOT_KEY "db/root"
+#define SETTINGS_DB_IMAGECACHE_KEY "matchdb/images"
+#define SETTINGS_DB_LASTMATCHDB_KEY "matchdb/root"
 
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0
@@ -35,6 +37,9 @@ class Tangerine : public QMainWindow {
 	public:
 		Tangerine(const QDir& thumbDir, QWidget *parent = 0);
 		virtual ~Tangerine();
+
+	signals:
+		void thumbDirectoryChanged(QDir thumbDir);
 
 	private:
 		void setupWindow();
@@ -50,6 +55,7 @@ class Tangerine : public QMainWindow {
 		void fragmentDatabaseLoadAttempted();
 		void matchCountChanged();
 		void loadMatchDatabase();
+		void chooseImageFolder();
 		void saveDatabase();
 		void importDatabase();
 		void exportDatabase();
@@ -108,6 +114,7 @@ class Tangerine : public QMainWindow {
 
 		QAction *mLoadFragDbAct;
 		QAction *mLoadMatchDbAct;
+		QAction *mChooseImageFolderAct;
 		QAction *mSaveDbAct;
 
 		QAction *mImportXMLAct;

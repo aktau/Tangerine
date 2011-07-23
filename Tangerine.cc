@@ -65,6 +65,7 @@ void Tangerine::setupWindow() {
 	mFileMenu = menuBar()->addMenu(tr("&File"));
 	mFileMenu->addAction(mLoadFragDbAct);
 	mFileMenu->addAction(mLoadMatchDbAct);
+	mFileMenu->addAction(mChooseImageFolderAct);
 	mFileMenu->addAction(mSaveDbAct);
 	mFileMenu->addSeparator();
 	mFileMenu->addAction(mImportXMLAct);
@@ -86,6 +87,7 @@ void Tangerine::setupWindow() {
 	mFileToolbar = addToolBar(tr("File"));
 	mFileToolbar->addAction(mLoadFragDbAct);
 	mFileToolbar->addAction(mLoadMatchDbAct);
+	mFileToolbar->addAction(mChooseImageFolderAct);
 	mFileToolbar->addAction(mSaveDbAct);
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mAddAttributeAct);
@@ -119,6 +121,7 @@ void Tangerine::setupWindow() {
 	mTileView->setModel(&mModel);
 	mTileView->setSelectionModel(mSelectionModel);
 	mCentralWidget->addWidget(mTileView);
+	connect(this, SIGNAL(thumbDirectoryChanged(QDir)), mTileView, SLOT(thumbDirectoryChanged(QDir)));
 
 	mTileViewToolbar = addToolBar(tr("Tile View"));
 	mTileViewToolbar->addActions(mTileView->actions());
@@ -188,10 +191,14 @@ void Tangerine::createActions() {
 	mLoadFragDbAct->setStatusTip(tr("Select and load a fragment database"));
 	connect(mLoadFragDbAct, SIGNAL(triggered()), this, SLOT(loadFragmentDatabase()));
 
-	mLoadMatchDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("Load &match database"), this);
+	mLoadMatchDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_database.png"), tr("Load match database"), this);
 	mLoadMatchDbAct->setShortcuts(QKeySequence::Open);
 	mLoadMatchDbAct->setStatusTip(tr("Select and load a match database"));
     connect(mLoadMatchDbAct, SIGNAL(triggered()), this, SLOT(loadMatchDatabase()));
+
+    mChooseImageFolderAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_image.png"), tr("Choose match image folder"), this);
+    mChooseImageFolderAct->setStatusTip(tr("Assign the folder in which all the screenshots of the pairs are"));
+	connect(mChooseImageFolderAct, SIGNAL(triggered()), this, SLOT(chooseImageFolder()));
 
     mSaveDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/database_save.png"), tr("&Save database"), this);
     mSaveDbAct->setShortcuts(QKeySequence::Save);
@@ -339,47 +346,53 @@ void Tangerine::setMainDatabase(const QString& file) {
 	}
 
 	matchCountChanged();
-
-	/*
-	if (!file.isEmpty()) {
-		SQLDatabase *db = SQLDatabase::getDb(file, this);
-
-		if (!db) return;
-
-		if (!db->isOpen()) {
-			QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
-
-			delete db;
-		}
-		else {
-			if (mDb) disconnect(mDb, 0, this, 0);
-
-			connect(db, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
-			connect(db, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
-			connect(db, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
-			connect(db, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
-			connect(db, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-			connect(db, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
-
-			mModel.setDatabase(db);
-
-			delete mDb;
-
-			mDb = db;
-
-			databaseOpened();
-			matchCountChanged();
-		}
-	}
-	*/
 }
 
 void Tangerine::loadMatchDatabase() {
-	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), QString(), QString(), 0, QFileDialog::DontConfirmOverwrite);
+	QSettings settings;
+	QString lastMatchDb = settings.value(SETTINGS_DB_LASTMATCHDB_KEY).toString();
+
+	if (!lastMatchDb.isEmpty()) {
+		QFileInfo fi(lastMatchDb);
+		lastMatchDb = fi.dir().path();
+	}
+
+	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), lastMatchDb, QString(), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (!fileName.isEmpty()) {
 		setMainDatabase(fileName);
+
+		settings.setValue(SETTINGS_DB_LASTMATCHDB_KEY, fileName);
 	}
+}
+
+void Tangerine::chooseImageFolder() {
+	QString lastFolder;
+
+	if (mThumbDir.exists()) {
+		QDir mThumbDirParent = mThumbDir;
+		mThumbDirParent.cdUp();
+
+		lastFolder = mThumbDirParent.path();
+	}
+
+	QString path = QFileDialog::getExistingDirectory(
+		this,
+		QObject::tr("Choose the root directory of the images"),
+		lastFolder,
+		QFileDialog::ShowDirsOnly |
+		QFileDialog::DontResolveSymlinks |
+		QFileDialog::DontConfirmOverwrite
+	);
+
+	if (path.isEmpty()) return;
+
+	mThumbDir = path;
+
+	QSettings settings;
+	settings.setValue(SETTINGS_DB_IMAGECACHE_KEY, mThumbDir.path());
+
+	emit thumbDirectoryChanged(mThumbDir);
 }
 
 void Tangerine::saveDatabase() {

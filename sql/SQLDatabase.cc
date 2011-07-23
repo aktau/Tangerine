@@ -31,12 +31,12 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 
 	QFile f(file);
 
-	if (!f.exists()) return new SQLNullDatabase(parent);
-
-	SQLDatabase *db = NULL;
-
 	QFileInfo fi(f);
 	QString extension = fi.suffix();
+
+	if (!f.exists() && fi.suffix() != "db") return new SQLNullDatabase(parent);
+
+	SQLDatabase *db = NULL;
 
 	/*
 	SQLConnectionDescription dbd1(SQLConnectionDescription::MYSQL, "127.0.0.1", 3306, "tang", "root", QString());

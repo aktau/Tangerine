@@ -775,6 +775,12 @@ QString MatchTileView::thumbName(const IFragmentConf &conf) const {
 		QString::number(conf.getDouble("volume"), 'f', 4));
 }
 
+void MatchTileView::thumbDirectoryChanged(QDir thumbDir) {
+	mThumbDir = thumbDir;
+
+	refresh();
+}
+
 void MatchTileView::clicked(int idx, QMouseEvent *event) {
 	if (s().tindices[idx] != mSelectionModel->currentIndex()) {
 		if (event->buttons() == Qt::LeftButton && event->modifiers() == Qt::ControlModifier) {
