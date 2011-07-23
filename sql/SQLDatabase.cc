@@ -135,7 +135,7 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 		if (db.open()) {
 			setPragmas();
 
-			if (!db.tables().contains("matches")) {
+			if (!tables().contains("matches")) {
 				qDebug() << "SQLDatabase::open: database opened correctly but was found to be empty, setting up Thera schema";
 
 				setup(SCHEMA_FILE);
@@ -200,6 +200,11 @@ SQLDatabase& SQLDatabase::operator=(const SQLDatabase& that) {
 
 bool SQLDatabase::isOpen() const {
 	return database().isValid() && database().isOpen();
+}
+
+// the default implementation does nothing
+QString SQLDatabase::makeCompatible(const QString& statement) const {
+	return statement;
 }
 
 /**
@@ -274,6 +279,14 @@ QStringList SQLDatabase::tables(QSql::TableType type) const {
 	return list;
 }
 
+bool SQLDatabase::transaction() const {
+	return database().transaction();
+}
+
+bool SQLDatabase::commit() const {
+	return database().commit();
+}
+
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
 	if (XMLFile == "" || !isOpen()) {
 		qDebug("SQLDatabase::loadFromXML: filename was empty or database is not open, aborting...");
@@ -294,11 +307,17 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 		if (succes) {
 			QDomElement root(doc.documentElement());
 
+			qDebug() << "SQLDatabase::loadFromXML: Starting to parse XML";
+
 			parseXML(root);
+
+			qDebug() << "SQLDatabase::loadFromXML: Done parsing XML, adding extra attributes:";
 
 			addMatchField("comment", "");
 			addMatchField("duplicate", 0);
 			addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
+
+			qDebug() << "SQLDatabase::loadFromXML: Done adding extra attributes, hopefully nothing went wrong";
 		}
 		else {
 			qDebug() << "Reading XML file" << XMLFile << "failed";
@@ -360,7 +379,15 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 	QSqlDatabase db = database();
 	QSqlQuery query(db);
 
-	db.transaction();
+	if (!transaction()) {
+		qDebug() << "SQLDatabase::addMatchField: could NOT start a transaction, the following might be very slow";
+	}
+
+	if (query.exec("START TRANSACTION")) qDebug() << "SQLDatabase::addMatchField: Correctly manually started a transaction";
+	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
+
+	if (query.exec("BEGIN")) qDebug() << "SQLDatabase::addMatchField: Correctly manually started a transaction";
+	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
 
 	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL)").arg(name).arg(sqlType));
 	if (success) {
@@ -370,17 +397,34 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 			"VALUES (:match_id, :value, :confidence)"
 		).arg(name));
 
+		int i = 0;
+		int step = 100;
+		QElapsedTimer timer;
+		timer.start();
+
 		QSqlQuery idQuery(db);
 		query.setForwardOnly(true);
 		if (idQuery.exec("SELECT match_id FROM matches")) {
+			qDebug() << "SQLDatabase::addMatchField: Fetched all matches in" << timer.restart() << "msec";
+
 			while (idQuery.next()) {
 				query.bindValue(":match_id", idQuery.value(0).toInt());
 				query.bindValue(":value", defaultValue);
 				query.bindValue(":confidence", 1.0);
 
 				query.exec();
+
+				if (++i % step == 0) {
+					qDebug() << "Inserted another" << step << "rows for field" << name << "now at" << i << "used" << timer.restart() << "msec";
+				}
 			}
 		}
+		else {
+			qDebug() << "SQLDatabase::addMatchField couldn't create default values:" << idQuery.lastError()
+				<< "\nQuery executed:" << idQuery.lastQuery();
+		}
+
+		qDebug() << "SQLDatabase::addMatchField succesfully created field:" << name;
 
 		emit matchFieldsChanged();
 	}
@@ -388,7 +432,25 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 		qDebug() << "SQLDatabase::addMatchField couldn't create table:" << query.lastError()
 			<< "\nQuery executed:" << query.lastQuery();
 	}
-	db.commit();
+
+	/*
+	if (query.exec("ROLLBACK")) qDebug() << "SQLDatabase::addMatchField: Rolled back!";
+	else qDebug() << "SQLDatabase::addMatchField: can't rollback" << query.lastError();
+	*/
+
+	/*
+	{
+		QSqlQuery commit(db);
+		if (commit.exec("COMMIT;")) {
+			qDebug() << "SQLDatabase::addMatchField: Correctly commited";
+		}
+		else {
+			qDebug() << "SQLDatabase::addMatchField: couldn't commit" << commit.lastError();
+		}
+	}
+	*/
+
+	commit();
 
 	return success;
 }
@@ -417,8 +479,7 @@ bool SQLDatabase::addMetaMatchField(const QString& name, const QString& sql) {
 	QSqlDatabase db = database();
 	QSqlQuery query(db);
 
-	db.transaction();
-
+	transaction();
 	success = query.exec(createViewQuery(name, sql));
 	//success = query.exec(QString("CREATE VIEW IF NOT EXISTS %1 AS %2").arg(name).arg(sql));
 	if (success) {
@@ -429,7 +490,7 @@ bool SQLDatabase::addMetaMatchField(const QString& name, const QString& sql) {
 		qDebug() << "SQLDatabase::addMetaMatchField: couldn't create VIEW table:" << query.lastError()
 			<< "\nQuery executed:" << query.lastQuery();
 	}
-	db.commit();
+	commit();
 
 	return success;
 }
@@ -462,7 +523,7 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 	else if (mViewMatchFields.contains(name)) queryString = QString("DROP VIEW %1").arg(name);
 	else qDebug() << "SQLDatabase::removeMatchField: this should never have happened!";
 
-	db.transaction();
+	transaction();
 	if (!query.exec(queryString)) {
 		qDebug() << "SQLDatabase::removeMatchField couldn't drop table:" << query.lastError()
 				<< "\nQuery executed:" << query.lastQuery();
@@ -470,7 +531,7 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 	else {
 		emit matchFieldsChanged();
 	}
-	db.commit();
+	commit();
 
 	return true;
 }
@@ -657,7 +718,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 
 	QSqlDatabase db(database());
 
-	db.transaction();
+	transaction();
 
 	// prepare queries
 	QSqlQuery matchesQuery(db);
@@ -753,7 +814,7 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		++i;
 	}
 
-	db.commit();
+	commit();
 
 	emit databaseOpEnded();
 	emit matchCountChanged();
@@ -783,19 +844,19 @@ void SQLDatabase::setup(const QString& schemaFile) {
 	QStringList queries = schemaQuery.split(";");
 	QSqlQuery query(db);
 
-	db.transaction();
+	transaction();
 	foreach (const QString &q, queries) {
 		query.exec(q);
 		qDebug() << "Executed query:" << q;
 	}
-	db.commit();
+	commit();
 
 	emit matchFieldsChanged();
 }
 
 void SQLDatabase::close() {
 	if (isOpen()) {
-		qDebug() << "SQLDatabase::close: Closing database";
+		qDebug() << "SQLDatabase::close: Closing database with connection name" << database().connectionName();
 
 		database().close();
 		QSqlDatabase::removeDatabase(mConnectionName);
@@ -803,7 +864,7 @@ void SQLDatabase::close() {
 		emit databaseClosed();
 	}
 	else {
-		qDebug() << "SQLDatabase::close: Couldn't close current database because it wasn't open to begin with";
+		qDebug() << "SQLDatabase::close: Couldn't close current database" << database().connectionName() << "because it wasn't open to begin with";
 	}
 }
 

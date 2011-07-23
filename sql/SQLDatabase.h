@@ -32,21 +32,10 @@ class SQLDatabase : public QObject {
 		static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
 		virtual void saveConnectionInfo(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
 
-		//virtual void setParameters(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
-		//virtual void setParameters(const QString& dbname);
 		virtual bool open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
 		virtual bool open(const QString& dbname); // convencience for SQLite databases who don't really need that much options (and who can be directly instantiated from a file)
 
 		virtual QString connectionName() const;
-
-		/*
-		virtual void setDatabaseName(const QString& name);
-		virtual void setUserName(const QString& name);
-		virtual void setPassword(const QString& password);
-		virtual void setHostName(const QString& host);
-		virtual void setPort(int port);
-		*/
-		//bool open(const QString& host, const QString& user, const QString& pass, const QString& dbname, const QString& port);
 
 		virtual void loadFromXML(const QString& XMLFile);
 		virtual void saveToXML(const QString& XMLFile);
@@ -64,6 +53,13 @@ class SQLDatabase : public QObject {
 		thera::SQLFragmentConf getMatch(int id);
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
+
+		// the following method will try to convert any standard function that is not available
+		// in the instantiated DB type into a specialized function, an example:
+		// ANSI string contatenation: 'foo' || 'bar' = 'foobar'
+		// MySQL doesn't understand this, but does understand: CONCAT('foo','bar') = 'foobar'
+		// So makeCompatible will convert double pipes if the database is MySQL
+		virtual QString makeCompatible(const QString& statement) const;
 
 		bool matchHasField(const QString& field) const;
 		const QSet<QString>& matchFields() const;
@@ -84,6 +80,8 @@ class SQLDatabase : public QObject {
 
 		virtual bool hasCorrectCapabilities() const;
 		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
+		virtual bool transaction() const;
+		virtual bool commit() const;
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 		virtual void setPragmas() = 0;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;

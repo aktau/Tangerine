@@ -61,7 +61,7 @@ void SQLFilter::setFilter(const QString& key, const QString& filter) {
 		return;
 	}
 
-	mFilters.insert(key, filter);
+	mFilters.insert(key, mDb->makeCompatible(filter));
 
 	updateDependencyInfo();
 }

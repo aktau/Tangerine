@@ -11,8 +11,77 @@ SQLMySqlDatabase::~SQLMySqlDatabase() {
 	// TODO Auto-generated destructor stub
 }
 
+QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
+	// look for double pipes/'||' and turn them into CONCAT statements
+	QString newStatement = statement;
+	QRegExp rx("(?:(\\w*)\\s*\\|\\|\\s*(\\w*))+");
+	QSet<QString> set;
+	int pos = 0;
+
+	while ((pos = rx.indexIn(statement, pos)) != -1) {
+		int j = 1;
+		QString c;
+
+		while (!(c = rx.cap(j++)).isEmpty()) {
+			set << c;
+		}
+
+		QStringList list = set.toList();
+
+		newStatement = newStatement.replace(rx.cap(0), QString("CONCAT(%1)").arg(list.join(",")));
+
+		set.clear();
+
+		pos += rx.matchedLength();
+	}
+
+	QStringList list = set.toList();
+
+	//qDebug() <<  set << "\n\t" << QString("CONCAT(%1)").arg(list.join(","));
+	//qDebug() << statement << "\n\t" << newStatement;
+
+	return newStatement;
+}
+
 QString SQLMySqlDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
 	return QString("CREATE VIEW %1 AS %2").arg(viewName).arg(selectStatement);
+}
+
+bool SQLMySqlDatabase::transaction() const {
+	// unfortunately the QMYSQL driver seems to have a problem with transactions so we forcibly disable autocommit
+	QSqlQuery autocommit(database());
+	if (autocommit.exec("SET autocommit=0;")) {
+		qDebug() << "SQLMySqlDatabase::transaction: set autocommit to 0";
+	}
+	else {
+		qDebug() << "SQLMySqlDatabase::transaction: setting autocommit to 0 failed:" << autocommit.lastError();
+	}
+
+	return database().transaction();
+}
+
+bool SQLMySqlDatabase::commit() const {
+	QSqlQuery autocommit(database());
+	if (autocommit.exec("SET autocommit=1;")) {
+		qDebug() << "SQLMySqlDatabase::transaction: set autocommit to 0";
+	}
+	else {
+		qDebug() << "SQLMySqlDatabase::transaction: setting autocommit to 0 failed:" << autocommit.lastError();
+	}
+
+	return database().commit();
+}
+
+void SQLMySqlDatabase::setPragmas() {
+	/*
+	QSqlQuery autocommit(database());
+	if (autocommit.exec("SET autocommit=0;")) {
+		qDebug() << "SQLMySqlDatabase::setPragmas: set autocommit to 0";
+	}
+	else {
+		qDebug() << "SQLMySqlDatabase::setPragmas: setting autocommit to 0 failed:" << autocommit.lastError();
+	}
+	*/
 }
 
 QSet<QString> SQLMySqlDatabase::tableFields(const QString& tableName) const {
