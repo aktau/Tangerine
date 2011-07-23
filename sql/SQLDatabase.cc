@@ -38,10 +38,11 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	QFileInfo fi(f);
 	QString extension = fi.suffix();
 
+	/*
 	SQLConnectionDescription dbd1(SQLConnectionDescription::MYSQL, "127.0.0.1", 3306, "tang", "root", QString());
 	dbd1.save("db/mysql.dbd");
 	SQLConnectionDescription dbd2("db/mysql.dbd");
-	qDebug() << "IS OF TYPE" << SQLConnectionDescription::dbTypeToString(dbd2.getType()) << "and connects to" << dbd2.getHost() << "and is" << dbd2.isValid();
+	*/
 
 	if (extension == "db") {
 		// assuming ".db" extension means SQLite database
@@ -140,7 +141,7 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 				setup(SCHEMA_FILE);
 			}
 			else {
-				qDebug() << "SQLDatabase::open: database opened correctly and already contained tables: " << db.tables();
+				qDebug() << "SQLDatabase::open: database opened correctly and already contained tables:\n\t" << db.tables() << "\n\t" << tables();
 
 				emit matchFieldsChanged();
 			}
@@ -221,6 +222,56 @@ bool SQLDatabase::hasCorrectCapabilities() const {
 		(driver->hasFeature(QSqlDriver::NamedPlaceholders) || driver->hasFeature(QSqlDriver::PositionalPlaceholders)) &&
 		driver->hasFeature(QSqlDriver::PreparedQueries)
 	);
+}
+
+/**
+ * This code will work for most SQL databases, SQLite is an exception though,
+ * which is why this code is overriden in that specific sublass
+ */
+QStringList SQLDatabase::tables(QSql::TableType type) const {
+	QStringList list;
+
+	if (!isOpen()) return list;
+
+	QString typeSelector = "AND TABLE_TYPE = '%1'";
+
+	switch (type) {
+		case QSql::Tables:
+			typeSelector = typeSelector.arg("BASE TABLE");
+			break;
+
+		case QSql::Views:
+			typeSelector = typeSelector.arg("VIEW");
+			break;
+
+		case QSql::AllTables:
+			typeSelector = QString();
+			break;
+
+		default:
+			qDebug() << "SQLDatabase::tables: unknown option (type)" << type;
+
+			return list;
+			break;
+	}
+
+	QSqlDatabase db = database();
+	QString queryString = QString("SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%1' %2;")
+			.arg(db.databaseName())
+			.arg(typeSelector);
+	QSqlQuery query(db);
+	query.setForwardOnly(true);
+	if (query.exec(queryString)) {
+		while (query.next()) {
+			list << query.value(0).toString();
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::tables: query error" << query.lastError()
+			<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	return list;
 }
 
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
@@ -604,8 +655,6 @@ int SQLDatabase::matchCount() const {
 void SQLDatabase::parseXML(const QDomElement &root) {
 	register int i = 1;
 
-	qDebug() << "STARTING TO PARSE XML";
-
 	QSqlDatabase db(database());
 
 	db.transaction();
@@ -699,26 +748,12 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		old_volumeQuery.bindValue(":old_volume", match.attribute("old_volume", "0.0").toDouble());
 		old_volumeQuery.exec();
 
-		// update conflicts table
-		/*
-		QString conflictString = match.attribute("conflict", "");
-		QStringList conflicts = conflictString.split(" ");
-
-		foreach (const QString &c, conflicts) {
-			conflictsQuery.bindValue(":match_id", matchId);
-			conflictsQuery.bindValue(":other_match_id", c.toInt());
-			conflictsQuery.exec();
-		}
-		*/
-
 		emit databaseOpStepDone(i);
 
 		++i;
 	}
 
 	db.commit();
-
-	qDebug() << "DONE TO PARSE XML";
 
 	emit databaseOpEnded();
 	emit matchCountChanged();
@@ -788,7 +823,7 @@ void SQLDatabase::makeFieldsSet() {
 
 	QSqlDatabase db(database());
 
-	foreach (const QString& table, db.tables()) {
+	foreach (const QString& table, tables()) {
 		// check if the tables name is not the 'matches' table itself
 		if (table != "matches") {
 			// check if the table contains a match_id attribute
@@ -801,7 +836,7 @@ void SQLDatabase::makeFieldsSet() {
 
 	// include the view attributes as well but add them to mViewMatchFields as well so we can differentiate them later
 	// from the normal ones
-	foreach (const QString& table, db.tables(QSql::Views)) {
+	foreach (const QString& table, tables(QSql::Views)) {
 		// check if the tables name is not the 'matches' table itself
 		if (table != "matches") {
 			// check if the table contains a match_id attribute

@@ -83,7 +83,7 @@ class SQLDatabase : public QObject {
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 
 		virtual bool hasCorrectCapabilities() const;
-
+		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 		virtual void setPragmas() = 0;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;

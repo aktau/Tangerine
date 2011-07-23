@@ -18,6 +18,7 @@ class SQLiteDatabase : public SQLDatabase {
 
 		//virtual QSqlDatabase open(const QString& file);
 	protected:
+		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual void setPragmas();
 		virtual QSet<QString> tableFields(const QString& tableName) const;

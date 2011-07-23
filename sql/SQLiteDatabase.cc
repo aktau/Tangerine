@@ -90,6 +90,10 @@ void SQLiteDatabase::loadFromXML(const QString& XMLFile) {
 }
 */
 
+QStringList SQLiteDatabase::tables(QSql::TableType type) const {
+	return database().tables(type);
+}
+
 QString SQLiteDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
 	return QString("CREATE VIEW IF NOT EXISTS %1 AS %2").arg(viewName).arg(selectStatement);
 }
