@@ -87,8 +87,6 @@ class SQLDatabase : public QObject {
 		void matchFieldsChanged();
 
 	protected:
-		virtual bool open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
-		virtual bool open(const QString& dbname); // convencience for SQLite databases who don't really need that much options (and who can be directly instantiated from a file)
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 
 		virtual bool hasCorrectCapabilities() const;

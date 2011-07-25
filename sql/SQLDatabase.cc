@@ -50,12 +50,12 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 			switch (dbd.getType()) {
 				case SQLConnectionDescription::MYSQL: {
 					db = QSharedPointer<SQLDatabase>(new SQLMySqlDatabase(parent));
-					db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
+					db->open(connName, dbd.getDbname(), false, dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
 				} break;
 
 				case SQLConnectionDescription::SQLITE: {
 					db = QSharedPointer<SQLDatabase>(new SQLiteDatabase(parent));
-					db->open(file);
+					db->open(connName, file, true);
 				} break;
 
 				default: {
@@ -86,93 +86,9 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 	return db;
 }
 
-/*
-SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
-	// check if the database wasn't open already
-	// for now we'll return NULL, but we could build a map with all currently active connections
-	if (QSqlDatabase::database(file).isValid()) {
-		qDebug() << "SQLDatabase::openDb: connection with database referenced by '" << file << "' already exists";
-
-		return NULL;
-	}
-
-	QFile f(file);
-
-	QFileInfo fi(f);
-	QString extension = fi.suffix();
-
-	// if the file doesn't exist we return a special NULL database
-	// but if the extension is supposed to be ".db" we can just create the database by opening with SQLite, so don't return yet
-	if (!f.exists() && extension != "db") return new SQLNullDatabase(parent);
-
-	SQLDatabase *db = NULL;
-
-	SQLConnectionDescription dbd;
-
-	if (extension == "db") {
-
-	}
-	else if (extension == "dbd" || extension == "xml") {
-
-	}
-	else {
-
-	}
-
-	if (extension == "db") {
-		// assuming ".db" extension means SQLite database
-		qDebug() << "SQLDatabase::openDb: opening new SQLite db, file =" << file;
-
-		db = new SQLiteDatabase(parent);
-
-		if (!db->open(file)) {
-			qDebug() << "SQLDatabase::getDb: the open() call did not succeed, will return unopened SQLiteDatabase";
-		}
-	}
-	else if (extension == "dbd" || extension == "xml") {
-		// load data from the XML file
-		// open database of the right type with this data
-
-		SQLConnectionDescription dbd = SQLConnectionDescription(file);
-
-		if (dbd.isValid()) {
-			switch (dbd.getType()) {
-				case SQLConnectionDescription::MYSQL: {
-					db = new SQLMySqlDatabase(parent);
-					db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
-				} break;
-
-				default: {
-					qDebug() << "SQLDatabase::getDb: database type unknown, returning unopened database";
-					db = new SQLNullDatabase(parent);
-				} break;
-			}
-		}
-		else {
-			db = new SQLNullDatabase(parent);
-		}
-
-	}
-	else {
-		qDebug() << "SQLDatabase::openDb: unrecognized type of file to load";
-		db = new SQLNullDatabase(parent);
-	}
-
-	return db;
-}
-*/
-
 void SQLDatabase::saveConnectionInfo(const QString& file) const {
 	if (!isOpen()) return;
 	// will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
-}
-
-bool SQLDatabase::open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port) {
-	return open(host + ":" + QString::number(port) + "/" + dbname, dbname, false, host, user, pass, port);
-}
-
-bool SQLDatabase::open(const QString& dbname) {
-	return open(dbname, dbname, true);
 }
 
 bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host, const QString& user, const QString& pass, int port) {
