@@ -23,27 +23,10 @@ class SQLDatabase : public QObject {
 	public:
 		bool isOpen() const;
 
-		// we could probably provide a base implementation for all non-SQLite db's
-		//virtual void connect(const QString& name) = 0;
-
 		// reads connection data from a .dbd file describing the database to connect to
-		// returns NULL in case of failure (file not found, badly formatted, db not found, ...)
 		// if the file is .xml or .dbd it will be read as a database connection parameters description
 		// file. If the extension is .db the function will directly assume that the it's an SQLite database
-		// ownership of the pointer is transferred to the caller! delete at any time
-		/**
-		 * @param reuseExisting
-		 * 		return an existing connection if it has the same parameters. be aware that destroying/deleting this connection will also destroy
-		 * 		the other connection and can have many unforeseen consequences. If reuseExisting is false, a database with the same parameters will
-		 * 		NOT be able to be opened, an unopened SQLDatabase will be returned.
-		 *
-		 * @return
-		 * 		NULL | in case the database connection already existed
-		 * 		SQLNullDatabase | in case the file did not exist
-		 *
-		 */
 		static QSharedPointer<SQLDatabase> getDb(const QString& file, QObject *parent = NULL);
-		//static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
 		virtual void saveConnectionInfo(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
 
 		virtual QString connectionName() const;
