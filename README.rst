@@ -15,7 +15,7 @@ Setting up
 Requirements::
 
 - a relatively recent checkout of the full Thera project (libs used: theratypes, theracore, theragui)
-- Qt 4.7+
+- Qt 4.6+ (QWeakRef<QObject> is used, which was only introduced in Qt 4.6, there are possibly other classes in use that are quite recent) 
 
 Place the project in a subfolder of the ``/src`` directory, as such:
 
