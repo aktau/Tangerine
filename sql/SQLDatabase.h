@@ -7,6 +7,8 @@
 #include <QList>
 #include <QSet>
 #include <QMap>
+#include <QSharedPointer>
+#include <QWeakPointer>
 
 #include "SQLFragmentConf.h"
 #include "SQLFilter.h"
@@ -19,7 +21,6 @@ class SQLDatabase : public QObject {
 		virtual ~SQLDatabase();
 
 	public:
-
 		bool isOpen() const;
 
 		// we could probably provide a base implementation for all non-SQLite db's
@@ -29,11 +30,21 @@ class SQLDatabase : public QObject {
 		// returns NULL in case of failure (file not found, badly formatted, db not found, ...)
 		// if the file is .xml or .dbd it will be read as a database connection parameters description
 		// file. If the extension is .db the function will directly assume that the it's an SQLite database
-		static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
+		// ownership of the pointer is transferred to the caller! delete at any time
+		/**
+		 * @param reuseExisting
+		 * 		return an existing connection if it has the same parameters. be aware that destroying/deleting this connection will also destroy
+		 * 		the other connection and can have many unforeseen consequences. If reuseExisting is false, a database with the same parameters will
+		 * 		NOT be able to be opened, an unopened SQLDatabase will be returned.
+		 *
+		 * @return
+		 * 		NULL | in case the database connection already existed
+		 * 		SQLNullDatabase | in case the file did not exist
+		 *
+		 */
+		static QSharedPointer<SQLDatabase> getDb(const QString& file, QObject *parent = NULL);
+		//static SQLDatabase *getDb(const QString& file, QObject *parent = NULL);
 		virtual void saveConnectionInfo(const QString& file) const; // will only write a file if isOpen() returns true, if it's a SQLite database it will make a copy of the database to this location
-
-		virtual bool open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
-		virtual bool open(const QString& dbname); // convencience for SQLite databases who don't really need that much options (and who can be directly instantiated from a file)
 
 		virtual QString connectionName() const;
 
@@ -76,6 +87,8 @@ class SQLDatabase : public QObject {
 		void matchFieldsChanged();
 
 	protected:
+		virtual bool open(const QString& dbname, const QString& host, const QString& user, const QString& pass, int port);
+		virtual bool open(const QString& dbname); // convencience for SQLite databases who don't really need that much options (and who can be directly instantiated from a file)
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 
 		virtual bool hasCorrectCapabilities() const;
@@ -90,6 +103,9 @@ class SQLDatabase : public QObject {
 		void close();
 		void reset();
 		void setup(const QString& schemaFile);
+
+		// only for us in getDb
+		void setConnectionName(const QString& connectionName);
 
 	protected slots:
 		virtual void resetQueries();
@@ -132,6 +148,8 @@ class SQLDatabase : public QObject {
 		static const QString MATCHES_DOCTYPE;
 		static const QString OLD_MATCHES_VERSION;
 		static const QString MATCHES_VERSION;
+
+		static QHash<QString, QWeakPointer<SQLDatabase> > mActiveConnections;
 
 	private:
 		friend class thera::SQLFragmentConf;

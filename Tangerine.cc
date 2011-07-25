@@ -319,33 +319,34 @@ bool Tangerine::threadedDbInit(const QDir& dbDir) {
 }
 
 void Tangerine::setMainDatabase(const QString& file) {
-	SQLDatabase *db = SQLDatabase::getDb(file, this);
+	//SQLDatabase *db = SQLDatabase::getDb(file, this);
+	QSharedPointer<SQLDatabase> db = SQLDatabase::getDb(file, this);
 
 	if (!db) return;
 
-	if (mDb) disconnect(mDb, 0, this, 0);
+	if (mDb != db) {
+		if (!mDb.isNull()) disconnect(mDb.data(), 0, this, 0);
 
-	connect(db, SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
-	connect(db, SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
-	connect(db, SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
-	connect(db, SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
-	connect(db, SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
-	connect(db, SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
+		connect(db.data(), SIGNAL(databaseOpened()), this, SLOT(databaseOpened()));
+		connect(db.data(), SIGNAL(databaseClosed()), this, SLOT(databaseClosed()));
+		connect(db.data(), SIGNAL(databaseOpStarted(const QString&, int)), this, SLOT(databaseOpStarted(const QString&, int)));
+		connect(db.data(), SIGNAL(databaseOpStepDone(int)), this, SLOT(databaseOpStepDone(int)));
+		connect(db.data(), SIGNAL(databaseOpEnded()), this, SLOT(databaseOpEnded()));
+		connect(db.data(), SIGNAL(matchCountChanged()), this, SLOT(matchCountChanged()));
 
-	mModel.setDatabase(db);
+		mModel.setDatabase(db.data());
 
-	if (mDb) delete mDb;
+		mDb = db;
 
-	mDb = db;
+		if (!db->isOpen()) {
+			if (!file.isEmpty()) QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
+		}
+		else {
+			databaseOpened();
+		}
 
-	if (!db->isOpen()) {
-		if (!file.isEmpty()) QMessageBox::information(this, tr("Couldn't open database"), tr("Was unable to open database"));
+		matchCountChanged();
 	}
-	else {
-		databaseOpened();
-	}
-
-	matchCountChanged();
 }
 
 void Tangerine::loadMatchDatabase() {
@@ -355,9 +356,13 @@ void Tangerine::loadMatchDatabase() {
 	if (!lastMatchDb.isEmpty()) {
 		QFileInfo fi(lastMatchDb);
 		lastMatchDb = fi.dir().path();
+
+		qDebug() << "Tangerine::loadMatchDatabase: was able to retrieve last match db:" << lastMatchDb << "| current is:" << QDir::current();
 	}
 
+	//qDebug() << "Tangerine::loadMatchDatabase: getSaveFileName with" << lastMatchDb;
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), lastMatchDb, QString(), 0, QFileDialog::DontConfirmOverwrite);
+	//QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), "D:/thesis", QString(), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (!fileName.isEmpty()) {
 		setMainDatabase(fileName);
@@ -374,6 +379,8 @@ void Tangerine::chooseImageFolder() {
 		mThumbDirParent.cdUp();
 
 		lastFolder = mThumbDirParent.path();
+
+		qDebug() << "Tangerine::chooseImageFolder: was able to retrieve last image folder:" << lastFolder;
 	}
 
 	QString path = QFileDialog::getExistingDirectory(

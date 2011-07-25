@@ -13,6 +13,8 @@
 
 using namespace thera;
 
+QHash<QString, QWeakPointer<SQLDatabase> > SQLDatabase::mActiveConnections;
+
 const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
@@ -20,6 +22,71 @@ const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
 const QString SQLDatabase::OLD_MATCHES_VERSION = "0.0";
 const QString SQLDatabase::MATCHES_VERSION = "1.0";
 
+QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *parent) {
+	SQLConnectionDescription dbd(file);
+	QSharedPointer<SQLDatabase> db;
+
+	if (dbd.isValid()) {
+		// remove connections that have been rendered invalid in the meantime
+		QMutableHashIterator<QString, QWeakPointer<SQLDatabase> > i(mActiveConnections);
+		while (i.hasNext()) {
+			i.next();
+
+			if (i.value().isNull()) {
+				qDebug() << "SQLDatabase::getDb: pruned connection" << i.key() << "because it is no longer valid";
+				i.remove();
+			}
+			//else qDebug() << "SQLDatabase::getDb: the connection" << i.key() << "is still intact";
+		}
+
+		QString connName = dbd.getConnectionName();
+
+		if (mActiveConnections.contains(connName)) {
+			qDebug() << "SQLDatabase::getDb: returned an already active database connection:" << connName;
+
+			db = mActiveConnections.value(connName);
+		}
+		else {
+			switch (dbd.getType()) {
+				case SQLConnectionDescription::MYSQL: {
+					db = QSharedPointer<SQLDatabase>(new SQLMySqlDatabase(parent));
+					db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
+				} break;
+
+				case SQLConnectionDescription::SQLITE: {
+					db = QSharedPointer<SQLDatabase>(new SQLiteDatabase(parent));
+					db->open(file);
+				} break;
+
+				default: {
+					qDebug() << "SQLDatabase::getDb: database type unknown, returning unopened database";
+					db = QSharedPointer<SQLDatabase>(new SQLNullDatabase(parent));
+				} break;
+			}
+
+			// note that databases can only be opened through this function (getDb), so a returned database
+			// that is closed will stay closed
+			assert(!db.isNull());
+
+			if (db->isOpen()) {
+				qDebug() << "SQLDatabase::getDb: added this connection to the active connection list:" << connName;
+
+				mActiveConnections.insert(dbd.getConnectionName(), db.toWeakRef());
+			}
+			else {
+				// assure that deleting this object doesn't mess with existing connections, we're going to reset the connection name
+				db->setConnectionName(QString());
+			}
+		}
+	}
+	else {
+		db = QSharedPointer<SQLDatabase>(new SQLNullDatabase(parent));
+	}
+
+	return db;
+}
+
+/*
 SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	// check if the database wasn't open already
 	// for now we'll return NULL, but we could build a map with all currently active connections
@@ -34,15 +101,23 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 	QFileInfo fi(f);
 	QString extension = fi.suffix();
 
-	if (!f.exists() && fi.suffix() != "db") return new SQLNullDatabase(parent);
+	// if the file doesn't exist we return a special NULL database
+	// but if the extension is supposed to be ".db" we can just create the database by opening with SQLite, so don't return yet
+	if (!f.exists() && extension != "db") return new SQLNullDatabase(parent);
 
 	SQLDatabase *db = NULL;
 
-	/*
-	SQLConnectionDescription dbd1(SQLConnectionDescription::MYSQL, "127.0.0.1", 3306, "tang", "root", QString());
-	dbd1.save("db/mysql.dbd");
-	SQLConnectionDescription dbd2("db/mysql.dbd");
-	*/
+	SQLConnectionDescription dbd;
+
+	if (extension == "db") {
+
+	}
+	else if (extension == "dbd" || extension == "xml") {
+
+	}
+	else {
+
+	}
 
 	if (extension == "db") {
 		// assuming ".db" extension means SQLite database
@@ -61,9 +136,17 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 		SQLConnectionDescription dbd = SQLConnectionDescription(file);
 
 		if (dbd.isValid()) {
-			db = new SQLMySqlDatabase(parent);
-			//set according to dbd
-			db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
+			switch (dbd.getType()) {
+				case SQLConnectionDescription::MYSQL: {
+					db = new SQLMySqlDatabase(parent);
+					db->open(dbd.getDbname(), dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
+				} break;
+
+				default: {
+					qDebug() << "SQLDatabase::getDb: database type unknown, returning unopened database";
+					db = new SQLNullDatabase(parent);
+				} break;
+			}
 		}
 		else {
 			db = new SQLNullDatabase(parent);
@@ -77,6 +160,7 @@ SQLDatabase *SQLDatabase::getDb(const QString& file, QObject *parent) {
 
 	return db;
 }
+*/
 
 void SQLDatabase::saveConnectionInfo(const QString& file) const {
 	if (!isOpen()) return;
@@ -866,6 +950,10 @@ void SQLDatabase::close() {
 	else {
 		qDebug() << "SQLDatabase::close: Couldn't close current database" << database().connectionName() << "because it wasn't open to begin with";
 	}
+}
+
+void SQLDatabase::setConnectionName(const QString& connectionName) {
+	mConnectionName = connectionName;
 }
 
 void SQLDatabase::resetQueries() {

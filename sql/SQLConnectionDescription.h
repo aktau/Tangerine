@@ -21,12 +21,14 @@ class SQLConnectionDescription {
 	public:
 		typedef enum {
 			MYSQL,
+			SQLITE,
 			NUM_DB_TYPES
 		} DbType;
 
 	public:
 		SQLConnectionDescription(const QString& file);
 		SQLConnectionDescription(SQLConnectionDescription::DbType _type, const QString& _host, int _port, const QString& _dbname, const QString& _user, const QString& _password);
+		SQLConnectionDescription(SQLConnectionDescription::DbType _type, const QString& sqliteFile); // this is for an SQLite, specifying any other DbType will result in an isValid() being false
 
 		static QString dbTypeToString(SQLConnectionDescription::DbType type);
 		static SQLConnectionDescription::DbType dbStringToType(const QString& type);
@@ -42,6 +44,7 @@ class SQLConnectionDescription {
 		QString getDbname() const { return dbname; }
 		QString getUser() const { return user; }
 		QString getPassword() const { return password; }
+		QString getConnectionName() const { return (type == SQLITE) ? dbname : (host + ":" + QString::number(port) + "/" + dbname); }
 
 	private:
 		DbType type;
@@ -62,6 +65,11 @@ SQLConnectionDescription::SQLConnectionDescription(const QString& file) : mValid
 
 SQLConnectionDescription::SQLConnectionDescription(SQLConnectionDescription::DbType _type, const QString& _host, int _port, const QString& _dbname, const QString& _user, const QString& _password)
 	: type(_type), host(_host), port(_port), dbname(_dbname), user(_user), password(_password), mValid(true) { }
+
+SQLConnectionDescription::SQLConnectionDescription(SQLConnectionDescription::DbType _type, const QString& sqliteFile)
+	: type(_type), dbname(sqliteFile), mValid(false) {
+	if (type == SQLITE) mValid = true;
+}
 
 QString SQLConnectionDescription::dbTypeToString(SQLConnectionDescription::DbType type) {
 	switch (type) {
@@ -85,6 +93,8 @@ SQLConnectionDescription::DbType SQLConnectionDescription::dbStringToType(const 
 }
 
 bool SQLConnectionDescription::save(const QString& filename) const {
+	assert(type != SQLITE);
+
 	QFile file(filename);
 
 	if (file.exists()) {
@@ -148,13 +158,25 @@ bool SQLConnectionDescription::save(const QString& filename) const {
 	return true;
 }
 
-bool SQLConnectionDescription::load(const QString& XMLFile) {
-	QFile file(XMLFile);
+bool SQLConnectionDescription::load(const QString& filename) {
+	QFile file(filename);
+	QFileInfo fileinfo(file);
+
+	if (fileinfo.suffix() == "db") {
+		// SQLite databases have the .db suffix, they are not XML files and the database name is
+		// taken as equal to the filename (Qt convention)
+		// it's not imporant whether the file exists or not, since it will be created if it doesn't
+		// in the QSqlDatabase::open() call
+		type = SQLITE;
+		dbname = filename;
+
+		return mValid = true;
+	}
 
 	if (!file.exists()) {
-		qDebug("SQLConnectionDescription::load: file %s did not exist", qPrintable(XMLFile));
+		qDebug("SQLConnectionDescription::load: file %s did not exist", qPrintable(filename));
 
-		return false;
+		return mValid = false;
 	}
 
 	// open the file in read-only mode
@@ -178,20 +200,18 @@ bool SQLConnectionDescription::load(const QString& XMLFile) {
 			}
 		}
 		else {
-			qDebug() << "SQLConnectionDescription::load: Reading XML file" << XMLFile << "failed";
+			qDebug() << "SQLConnectionDescription::load: Reading XML file" << filename << "failed";
 
-			return false;
+			return mValid = false;
 		}
 	}
 	else {
-		qDebug() << "SQLConnectionDescription::load: Could not open"  << XMLFile;
+		qDebug() << "SQLConnectionDescription::load: Could not open"  << filename;
 
-		return false;
+		return mValid = false;
 	}
 
-	mValid = true;
-
-	return true;
+	return mValid = true;
 }
 
 #endif /* SQLCONNECTIONDESCRIPTION_H_ */

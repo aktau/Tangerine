@@ -15,6 +15,7 @@
 
 #include "SQLDatabase.h"
 #include "MatchModel.h"
+#include "MatchSelectionModel.h"
 
 #ifdef WITH_TILEVIEW
 #	include "MatchTileView.h"
@@ -79,7 +80,8 @@ class Tangerine : public QMainWindow {
 		void databaseOpEnded();
 
 	private:
-		SQLDatabase *mDb;
+		//SQLDatabase *mDb;
+		QSharedPointer<SQLDatabase> mDb;
 
 		MatchModel mModel;
 		MatchSelectionModel *mSelectionModel;
