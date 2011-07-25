@@ -23,13 +23,13 @@ DetailScene::~DetailScene() {
 }
 
 void DetailScene::init(TabletopModel *tabletopModel) {
-	if (mTabletopModel != tabletopModel) {
-		if (mTabletopModel) disconnect(mTabletopModel, 0, this, 0);
+	if (mTabletopModel.data() != tabletopModel) {
+		if (!mTabletopModel.isNull()) disconnect(mTabletopModel.data(), 0, this, 0);
 
 		mGlobalXF = XF();
-		mTabletopModel = tabletopModel;
+		mTabletopModel = TabletopPointer(tabletopModel);
 
-		if (tabletopModel) connect(mTabletopModel, SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
+		if (!mTabletopModel.isNull()) connect(mTabletopModel.data(), SIGNAL(tabletopChanged()), this, SLOT(tabletopChanged()));
 
 		tabletopChanged();
 	}
@@ -45,7 +45,8 @@ void DetailScene::tabletopChanged() {
 
 	QStringList fragmentList;
 
-	for (TabletopModel::const_iterator it = mTabletopModel->begin(); it != mTabletopModel->end(); ++it) {
+	TabletopModel *model = mTabletopModel.data();
+	for (TabletopModel::const_iterator it = model->begin(), end = model->end(); it != end; ++it) {
 		const QString id = (*it)->id();
 
 		if (!mLoadedFragments.contains(id)) {
@@ -116,7 +117,7 @@ void DetailScene::unloadMeshes() {
 	qDebug() << "DetailScene::unloadMeshes: unloadmeshes begin";
 
 	foreach (const QString& id, mLoadedFragments.keys()) {
-		if (!mTabletopModel || !mTabletopModel->contains(id)) {
+		if (!mTabletopModel || !mTabletopModel.data()->contains(id)) {
 			FragmentResources *resources = mLoadedFragments.value(id);
 			mLoadedFragments.remove(id);
 			delete resources;
@@ -512,8 +513,9 @@ void DetailScene::updateDisplayInformation() {
 
 	QString match, xf;
 
-	if (mTabletopModel) {
-		for (TabletopModel::const_iterator it = mTabletopModel->begin(), end = mTabletopModel->end(); it != end; ++it) {
+	if (!mTabletopModel.isNull()) {
+		TabletopModel *model = mTabletopModel.data();
+		for (TabletopModel::const_iterator it = model->begin(), end = model->end(); it != end; ++it) {
 			match += (*it)->id() + (it != end - 1 ? ", " : "");
 
 			XF t = getXF(*it);
@@ -548,7 +550,7 @@ inline Mesh *DetailScene::getMesh(const PlacedFragment *pf, Fragment::meshEnum m
 inline Mesh *DetailScene::getMesh(const QString& id, Fragment::meshEnum meshType) const {
 	//qDebug() << "DetailScene::getMesh 1: begin";
 
-	return mTabletopModel ? getMesh(mTabletopModel->placedFragment(id), meshType) : NULL;
+	return !mTabletopModel.isNull() ? getMesh(mTabletopModel.data()->placedFragment(id), meshType) : NULL;
 }
 
 inline XF DetailScene::getXF(const PlacedFragment *pf) const {
@@ -560,12 +562,10 @@ inline XF DetailScene::getXF(const PlacedFragment *pf) const {
 inline XF DetailScene::getXF(const QString& id) const {
 	//qDebug() << "DetailScene::getXF 1: begin";
 
-	return mTabletopModel ? getXF(mTabletopModel->placedFragment(id)) : XF();
+	return !mTabletopModel.isNull() ? getXF(mTabletopModel.data()->placedFragment(id)) : XF();
 }
 
 void DetailScene::calcDone() {
-	//qDebug() << "DetailScene::calcDone: begin";
-
 	updateBoundingSphere();
 	updateDisplayInformation();
 	update();

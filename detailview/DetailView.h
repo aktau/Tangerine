@@ -79,12 +79,11 @@ class DetailScene : public QGraphicsScene {
 	    thera::XF mGlobalXF;
 	    thera::Mesh::BSphere mGlobalBoundingSphere;
 
-	    QPointer<thera::TabletopModel> mTabletopModel;
+	    typedef QWeakPointer<thera::TabletopModel> TabletopPointer;
+	    TabletopPointer mTabletopModel;
 
 	    typedef QMap<QString, FragmentResources *> FragmentMap;
 		FragmentMap mLoadedFragments;
-
-	    //QHash< QString, std::vector<Color> > mMeshColors;
 
 	    QGraphicsTextItem *mDescription;
 
