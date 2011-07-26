@@ -68,8 +68,9 @@ void Tangerine::setupWindow() {
 	mFileMenu->addAction(mLoadFragDbAct);
 	mFileMenu->addAction(mLoadMatchDbAct);
 	mFileMenu->addAction(mChooseImageFolderAct);
-	mFileMenu->addAction(mMergeDatabasesAct);
 	mFileMenu->addAction(mSaveDbAct);
+	mFileMenu->addSeparator();
+	mFileMenu->addAction(mMergeDatabasesAct);
 	mFileMenu->addSeparator();
 	mFileMenu->addAction(mImportXMLAct);
 	mFileMenu->addAction(mSaveXMLAct);
@@ -91,8 +92,9 @@ void Tangerine::setupWindow() {
 	mFileToolbar->addAction(mLoadFragDbAct);
 	mFileToolbar->addAction(mLoadMatchDbAct);
 	mFileToolbar->addAction(mChooseImageFolderAct);
-	mFileToolbar->addAction(mMergeDatabasesAct);
 	mFileToolbar->addAction(mSaveDbAct);
+	mFileToolbar->addSeparator();
+	mFileToolbar->addAction(mMergeDatabasesAct);
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mAddAttributeAct);
 	mFileToolbar->addAction(mRemoveAttributeAct);
