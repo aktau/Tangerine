@@ -31,5 +31,6 @@
     <file>rcc/fatcow/32x32/resultset_previous.png</file>
     <file>rcc/fatcow/32x32/resultset_next.png</file>
     <file>rcc/fatcow/32x32/table_select_all.png</file>
+    <file>rcc/fatcow/32x32/data_table.png</file>
   </qresource>
 </RCC>

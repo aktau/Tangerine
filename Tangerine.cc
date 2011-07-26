@@ -8,6 +8,8 @@
 #include "SQLFragmentConf.h"
 #include "Database.h"
 
+#include "MergeManager.h"
+
 using namespace thera;
 
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
@@ -66,6 +68,7 @@ void Tangerine::setupWindow() {
 	mFileMenu->addAction(mLoadFragDbAct);
 	mFileMenu->addAction(mLoadMatchDbAct);
 	mFileMenu->addAction(mChooseImageFolderAct);
+	mFileMenu->addAction(mMergeDatabasesAct);
 	mFileMenu->addAction(mSaveDbAct);
 	mFileMenu->addSeparator();
 	mFileMenu->addAction(mImportXMLAct);
@@ -88,6 +91,7 @@ void Tangerine::setupWindow() {
 	mFileToolbar->addAction(mLoadFragDbAct);
 	mFileToolbar->addAction(mLoadMatchDbAct);
 	mFileToolbar->addAction(mChooseImageFolderAct);
+	mFileToolbar->addAction(mMergeDatabasesAct);
 	mFileToolbar->addAction(mSaveDbAct);
 	mFileToolbar->addSeparator();
 	mFileToolbar->addAction(mAddAttributeAct);
@@ -204,6 +208,10 @@ void Tangerine::createActions() {
     mSaveDbAct->setShortcuts(QKeySequence::Save);
     mSaveDbAct->setStatusTip(tr("Save the database in a (new) database file"));
 	connect(mSaveDbAct, SIGNAL(triggered()), this, SLOT(saveDatabase()));
+
+	mMergeDatabasesAct = new QAction(QIcon(":/rcc/fatcow/32x32/data_table.png"), tr("Merge databases"), this);
+	mMergeDatabasesAct->setStatusTip(tr("Runs through a process to merge two different databases"));
+	connect(mMergeDatabasesAct, SIGNAL(triggered()), this, SLOT(mergeDatabases()));
 
 	mImportXMLAct = new QAction(QIcon(":/rcc/fatcow/32x32/page_go.png"), tr("&Import from XML"), this);
 	mImportXMLAct->setStatusTip(tr("Select and import an XML file"));
@@ -404,6 +412,16 @@ void Tangerine::chooseImageFolder() {
 
 void Tangerine::saveDatabase() {
 	qDebug() << "dummy functionality";
+
+	// what are we supposed to do here? the database is automatically saved no? maybe copy file to other location?
+}
+
+void Tangerine::mergeDatabases() {
+	qDebug() << "dummy functionality";
+
+	MergeManager m;
+
+	m.exec();
 
 	// what are we supposed to do here? the database is automatically saved no? maybe copy file to other location?
 }

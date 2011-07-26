@@ -58,6 +58,7 @@ class Tangerine : public QMainWindow {
 		void loadMatchDatabase();
 		void chooseImageFolder();
 		void saveDatabase();
+		void mergeDatabases();
 		void importDatabase();
 		void exportDatabase();
 
@@ -118,6 +119,7 @@ class Tangerine : public QMainWindow {
 		QAction *mLoadMatchDbAct;
 		QAction *mChooseImageFolderAct;
 		QAction *mSaveDbAct;
+		QAction *mMergeDatabasesAct;
 
 		QAction *mImportXMLAct;
 		QAction *mSaveXMLAct;

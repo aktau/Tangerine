@@ -50,6 +50,10 @@ SOURCES += sql/*.cc
 HEADERS += sql/*.h
 INCLUDEPATH += sql
 
+SOURCES += dbmerge/*.cc
+HEADERS += dbmerge/*.h
+INCLUDEPATH += dbmerge
+
 
 tileview {
 	message(Tangerine: Tileview support was added)
