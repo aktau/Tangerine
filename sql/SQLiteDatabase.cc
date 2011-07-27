@@ -3,92 +3,12 @@
 const QString SQLiteDatabase::DB_TYPE = "QSQLITE";
 
 SQLiteDatabase::SQLiteDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) {
-	// TODO Auto-generated constructor stub
+
 }
 
 SQLiteDatabase::~SQLiteDatabase() {
-	// TODO Auto-generated destructor stub
+
 }
-
-/*
-void SQLiteDatabase::connect(const QString& dbFilename) {
-	if (dbFilename != "") {
-		// if there is already a database opened, close it
-		close();
-
-		QFile dbFile(dbFilename);
-
-		// check if the given file is a valid SQLite file
-		if (dbFile.exists()) {
-			qDebug() << "Database file exists, attempting to load";
-
-			open(dbFilename);
-
-			if (isOpen()) {
-				qDebug() << "Succesfully opened database, tables:" << database().tables();
-			}
-		}
-		else {
-			// if not create an empty .db file
-			qDebug() << "No existing database found, creating new one";
-
-			open(dbFilename);
-
-			if (isOpen()) {
-				setup(SCHEMA_FILE);
-
-				qDebug() << "Setup new database, tables:" << database().tables();
-			}
-		}
-	}
-	else {
-		qDebug("Did not receive valid database filename");
-	}
-}
-*/
-
-/*
-QSqlDatabase SQLiteDatabase::open(const QString& file) {
-	QSqlDatabase db = QSqlDatabase::addDatabase(DB_TYPE, mConnectionName);
-	db.setHostName(DB_HOST);
-	db.setDatabaseName(file);
-
-	if (!db.open()) {
-		qDebug() << "SQLiteDatabase: Unable to open a database file, error: " << db.lastError();
-	}
-	else {
-		if (!hasCorrectCapabilities()) {
-			qDebug() << "SQLiteDatabase: Did not have all the correct capabilities, certain methods may fail";
-		}
-
-		if (db.isValid()) {
-			// performance...
-			setPragmas();
-
-			emit databaseOpened();
-			emit matchFieldsChanged(); // the order is actually important, because for example the models react to matchCountChanged, but matchFieldsChanged needs to have ran by then
-			emit matchCountChanged();
-		}
-		else {
-			qDebug() << "Somehow database was opened but it wasn't valid: " << db.lastError();
-		}
-	}
-
-	return db;
-}
-*/
-
-/*
-void SQLiteDatabase::loadFromXML(const QString& XMLFile) {
-	if (!isOpen()) {
-		QFileInfo fi(XMLFile);
-
-		connect(fi.absolutePath() + "/" + fi.baseName() + ".db");
-	}
-
-	SQLDatabase::loadFromXML(XMLFile);
-}
-*/
 
 QStringList SQLiteDatabase::tables(QSql::TableType type) const {
 	return database().tables(type);
@@ -125,3 +45,78 @@ QSet<QString> SQLiteDatabase::tableFields(const QString& tableName) const {
 
 	return fields;
 }
+
+void SQLiteDatabase::createHistory(const QString& table) {
+	QSqlQuery query(database());
+
+	transaction();
+
+	if (query.exec(QString("CREATE TABLE %1_history AS SELECT * FROM %1 WHERE 1=2").arg(table))) {
+		qDebug() << "SQLiteDatabase::createHistory: succesfully created history for" << table;
+	}
+	else {
+		qDebug() << "SQLiteDatabase::createHistory: couldn't create history table for" << table << "->" << query.lastError() << "\n\tExecuted:" << query.lastQuery();
+		database().rollback();
+	}
+
+	if (
+		query.exec(QString("ALTER TABLE %1_history ADD COLUMN user_id INT").arg(table)) &&
+		query.exec(QString("ALTER TABLE %1_history ADD COLUMN timestamp INT").arg(table))
+	) {
+		qDebug() << "SQLiteDatabase::createHistory: succesfully added history column for" << table;
+	}
+	else {
+		qDebug() << "SQLiteDatabase::createHistory: couldn't add columns for" << table << "->" << query.lastError() << "\n\tExecuted:" << query.lastQuery();
+		database().rollback();
+	}
+
+	commit();
+}
+
+// temporary place to hide backup code that will need to be implemented
+//http://www.qtcentre.org/threads/36131-Attempting-to-use-Sqlite-backup-api-from-driver-handle-fails
+
+/*
+#include <QtSql/QSqlDatabase>
+#include <QtSql/QSqlDriver>
+#include <QString>
+#include <QVariant>
+#include "sqlite3/sqlite3.h"
+
+void backup(QString src, QString dst) {
+	QSqlDatabase sqlDb = QSqlDatabase::addDatabase("QSQLITE");
+	sqlDb.setDatabaseName(src);
+	sqlDb.open();
+
+	QVariant v = sqlDb.driver()->handle();
+	sqlite3* pSource = *static_cast<sqlite3 **>(v.data());
+
+	int rc;
+	sqlite3 *pDest;
+	sqlite3_backup *pBackup;
+	rc = sqlite3_open(dst.toLocal8Bit().data(), &pDest);
+	if(rc == SQLITE_OK) {
+		pBackup = sqlite3_backup_init(pDest, "main", pSource, "main");
+		if (pBackup) {
+			do {
+				rc = sqlite3_backup_step(pBackup, 5);
+				if (rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED) {
+					sqlite3_sleep(250);
+				}
+			} while(rc == SQLITE_OK || rc == SQLITE_BUSY || rc == SQLITE_LOCKED );
+
+			//Release resources allocated by backup_init().
+			sqlite3_backup_finish(pBackup);
+		}
+		sqlite3_close(pDest);
+	}
+
+	sqlDb.close();
+}
+
+
+int main(int argc, char *argv[]) {
+	backup("/home/arkay/Projects/QtWebApp/database/Current/architektur.db",
+		   "/home/arkay/Projects/QtWebApp/database/Backup/architektur.db");
+}
+*/

@@ -2,14 +2,8 @@
 
 const QString SQLMySqlDatabase::DB_TYPE = "QMYSQL";
 
-SQLMySqlDatabase::SQLMySqlDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) {
-	// TODO Auto-generated constructor stub
-
-}
-
-SQLMySqlDatabase::~SQLMySqlDatabase() {
-	// TODO Auto-generated destructor stub
-}
+SQLMySqlDatabase::SQLMySqlDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) { }
+SQLMySqlDatabase::~SQLMySqlDatabase() { }
 
 QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
 	// look for double pipes/'||' and turn them into CONCAT statements
@@ -73,15 +67,7 @@ bool SQLMySqlDatabase::commit() const {
 }
 
 void SQLMySqlDatabase::setPragmas() {
-	/*
-	QSqlQuery autocommit(database());
-	if (autocommit.exec("SET autocommit=0;")) {
-		qDebug() << "SQLMySqlDatabase::setPragmas: set autocommit to 0";
-	}
-	else {
-		qDebug() << "SQLMySqlDatabase::setPragmas: setting autocommit to 0 failed:" << autocommit.lastError();
-	}
-	*/
+
 }
 
 QSet<QString> SQLMySqlDatabase::tableFields(const QString& tableName) const {
@@ -102,7 +88,7 @@ QSet<QString> SQLMySqlDatabase::tableFields(const QString& tableName) const {
 		qDebug() << "SQLMySqlDatabase: error on 'DESCRIBE':" << query.lastError();
 	}
 
-	qDebug() << "SQLMySqlDatabase::tableFields: returned" << fields;
+	//qDebug() << "SQLMySqlDatabase::tableFields: returned" << fields;
 
 	return fields;
 }

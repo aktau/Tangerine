@@ -24,6 +24,9 @@ class MergeManager : public QDialog {
 		// will run all the added mergers in FIFO sequence
 		void merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right);
 
+	private slots:
+		void pickDatabases();
+
 	private:
 		QList<Merger *> mMergers;
 

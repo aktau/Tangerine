@@ -1,3 +1,6 @@
+#define QT_USE_FAST_CONCATENATION
+#define QT_USE_FAST_OPERATOR_PLUS
+
 #include "SQLDatabase.h"
 
 #include <QFile>
@@ -104,8 +107,6 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 		close();
 	}
 
-	//mConnectionName = (dbnameOnly) ? "TheraSQL" : host + port + dbname;
-	//mConnectionName = (dbnameOnly) ? dbname : host + port + dbname;
 	mConnectionName = connName;
 
 	qDebug() << "SQLDatabase::open: Trying to open database with connection name" << mConnectionName << "and driver" << mType;
@@ -113,10 +114,6 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 	QSqlDatabase db = QSqlDatabase::addDatabase(mType, mConnectionName);
 
 	if (db.isValid()) {
-		if (!hasCorrectCapabilities()) {
-			qDebug() << "SQLDatabase::open:" << mType << "Did not have all the correct capabilities, certain methods may fail";
-		}
-
 		if (dbnameOnly) {
 			// for SQLite-like business
 			db.setHostName("localhost");
@@ -133,6 +130,10 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 		}
 
 		if (db.open()) {
+			if (!hasCorrectCapabilities()) {
+				qDebug() << "SQLDatabase::open:" << mType << "Did not have all the correct capabilities, certain methods may fail";
+			}
+
 			setPragmas();
 
 			if (!tables().contains("matches")) {
@@ -141,9 +142,13 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 				setup(SCHEMA_FILE);
 			}
 			else {
-				qDebug() << "SQLDatabase::open: database opened correctly and already contained tables:\n\t" << db.tables() << "\n\t" << tables();
+				qDebug() << "SQLDatabase::open: database opened correctly and already contained tables:\n\t" << tables();
 
 				emit matchFieldsChanged();
+			}
+
+			if (mTrackHistory) {
+				createHistory();
 			}
 
 			// the order is actually important, because for example the models react to matchCountChanged, but matchFieldsChanged needs to have ran by then
@@ -167,8 +172,8 @@ QString SQLDatabase::connectionName() const {
 	return database().connectionName();
 }
 
-SQLDatabase::SQLDatabase(QObject *parent, const QString& type)
-	: QObject(parent), mType(type) {
+SQLDatabase::SQLDatabase(QObject *parent, const QString& type, bool trackHistory)
+	: QObject(parent), mType(type), mTrackHistory(trackHistory) {
 	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
 }
@@ -648,6 +653,38 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	return list;
 }
 
+bool SQLDatabase::historyAvailable() const {
+	return mTrackHistory;
+}
+
+QList<HistoryRecord> SQLDatabase::getHistory(const QString& field, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
+	QList<HistoryRecord> list;
+
+	QString queryString = QString("SELECT user_id, match_id, timestamp, %1 FROM %1_history").arg(field);
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+
+	if (query.exec(queryString)) {
+		while (query.next()) {
+			//qDebug() << query.value(0).type() << query.value(1).type();
+
+			list << HistoryRecord(
+				query.value(0).toInt(),
+				query.value(1).toInt(),
+				QDateTime::fromTime_t(query.value(2).toUInt()),
+				query.value(3)
+			);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getHistory query failed:" << query.lastError()
+			<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	return list;
+}
+
 const QDomDocument SQLDatabase::toXML() {
 	if (!isOpen()) {
 		qDebug() << "Database wasn't open, couldn't convert to XML";
@@ -854,6 +891,50 @@ void SQLDatabase::setup(const QString& schemaFile) {
 	emit matchFieldsChanged();
 }
 
+void SQLDatabase::createHistory() {
+	if (!isOpen()) return;
+
+	QSqlDatabase db = database();
+	QSqlQuery query(db);
+
+	// remove the history tables first (this would constitute a reset)
+	//foreach (const QString& field, mNormalMatchFields)
+	//	if (!query.exec(QString("DROP TABLE %1_history").arg(field))) qDebug() << "Couldn't remove history table for" << field << "error:" << query.lastError();
+
+	// retrieve ALL normal (== non-view) tables in the current database
+	QStringList t = tables();
+
+	// this will by now contain all loaded fields, for each field create a history table if none exists
+	foreach (const QString& field, mNormalMatchFields) {
+		QString fieldHistoryTable = field + "_history";
+
+		if (!t.contains(fieldHistoryTable)) {
+			createHistory(field);
+
+			// perhaps fill with initial data (all current values with the user included)
+
+			//https://dev.mysql.com/doc/refman/5.1/en/create-table-select.html
+			//http://stackoverflow.com/questions/4007014/alter-column-in-sqlite
+		}
+		else {
+			qDebug() << "SQLDatabase::createHistory: history already existed for field" << field;
+		}
+	}
+}
+
+// generic method that should work for most SQL db's (doesn't work for SQLite so reimplemented in that specific sublass)
+void SQLDatabase::createHistory(const QString& table) {
+	QSqlQuery query(database());
+
+	if (query.exec(QString("CREATE TABLE %1_history (user_id INT, timestamp INT) AS (SELECT * FROM %1 WHERE 1=2);").arg(table))) {
+		qDebug() << "SQLDatabase::createHistory: succesfully created history for" << table;
+	}
+	else {
+		qDebug() << "SQLDatabase::createHistory: couldn't create history table for" << table << "->" << query.lastError() << "\n\tExecuted:" << query.lastQuery();
+	}
+}
+
+
 void SQLDatabase::close() {
 	if (isOpen()) {
 		qDebug() << "SQLDatabase::close: Closing database with connection name" << database().connectionName();
@@ -874,7 +955,6 @@ void SQLDatabase::setConnectionName(const QString& connectionName) {
 
 void SQLDatabase::resetQueries() {
 	qDeleteAll(mFieldQueryMap);
-
 	mFieldQueryMap.clear();
 
 	qDebug() << "SQLDatabase::resetQueries: reset queries";
@@ -886,13 +966,12 @@ void SQLDatabase::makeFieldsSet() {
 	// clear just in case
 	mMatchFields.clear();
 
-	QSqlDatabase db(database());
-
 	foreach (const QString& table, tables()) {
 		// check if the tables name is not the 'matches' table itself
 		if (table != "matches") {
 			// check if the table contains a match_id attribute
-			if (tableFields(table).contains("match_id")) {
+			QSet<QString> fields = tableFields(table);
+			if (fields.contains("match_id") && fields.contains(table)) {
 				mNormalMatchFields << table;
 				mMatchFields << table;
 			}
@@ -904,8 +983,8 @@ void SQLDatabase::makeFieldsSet() {
 	foreach (const QString& table, tables(QSql::Views)) {
 		// check if the tables name is not the 'matches' table itself
 		if (table != "matches") {
-			// check if the table contains a match_id attribute
-			if (tableFields(table).contains("match_id")) {
+			QSet<QString> fields = tableFields(table);
+			if (fields.contains("match_id") && fields.contains(table)) {
 				mViewMatchFields << table;
 				mMatchFields << table;
 			}

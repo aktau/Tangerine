@@ -9,15 +9,18 @@
 #include <QMap>
 #include <QSharedPointer>
 #include <QWeakPointer>
+#include <QStringBuilder>
 
 #include "SQLFragmentConf.h"
 #include "SQLFilter.h"
+
+#include "MatchHistory.h"
 
 class SQLDatabase : public QObject {
 		Q_OBJECT
 
 	public:
-		SQLDatabase(QObject *parent, const QString& type);
+		SQLDatabase(QObject *parent, const QString& type, bool trackHistory = true);
 		virtual ~SQLDatabase();
 
 	public:
@@ -48,6 +51,11 @@ class SQLDatabase : public QObject {
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
+		bool historyAvailable() const;
+		//QList<MatchHistory> getHistory(const QString& field);
+		QList<HistoryRecord> getHistory(const QString& field, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+		//QMap<QString, QList<HistoryRecord> > getHistory();
+
 		// the following method will try to convert any standard function that is not available
 		// in the instantiated DB type into a specialized function, an example:
 		// ANSI string contatenation: 'foo' || 'bar' = 'foobar'
@@ -73,19 +81,27 @@ class SQLDatabase : public QObject {
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 
 		virtual bool hasCorrectCapabilities() const;
+
 		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
+		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
+		//virtual FieldType fieldType(const QString& fieldName) const;
+
 		virtual bool transaction() const;
 		virtual bool commit() const;
-		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 		virtual void setPragmas() = 0;
-		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
+
+		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 
 		QSqlDatabase database() const;
 		void close();
 		void reset();
 		void setup(const QString& schemaFile);
 
-		// only for us in getDb
+		// history methods
+		void createHistory();
+		virtual void createHistory(const QString& table);
+
+		// only for use in getDb
 		void setConnectionName(const QString& connectionName);
 
 	protected slots:
@@ -99,7 +115,9 @@ class SQLDatabase : public QObject {
 		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
 
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
-		template<typename T> T matchGetValue(int id, const QString& field, const T& deflt);
+		template<typename T> T matchGetValue(int id, const QString& field, const T& deflt) const;
+
+		template<typename T> void matchAddHistoryRecord(int id, const QString& field, const T& value);
 
 	private:
 		// disabling copy-constructor and copy-assignment for now
@@ -111,8 +129,10 @@ class SQLDatabase : public QObject {
 		QString mType;
 
 		// a map that will store prepared queries, for performance reasons
+		// it's not actually necessary but it speeds things up and will
+		// be created on the fly if empty
 		typedef QMap<QString, QSqlQuery *> FieldQueryMap;
-		FieldQueryMap mFieldQueryMap;
+		mutable FieldQueryMap mFieldQueryMap;
 
 		// a set that stores all the available fields/attributes for matches
 		typedef QSet<QString> MatchFieldSet;
@@ -120,11 +140,11 @@ class SQLDatabase : public QObject {
 		MatchFieldSet mNormalMatchFields; // fields that exist as real database tables
 		MatchFieldSet mViewMatchFields; // fiels that exists solely as views
 
-		//static const QString CONN_NAME;
-		static const QString SCHEMA_FILE;
-		//static const QString DB_HOST;
+		bool mTrackHistory;
 
 	private:
+		static const QString SCHEMA_FILE;
+
 		static const QString MATCHES_ROOTTAG;
 		static const QString MATCHES_DOCTYPE;
 		static const QString OLD_MATCHES_VERSION;
@@ -141,7 +161,7 @@ inline bool SQLDatabase::matchHasField(const QString& field) const {
 }
 
 template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
-	QString queryKey = field + "update";
+	const QString queryKey = field % "update";
 
 	if (!mFieldQueryMap.contains(queryKey)) {
 		// doesn't exist yet, make and insert
@@ -163,11 +183,38 @@ template<typename T> inline void SQLDatabase::matchSetValue(int id, const QStrin
 			<< "\nQuery executed: " << query.executedQuery();
 			//<< "\nBound values:" <<query.boundValues();
 	}
+	else if (mTrackHistory) {
+		matchAddHistoryRecord(id, field, value);
+	}
 
 	query.finish();
 }
 
-template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field, const T& deflt) {
+template<typename T> inline void SQLDatabase::matchAddHistoryRecord(int id, const QString& field, const T& value) {
+	const QString queryKey = field % "history";
+
+	if (!mFieldQueryMap.contains(queryKey)) {
+		// doesn't exist yet, make and insert
+		QSqlQuery *q = new QSqlQuery(database());
+
+		q->prepare(QString("INSERT INTO %1_history (timestamp, user_id, match_id, %1) VALUES (:timestamp, :user_id, :match_id, :value)").arg(field));
+
+		mFieldQueryMap.insert(queryKey, q);
+	}
+
+	QSqlQuery &query = *mFieldQueryMap.value(queryKey);
+
+	query.bindValue(":timestamp", QDateTime::currentDateTime().toTime_t());
+	query.bindValue(":user_id", 0);
+	query.bindValue(":match_id", id);
+	query.bindValue(":value", QVariant(value).toString());
+	//query.bindValue(":confidence", 1.0);
+
+	if (!query.exec())
+		qDebug() << "SQLDatabase::matchAddHistoryRecord: could not insert history record:" << query.lastError();
+}
+
+template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& field, const T& deflt) const {
 	if (!mFieldQueryMap.contains(field)) {
 		// doesn't exist yet, make and insert
 		QSqlQuery *q = new QSqlQuery(database());
@@ -198,7 +245,6 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 
 	query.finish();
 
-	//return QVariant(0).value<T>();
 	return deflt;
 }
 

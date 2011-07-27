@@ -22,6 +22,7 @@ class SQLiteDatabase : public SQLDatabase {
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual void setPragmas();
 		virtual QSet<QString> tableFields(const QString& tableName) const;
+		virtual void createHistory(const QString& table);
 
 	private:
 		// disabling copy-constructor and copy-assignment for now

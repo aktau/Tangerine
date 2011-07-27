@@ -419,13 +419,11 @@ void Tangerine::saveDatabase() {
 }
 
 void Tangerine::mergeDatabases() {
-	qDebug() << "dummy functionality";
-
 	MergeManager m;
 
-	m.exec();
+	//m.addMerger(new UserMerger);
 
-	// what are we supposed to do here? the database is automatically saved no? maybe copy file to other location?
+	m.exec();
 }
 
 void Tangerine::importDatabase() {
