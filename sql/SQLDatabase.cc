@@ -627,14 +627,19 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
 	}
 
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString;
-
 	int fragments[IFragmentConf::MAX_FRAGMENTS];
 	XF xf;
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
+
+	QElapsedTimer timer;
+	timer.start();
+	qint64 queryTime = 0, fillTime = 0;
+
 	if (query.exec(queryString)) {
+		queryTime = timer.restart();
+
 		while (query.next()) {
 			QTextStream ts(query.value(3).toString().toAscii());
 			ts >> xf;
@@ -649,6 +654,9 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
 				<< "\nQuery executed:" << query.lastQuery();
 	}
+
+	fillTime = timer.elapsed();
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec";
 
 	return list;
 }

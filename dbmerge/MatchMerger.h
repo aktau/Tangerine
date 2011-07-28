@@ -9,6 +9,9 @@ class MatchMerger: public Merger {
 	public:
 		MatchMerger();
 		virtual ~MatchMerger();
+
+	public:
+		void merge(SQLDatabase *left, SQLDatabase *right);
 };
 
 #endif /* MATCHMERGER_H_ */

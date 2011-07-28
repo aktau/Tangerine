@@ -14,13 +14,14 @@ class MergeManager : public QDialog {
 		Q_OBJECT
 
 	public:
-		MergeManager(QWidget *parent = NULL);
+		MergeManager(QWidget *parent = NULL, QSharedPointer<SQLDatabase> master = QSharedPointer<SQLDatabase>());
 		~MergeManager();
 
 	public:
 		// takes ownership of the merger, do NOT delete yourself
 		void addMerger(Merger *merger);
 
+	protected:
 		// will run all the added mergers in FIFO sequence
 		void merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right);
 
@@ -32,6 +33,8 @@ class MergeManager : public QDialog {
 
 		QTableWidget *mItemList;
 		QDialogButtonBox *mButtonBox;
+
+		QSharedPointer<SQLDatabase> mMaster;
 };
 
 #endif /* MERGEMANAGER_H_ */

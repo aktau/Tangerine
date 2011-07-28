@@ -9,6 +9,7 @@
 #include "Database.h"
 
 #include "MergeManager.h"
+#include "MatchMerger.h"
 
 using namespace thera;
 
@@ -419,9 +420,9 @@ void Tangerine::saveDatabase() {
 }
 
 void Tangerine::mergeDatabases() {
-	MergeManager m;
+	MergeManager m(this, (!mDb.isNull() && mDb->isOpen()) ? mDb : QSharedPointer<SQLDatabase>());
 
-	//m.addMerger(new UserMerger);
+	m.addMerger(new MatchMerger);
 
 	m.exec();
 }

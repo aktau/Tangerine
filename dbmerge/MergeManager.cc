@@ -5,7 +5,7 @@
 
 #include "main.h"
 
-MergeManager::MergeManager(QWidget *parent) : QDialog(parent) {
+MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) : QDialog(parent), mMaster(master) {
 	mButtonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
 
 	QPushButton *moreButton = new QPushButton(tr("&Merge"));
@@ -43,9 +43,11 @@ void MergeManager::addMerger(Merger *merger) {
 }
 
 void MergeManager::merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right) {
-	QMessageBox::information(this, tr("Not doing anything with what you've just done"), tr("Cain't you read?!"));
+	qDebug() << "MergeManager::merge";
 
 	QList<HistoryRecord> leftHistory = left->getHistory("comment");
+
+	qDebug() << "MergeManager::merge: 2";
 
 	foreach (const HistoryRecord& record, leftHistory) {
 		qDebug() << record.userId << record.matchId << record.timestamp << record.value;
@@ -67,9 +69,16 @@ void MergeManager::pickDatabases() {
 
 	QSharedPointer<SQLDatabase> left, right;
 
+	int i = 0;
+
+	if (!mMaster.isNull() && mMaster->isOpen()) {
+		left = mMaster;
+		++i;
+	}
+
 	bool success = true;
 
-	for (int i = 0; i < 2; ++i) {
+	while (i < 2) {
 		QSharedPointer<SQLDatabase> &current = (i == 0) ? left : right;
 
 		QString fileName = QFileDialog::getSaveFileName(
@@ -87,6 +96,9 @@ void MergeManager::pickDatabases() {
 			if (!current->isOpen()) {
 				QMessageBox::information(this, tr("Error while opening database"), tr("Couldn't open database, please try again or try another database"));
 				--i;
+			}
+			else {
+				++i;
 			}
 		}
 		else {
