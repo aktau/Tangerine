@@ -46,6 +46,12 @@ QList<SQLFragmentConf> MatchConflictChecker::getProgressiveNonconflicting() cons
 	const int masterTargetId = mMaster.mFragments[IFragmentConf::TARGET];
 	const int masterSourceId = mMaster.mFragments[IFragmentConf::SOURCE];
 
+	if (masterTargetId == -1 || masterSourceId == -1) {
+		qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: at least one of the two fragments in the master pair was invalid, check your fragment database";
+
+		return matchList;
+	}
+
 	CPoly2 targetContour = mContours[masterTargetId];
 	CPoly2 sourceContour = mContours[masterSourceId];
 
@@ -65,6 +71,12 @@ QList<SQLFragmentConf> MatchConflictChecker::getProgressiveNonconflicting() cons
     foreach (const SQLFragmentConf& c, mList) {
     	const int targetId = c.mFragments[IFragmentConf::TARGET];
 		const int sourceId = c.mFragments[IFragmentConf::SOURCE];
+
+		if (targetId == -1 || sourceId == -1) {
+			qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: at least one of the two fragments in the pair was invalid, check your fragment database";
+
+			continue;
+		}
 
 		const bool targetPossibleConflict = targetId == masterTargetId || targetId == masterSourceId;
 		const bool sourcePossibleConflict = sourceId == masterTargetId || sourceId == masterSourceId;
@@ -144,6 +156,12 @@ inline QList<SQLFragmentConf> MatchConflictChecker::filterList(bool conflicting)
 	const int masterTargetId = mMaster.mFragments[IFragmentConf::TARGET];
 	const int masterSourceId = mMaster.mFragments[IFragmentConf::SOURCE];
 
+	if (masterTargetId == -1 || masterSourceId == -1) {
+		qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: at least one of the two fragments in the master pair was invalid, check your fragment database";
+
+		return matchList;
+	}
+
 	CPoly2 targetContour = mContours[masterTargetId];
 	CPoly2 sourceContour = mContours[masterSourceId];
 
@@ -163,6 +181,12 @@ inline QList<SQLFragmentConf> MatchConflictChecker::filterList(bool conflicting)
     foreach (const SQLFragmentConf& c, mList) {
     	const int targetId = c.mFragments[IFragmentConf::TARGET];
 		const int sourceId = c.mFragments[IFragmentConf::SOURCE];
+
+		if (targetId == -1 || sourceId == -1) {
+			qDebug() << "MatchConflictChecker::getProgressiveNonconflicting: at least one of the two fragments in the pair was invalid, check your fragment database";
+			continue;
+		}
+
 
 		const bool targetPossibleConflict = targetId == masterTargetId || targetId == masterSourceId;
 		const bool sourcePossibleConflict = sourceId == masterTargetId || sourceId == masterSourceId;
