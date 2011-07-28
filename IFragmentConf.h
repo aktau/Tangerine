@@ -1,7 +1,7 @@
 #ifndef IFRAGMENTCONF_H_
 #define IFRAGMENTCONF_H_
 
-#include <QObject>
+//#include <QObject>
 
 #include "Database.h"
 #include "Fuzzy.h"
@@ -10,19 +10,15 @@
 namespace thera {
 	 // This is an interface class with a few fields here and there (more like a trait)
 	 // known inherits: XmlFragmentConf (to be made), SQLFragmentConf, InvalidFragmentConf
-	class IFragmentConf : public QObject {
-		Q_OBJECT
-
+	class IFragmentConf {
 		// CONSTRUCTOR AND DESTRUCTOR
 		public:
 			IFragmentConf() :
-				QObject(),
 				mRelev(0.0f),
 				mXF(illegal<XF>()),
 				mCP(illegal<vec3>()),
 				mCPRadius(illegal<float>()) {}
 			IFragmentConf(int *fragments, float relevance, const XF& xf, const vec3& CP, float CPRadius) :
-				QObject(),
 				mRelev(relevance),
 				mXF(xf),
 				mCP(CP),
@@ -31,7 +27,6 @@ namespace thera {
 			}
 			virtual ~IFragmentConf() {}
 			IFragmentConf(const IFragmentConf& that) :
-				QObject(),
 				mRelev(that.mRelev),
 				mXF(that.mXF),
 				mCP(that.mCP),
