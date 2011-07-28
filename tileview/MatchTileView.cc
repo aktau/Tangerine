@@ -694,8 +694,8 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 		}
 
 		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
-				.arg(Database::fragment(match.mFragments[IFragmentConf::TARGET])->id())
-				.arg(Database::fragment(match.mFragments[IFragmentConf::SOURCE])->id())
+				.arg(match.getTargetId())
+				.arg(match.getSourceId())
 				.arg(match.getString("error", ""))
 				.arg(match.getString("volume", ""));
 

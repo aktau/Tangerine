@@ -641,11 +641,21 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 		queryTime = timer.restart();
 
 		while (query.next()) {
-			QTextStream ts(query.value(3).toString().toAscii());
-			ts >> xf;
-
 			fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
 			fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+
+			/*
+			if (fragments[IFragmentConf::SOURCE] == -1 || fragments[IFragmentConf::TARGET] == -1) {
+				qDebug() << "SQLDatabase::getMatches: match with id" << query.value(0).toInt()
+					<< "was ignored because at least one of its fragments could not be found in the fragment database"
+					<< "\n\tSOURCE:" << query.value(1).toString() << "returned" << fragments[IFragmentConf::SOURCE]
+					<< "\n\tTARGET:" << query.value(2).toString() << "returned" << fragments[IFragmentConf::TARGET];
+				continue;
+			}
+			*/
+
+			QTextStream ts(query.value(3).toString().toAscii());
+			ts >> xf;
 
 			list << SQLFragmentConf(this, query.value(0).toInt(), fragments, 1.0f, xf);
 		}

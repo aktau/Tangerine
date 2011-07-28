@@ -43,11 +43,7 @@ void MergeManager::addMerger(Merger *merger) {
 }
 
 void MergeManager::merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right) {
-	qDebug() << "MergeManager::merge";
-
 	QList<HistoryRecord> leftHistory = left->getHistory("comment");
-
-	qDebug() << "MergeManager::merge: 2";
 
 	foreach (const HistoryRecord& record, leftHistory) {
 		qDebug() << record.userId << record.matchId << record.timestamp << record.value;

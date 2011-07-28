@@ -87,8 +87,8 @@ namespace thera {
 			virtual double getDouble(const QString &field, double deflt = 0.0) const = 0;
 			virtual int getInt(const QString &field, int deflt = 0) const = 0;
 
-			virtual const QString getTargetId() const { return Database::entryID(mFragments[TARGET]); }
-			virtual const QString getSourceId() const { return Database::entryID(mFragments[SOURCE]); }
+			virtual const QString getTargetId() const { return (mFragments[TARGET] != -1) ? Database::entryID(mFragments[TARGET]) : QString(); }
+			virtual const QString getSourceId() const { return (mFragments[SOURCE] != -1) ? Database::entryID(mFragments[SOURCE]) : QString(); }
 
 			virtual unsigned int signature(void) const {
 				unsigned int result = 0;
