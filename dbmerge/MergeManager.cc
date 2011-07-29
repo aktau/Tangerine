@@ -60,13 +60,6 @@ void MergeManager::merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDat
 }
 
 void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
-	/*
-	QList<MergeItem *>::const_iterator i = list.constBegin();
-	for (int counter = 0; i != list.constEnd(); ++counter, ++i) {
-
-	}
-	*/
-
 	qDebug() << "MergeManager::addItemsToTable: Going to add" << items.size() << "to table";
 
 	mItemList->setRowCount(items.size());

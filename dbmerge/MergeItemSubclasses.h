@@ -15,7 +15,7 @@ class MatchMergeItem : public MergeItem {
 		}
 
 		virtual QString getMessage() const {
-			return QString("Merge in match %1 <-> %2").arg(mSourceId).arg(mTargetId);
+			return QString("Match ID conflict, ID already existed but match not the same: %1 <-> %2").arg(mSourceId).arg(mTargetId);
 		}
 
 		// TODO: replace by static QList so it doesn't need to be constructed all the time
