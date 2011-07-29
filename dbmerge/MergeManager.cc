@@ -15,7 +15,7 @@ MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) 
 	connect(mButtonBox, SIGNAL(accepted()), this, SLOT(accept()));
 	connect(mButtonBox, SIGNAL(rejected()), this, SLOT(reject()));
 
-	mItemList = new QTableWidget(0, 3);
+	mItemList = new QTableWidget(10, 3);
 	mItemList->setHorizontalHeaderLabels(QStringList() << tr("Type") << tr("Action") << tr("Message"));
 	mItemList->setColumnWidth(0, 50);
 	mItemList->setColumnWidth(1, 50);
@@ -50,8 +50,40 @@ void MergeManager::merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDat
 	}
 
 	foreach (Merger *merger, mMergers) {
+		merger->setMapper(&mMapper);
 		merger->merge(left.data(), right.data());
+
+		const QList<MergeItem *> itemlist = merger->items();
+
+		addItemsToTable(merger->items());
 	}
+}
+
+void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
+	/*
+	QList<MergeItem *>::const_iterator i = list.constBegin();
+	for (int counter = 0; i != list.constEnd(); ++counter, ++i) {
+
+	}
+	*/
+
+	qDebug() << "MergeManager::addItemsToTable: Going to add" << items.size() << "to table";
+
+	mItemList->setRowCount(items.size());
+
+	int row = 0;
+	foreach (const MergeItem *item, items) {
+		qDebug() << "Added: " << item->getMessage();
+
+		mItemList->setItem(row, 0, new QTableWidgetItem("Merge match"));
+		mItemList->setItem(row, 1, new QTableWidgetItem("No action"));
+		mItemList->setItem(row, 2, new QTableWidgetItem(item->getMessage()));
+
+		++row;
+	}
+
+	mItemList->resizeColumnToContents(0);
+	mItemList->resizeColumnToContents(1);
 }
 
 void MergeManager::pickDatabases() {

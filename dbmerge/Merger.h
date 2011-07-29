@@ -6,6 +6,8 @@
 
 #include "SQLDatabase.h"
 #include "MergeConflict.h"
+#include "MergeMapper.h"
+#include "MergeItem.h"
 
 class Merger : public QObject {
 		Q_OBJECT
@@ -15,14 +17,20 @@ class Merger : public QObject {
 		virtual ~Merger();
 
 	public:
+		virtual void setMapper(MergeMapper *mapper);
+
 		virtual void merge(SQLDatabase *left, SQLDatabase *right) = 0;
-		virtual QList<MergeConflict>& conflicts();
+		virtual const QList<MergeItem *>& items();
+		//virtual const QList<MergeConflict>& conflicts();
 		virtual const QStringList queries() const;
 		virtual void clear();
 
 	protected:
 		QStringList mQueries;
-		QList<MergeConflict> mConflicts;
+		//QList<MergeConflict> mConflicts;
+		QList<MergeItem *> mItems;
+
+		MergeMapper *mMapper;
 };
 
 #endif /* MERGER_H_ */

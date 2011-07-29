@@ -8,6 +8,7 @@
 #include <QList>
 
 #include "Merger.h"
+#include "MergeMapper.h"
 #include "SQLDatabase.h"
 
 class MergeManager : public QDialog {
@@ -25,16 +26,21 @@ class MergeManager : public QDialog {
 		// will run all the added mergers in FIFO sequence
 		void merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right);
 
+		void addItemsToTable(const QList<MergeItem *>& items);
+
 	private slots:
 		void pickDatabases();
 
 	private:
-		QList<Merger *> mMergers;
-
+		// widgets
 		QTableWidget *mItemList;
 		QDialogButtonBox *mButtonBox;
 
+		// merge fields
 		QSharedPointer<SQLDatabase> mMaster;
+		QList<Merger *> mMergers;
+
+		MergeMapper mMapper;
 };
 
 #endif /* MERGEMANAGER_H_ */
