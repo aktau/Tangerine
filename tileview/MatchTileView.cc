@@ -667,58 +667,11 @@ void MatchTileView::updateStatusBar() {
 }
 
 void MatchTileView::updateThumbnail(int tidx, int fcidx) {
-	if (tidx < 0 || tidx >= mNumThumbs) {
-		return;
-	}
-
-	s().tindices[tidx] = fcidx;
-
-	if (fcidx < 0 || fcidx >= mModel->size()) {
-		mThumbs[tidx]->setThumbnail();
-	}
-	else {
-		const IFragmentConf& match = mModel->get(fcidx);
-
-		//qDebug() << "MatchTileView::updateThumbnail: updating thumb" << tidx << "," << fcidx << "which contains" << match.getTargetId() << "and" << match.getSourceId();
-
-		//int duplicates = 0;
-		//QElapsedTimer timer;
-		//timer.start();
-
-		int duplicates = match.getInt("num_duplicates", 0);
-
-		//qDebug() << "MatchTileView::updateThumbnail: getting num_duplicates costs" << timer.elapsed() << "msec";
-
-		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), duplicates != 0);
-
-		if (mSelectionModel->isSelected(fcidx)) {
-			mThumbs[tidx]->select();
-		}
-
-		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
-				.arg(match.getTargetId())
-				.arg(match.getSourceId())
-				.arg(match.getString("error", ""))
-				.arg(match.getString("volume", ""));
-
-		if (duplicates != 0) {
-			tooltip += "<br /><b>Duplicates</b>: " + QString::number(duplicates);
-		}
-
-		QString comment = match.getString("comment", QString());
-
-		if (!comment.isEmpty()) {
-			tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + comment + "</span>";
-		}
-
-		mThumbs[tidx]->setToolTip(tooltip);
-
-		QApplication::processEvents();
-	}
+	updateThumbnailImageAndStatusOnly(tidx, fcidx);
+	updateThumbnailTooltip(tidx, fcidx);
 }
 
-void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx) {
+inline void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx) {
 	if (tidx < 0 || tidx >= mNumThumbs) return;
 
 	s().tindices[tidx] = fcidx;
@@ -747,7 +700,7 @@ void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx) {
 	}
 }
 
-void MatchTileView::updateThumbnailTooltip(int tidx, int fcidx) {
+inline void MatchTileView::updateThumbnailTooltip(int tidx, int fcidx) {
 	assert(!(tidx < 0 || tidx >= mNumThumbs));
 	assert(s().tindices[tidx] == fcidx);
 
@@ -782,6 +735,7 @@ void MatchTileView::updateThumbnailTooltip(int tidx, int fcidx) {
 		QString comment = match.getString("comment", QString());
 
 		if (!comment.isEmpty()) {
+			mThumbs[tidx]->setCommented(true);
 			tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + comment + "</span>";
 		}
 

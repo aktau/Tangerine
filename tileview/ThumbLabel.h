@@ -13,7 +13,7 @@ class ThumbLabel : public QLabel {
 		Q_OBJECT;
 
 	public:
-		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false), mIsDuplicate(false), mStatus(IMatchModel::UNKNOWN) {
+		ThumbLabel(int i, QWidget *parent = NULL) : QLabel(parent), idx(i), mSelected(false), mIsDuplicate(false), mHasComment(false), mStatus(IMatchModel::UNKNOWN) {
 			// ensure 100 MB of cache
 			QPixmapCache::setCacheLimit(102400);
 		}
@@ -27,25 +27,32 @@ class ThumbLabel : public QLabel {
 				mIsDuplicate = false;
 			}
 
-			setThumbnail(file, mStatus, mIsDuplicate);
+			setThumbnail(file, mStatus, mIsDuplicate, mHasComment);
 		}
 
-		void setThumbnail(const QString& file, IMatchModel::Status status, bool isDuplicate = false) {
+		void setThumbnail(const QString& file, IMatchModel::Status status, bool isDuplicate = false, bool hasComment = false) {
 			mSource = file;
 			mStatus = status;
 			mSelected = false;
 			mIsDuplicate = isDuplicate;
+			mHasComment = hasComment;
 
-			paintThumbnail();
-			paintStatus();
+			paintAll();
 		}
 
 		void setDuplicate(bool value) {
 			if (value != mIsDuplicate) {
 				mIsDuplicate = value;
 
-				paintThumbnail();
-				paintStatus();
+				paintAll();
+			}
+		}
+
+		void setCommented(bool value) {
+			if (value != mHasComment) {
+				mHasComment = value;
+
+				paintAll();
 			}
 		}
 
@@ -91,8 +98,18 @@ class ThumbLabel : public QLabel {
 		void doubleClicked(int i, QMouseEvent *event);
 
 	protected:
-		virtual void mousePressEvent(QMouseEvent *event) { emit clicked(idx, event); }
-		virtual void mouseDoubleClickEvent(QMouseEvent *event) { emit doubleClicked(idx, event); }
+		virtual void mousePressEvent(QMouseEvent *event) {
+			emit clicked(idx, event);
+		}
+		virtual void mouseDoubleClickEvent(QMouseEvent *event) {
+			emit doubleClicked(idx, event);
+		}
+
+		void paintAll() {
+			paintThumbnail();
+			paintIcons();
+			paintStatus();
+		}
 
 		void paintStatus() {
 			QPixmap p = *pixmap();
@@ -177,8 +194,35 @@ class ThumbLabel : public QLabel {
 				p = p.scaled(width() - spare, height() - spare, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 				painter.drawPixmap(0,0,p);
 
+				//QPixmap pix = QPixmap(":/rcc/svg/comment_bubbles.svg").scaledToWidth(32, Qt::SmoothTransformation);
+				//painter.drawPixmap(width() - 36 - 10, 15, pix);
+
 				setPixmap(final);
 			}
+		}
+
+		void paintIcons() {
+			if (!mHasComment) return;
+
+			QColor bgColor = QColor(0, 0, 0, 150);
+			int barSize = 20;
+			int iconSize = barSize - 4;
+
+			// paint icon sidebar
+			QPixmap final = *pixmap();
+			QPainter painter(&final);
+			painter.fillRect(width() - barSize, 0, barSize, height(), bgColor);
+
+			painter.setRenderHint(QPainter::Antialiasing, true);
+
+			QPixmap pix = QPixmap(":/rcc/svg/comment_bubbles.svg").scaledToWidth(iconSize, Qt::SmoothTransformation);
+			QPainter pixPainter(&pix);
+			pixPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+			pixPainter.fillRect(pix.rect(), Qt::white);
+
+			painter.drawPixmap(QPointF(width() - float(barSize + iconSize) / 2.0f, 15), pix);
+
+			setPixmap(final);
 		}
 
 	public:
@@ -187,6 +231,7 @@ class ThumbLabel : public QLabel {
 	private:
 		bool mSelected;
 		bool mIsDuplicate;
+		bool mHasComment;
 
 		QString mSource;
 
