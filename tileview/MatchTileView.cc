@@ -21,6 +21,9 @@
 #include "EmptyMatchModel.h"
 #include "ShowStatusDialog.h"
 
+#define QT_USE_FAST_CONCATENATION
+#define QT_USE_FAST_OPERATOR_PLUS
+
 using namespace thera;
 
 #define THUMB_WIDTH 722
@@ -715,6 +718,79 @@ void MatchTileView::updateThumbnail(int tidx, int fcidx) {
 	}
 }
 
+void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx) {
+	if (tidx < 0 || tidx >= mNumThumbs) return;
+
+	s().tindices[tidx] = fcidx;
+
+	if (fcidx < 0 || fcidx >= mModel->size()) {
+		mThumbs[tidx]->setThumbnail();
+	}
+	else {
+		const IFragmentConf& match = mModel->get(fcidx);
+
+		//qDebug() << "MatchTileView::updateThumbnail: updating thumb" << tidx << "," << fcidx << "which contains" << match.getTargetId() << "and" << match.getSourceId();
+
+		//QElapsedTimer timer;
+		//timer.start();
+
+		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
+		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), false);
+
+		if (mSelectionModel->isSelected(fcidx)) {
+			mThumbs[tidx]->select();
+		}
+
+		mThumbs[tidx]->setToolTip(QString());
+
+		QApplication::processEvents();
+	}
+}
+
+void MatchTileView::updateThumbnailTooltip(int tidx, int fcidx) {
+	assert(!(tidx < 0 || tidx >= mNumThumbs));
+	assert(s().tindices[tidx] == fcidx);
+
+	if (fcidx < 0 || fcidx >= mModel->size()) {
+		mThumbs[tidx]->setToolTip(QString());
+	}
+	else {
+		const IFragmentConf& match = mModel->get(fcidx);
+
+		//qDebug() << "MatchTileView::updateThumbnail: updating thumb" << tidx << "," << fcidx << "which contains" << match.getTargetId() << "and" << match.getSourceId();
+
+		//int duplicates = 0;
+		//QElapsedTimer timer;
+		//timer.start();
+
+		int duplicates = match.getInt("num_duplicates", 0);
+
+		//qDebug() << "MatchTileView::updateThumbnail: getting num_duplicates costs" << timer.elapsed() << "msec";
+
+		mThumbs[tidx]->setDuplicate(duplicates != 0);
+
+		QString tooltip = QString("<b>Target</b>: %1<br /><b>Source</b>: %2<br /><b>Error</b>: %3<br /><b>Volume</b>: %4")
+				.arg(match.getTargetId())
+				.arg(match.getSourceId())
+				.arg(match.getString("error", ""))
+				.arg(match.getString("volume", ""));
+
+		if (duplicates != 0) {
+			tooltip += "<br /><b>Duplicates</b>: " + QString::number(duplicates);
+		}
+
+		QString comment = match.getString("comment", QString());
+
+		if (!comment.isEmpty()) {
+			tooltip += "<br /><br /><span style=\"color:#FF0000;\"><b>Comment</b>: " + comment + "</span>";
+		}
+
+		mThumbs[tidx]->setToolTip(tooltip);
+
+		QApplication::processEvents();
+	}
+}
+
 void MatchTileView::setStatus(IMatchModel::Status status) {
 	foreach (int modelIndex, mSelectionModel->selectedIndexes()) {
 		IFragmentConf &c = mModel->get(modelIndex);
@@ -1207,7 +1283,17 @@ void MatchTileView::refresh() {
 
 		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
 		//qDebug() << "MatchTileView::refresh:" << i << ((max > i + new_pos) ? i + new_pos : -1);
-		updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
+		//updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
+		updateThumbnailImageAndStatusOnly(i, (max > i + new_pos) ? i + new_pos : -1);
+	}
+
+	qDebug() << "MatchTileView::refresh: updating all thumbnails image & status cost" << timer.restart() << "msec";
+
+	for (int i = 0; i < mNumThumbs; ++i) {
+		// abort because another call of refresh() has superseded this one
+		if (!busy) return;
+
+		updateThumbnailTooltip(i, (max > i + new_pos) ? i + new_pos : -1);
 	}
 
 	qDebug() << "MatchTileView::refresh: updating all thumbnails cost" << timer.elapsed() << "msec";

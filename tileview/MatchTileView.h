@@ -94,6 +94,8 @@ class MatchTileView : public QScrollArea {
 
 		void updateStatusBar();
 		void updateThumbnail(int tidx, int fcidx);
+		void updateThumbnailImageAndStatusOnly(int tidx, int fcidx);
+		void updateThumbnailTooltip(int tidx, int fcidx);
 		void setStatus(IMatchModel::Status status);
 
 		void sort(Qt::SortOrder order);

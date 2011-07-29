@@ -41,19 +41,23 @@ class ThumbLabel : public QLabel {
 		}
 
 		void setDuplicate(bool value) {
-			mIsDuplicate = value;
+			if (value != mIsDuplicate) {
+				mIsDuplicate = value;
 
-			paintThumbnail();
-			paintStatus();
+				paintThumbnail();
+				paintStatus();
+			}
 		}
 
 		void setStatus(IMatchModel::Status status) {
-			mStatus = status;
+			if (mStatus != status) {
+				mStatus = status;
 
-			// ugly-ish hack for when the thumb is selected, in which case we would have to blend the selection marker afterwards
-			unselect();
-			paintStatus();
-			select();
+				// ugly-ish hack for when the thumb is selected, in which case we would have to blend the selection marker afterwards
+				unselect();
+				paintStatus();
+				select();
+			}
 		}
 
 		void select() {
@@ -174,7 +178,6 @@ class ThumbLabel : public QLabel {
 				painter.drawPixmap(0,0,p);
 
 				setPixmap(final);
-
 			}
 		}
 
