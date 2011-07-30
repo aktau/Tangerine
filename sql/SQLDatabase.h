@@ -79,6 +79,7 @@ class SQLDatabase : public QObject {
 
 	protected:
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
+		virtual bool reopen();
 
 		virtual bool hasCorrectCapabilities() const;
 

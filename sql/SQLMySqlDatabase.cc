@@ -9,7 +9,7 @@ QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
 	// look for double pipes/'||' and turn them into CONCAT statements
 	QString newStatement = statement;
 	QRegExp rx("(?:(\\w*)\\s*\\|\\|\\s*(\\w*))+");
-	QSet<QString> set;
+	QStringList list;
 	int pos = 0;
 
 	while ((pos = rx.indexIn(statement, pos)) != -1) {
@@ -17,19 +17,15 @@ QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
 		QString c;
 
 		while (!(c = rx.cap(j++)).isEmpty()) {
-			set << c;
+			list << c;
 		}
-
-		QStringList list = set.toList();
 
 		newStatement = newStatement.replace(rx.cap(0), QString("CONCAT(%1)").arg(list.join(",")));
 
-		set.clear();
+		list.clear();
 
 		pos += rx.matchedLength();
 	}
-
-	QStringList list = set.toList();
 
 	//qDebug() <<  set << "\n\t" << QString("CONCAT(%1)").arg(list.join(","));
 	//qDebug() << statement << "\n\t" << newStatement;

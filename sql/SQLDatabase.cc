@@ -36,9 +36,22 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 			i.next();
 
 			if (i.value().isNull()) {
-				qDebug() << "SQLDatabase::getDb: pruned connection" << i.key() << "because it is no longer valid";
+				qDebug() << "SQLDatabase::getDb: pruned connection" << i.key() << "because it is no longer used by anybody";
 				i.remove();
 			}
+			else {
+				// since only opened connections can b e added to the active connections list,
+				// finding an unopened database here means it closed by some other means (broken pipe, ...)
+				// we should try to reopen and if that fails just remove the connection so that
+				// if the user tries to reconnect we don't return this dead connection
+				SQLDatabase *odb = i.value().data();
+				if (!odb->isOpen() && !odb->reopen()) {
+					qDebug() << "SQLDatabase::getDb: pruned connection" << i.key() << "because it is no longer open and cannot be reopened";
+					i.remove();
+				}
+			}
+
+
 			//else qDebug() << "SQLDatabase::getDb: the connection" << i.key() << "is still intact";
 		}
 
@@ -62,7 +75,7 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 				} break;
 
 				default: {
-					qDebug() << "SQLDatabase::getDb: database type unknown, returning unopened database";
+					qDebug() << "SQLDatabase::getDb: database type unknown, returning unopened dummy database";
 					db = QSharedPointer<SQLDatabase>(new SQLNullDatabase(parent));
 				} break;
 			}
@@ -166,6 +179,13 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 	}
 
 	return false;
+}
+
+// this method assumes every paramater for connection has already been set AND that the database has
+// been set up properly at least once (i.e.: it is dumb and for internal use)
+// return true for success and false for failure
+bool SQLDatabase::reopen() {
+	return QSqlDatabase::database(mConnectionName, true).isOpen();
 }
 
 QString SQLDatabase::connectionName() const {
