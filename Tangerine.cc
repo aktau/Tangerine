@@ -558,6 +558,8 @@ void Tangerine::databaseClosed() {
 	mSaveXMLAct->setEnabled(false);
 	mAddAttributeAct->setEnabled(false);
 	mRemoveAttributeAct->setEnabled(false);
+
+	updateStatusBar();
 }
 
 void Tangerine::databaseOpStarted(const QString& operation, int steps) {

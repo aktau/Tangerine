@@ -875,7 +875,7 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 	}
 }
 
-void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
+void MatchTileView::doubleClicked(int, QMouseEvent *) {
 #ifdef WITH_DETAILVIEW
 	int current = mSelectionModel->currentIndex();
 
@@ -884,6 +884,12 @@ void MatchTileView::doubleClicked(int idx, QMouseEvent *) {
 		mDetailView->show();
 
 		const IFragmentConf &c = mModel->get(current);
+
+		// check that the fragment is not invalid
+		if (c.index() < 0) return;
+		for (int i = 0; i < IFragmentConf::MAX_FRAGMENTS; ++i) {
+			if (c.mFragments[i] == -1) return;
+		}
 
 		//qDebug() << "MatchTileView::doubleClicked: current:" << current << "== idx:" << idx << "fragments" << c.getTargetId() << "and" << c.getSourceId();
 
