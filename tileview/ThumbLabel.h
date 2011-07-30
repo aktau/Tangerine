@@ -18,13 +18,13 @@ class ThumbLabel : public QLabel {
 			QPixmapCache::setCacheLimit(102400);
 		}
 
-		/**
-		 * keeps the old status
-		 */
+		// keeps the old status
 		void setThumbnail(const QString& file = QString()) {
+			// if the file is empty this functions like a reset
 			if (file.isEmpty()) {
 				mStatus = IMatchModel::UNKNOWN;
 				mIsDuplicate = false;
+				mHasComment = false;
 			}
 
 			setThumbnail(file, mStatus, mIsDuplicate, mHasComment);
