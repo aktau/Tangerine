@@ -8,6 +8,7 @@
 #include <QRegExp>
 
 #include "SQLFragmentConf.h"
+#include "InvalidFragmentConf.h"
 #include "SQLDatabase.h"
 #include "ModelParameters.h"
 
@@ -55,12 +56,12 @@ class MatchModel : public IMatchModel {
 		virtual bool setMaster(int master);
 
 	private:
-		thera::SQLFragmentConf& getSQL(int index);
+		thera::SQLFragmentConf *getSQL(int index);
 
-		void requestWindow(int windowIndex);
+		bool requestWindow(int windowIndex);
 		void requestRealSize();
 
-		void populateModel();
+		bool populateModel();
 
 		// these do NOT emit signals
 		void resetWindow();
@@ -87,6 +88,7 @@ class MatchModel : public IMatchModel {
 		ModelParameters mDelayedPar;
 
 		QList<thera::SQLFragmentConf> mMatches;
+		thera::InvalidFragmentConf mInvalidFragmentConf;
 
 		int mRealSize;
 		int mWindowSize, mNextWindowOffset, mWindowOffset;

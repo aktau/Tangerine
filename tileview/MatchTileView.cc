@@ -687,8 +687,14 @@ inline void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx
 		//QElapsedTimer timer;
 		//timer.start();
 
-		QString thumbFile = mThumbDir.absoluteFilePath(thumbName(match));
-		mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), false);
+		QString thumb = thumbName(match);
+		if (!thumb.isEmpty()) {
+			QString thumbFile = mThumbDir.absoluteFilePath(thumb);
+			mThumbs[tidx]->setThumbnail(thumbFile, (IMatchModel::Status) match.getString("status", "0").toInt(), false);
+		}
+		else {
+			mThumbs[tidx]->setThumbnail(QString(), IMatchModel::UNKNOWN);
+		}
 
 		if (mSelectionModel->isSelected(fcidx)) {
 			mThumbs[tidx]->select();

@@ -39,6 +39,7 @@ void MatchModel::setDatabase(SQLDatabase *db) {
 
 		if (mDb) {
 			connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(databaseModified()));
+			connect(mDb, SIGNAL(databaseClosed()), this, SLOT(databaseModified()));
 
 			if (!mDb->isOpen()) {
 				qDebug() << "MatchModel::setDatabase: Database was succesfully set, but it is still unopened";
@@ -73,7 +74,7 @@ int MatchModel::getWindowSize() const {
 	return mWindowSize;
 }
 
-void MatchModel::requestWindow(int windowIndex) {
+bool MatchModel::requestWindow(int windowIndex) {
 	if (windowIndex < 0) {
 		mWindowOffset = 0;
 		windowIndex = 0;
@@ -87,9 +88,16 @@ void MatchModel::requestWindow(int windowIndex) {
 	// gets overriden in populateModel, why bother?
 	//mWindowEnd = (windowIndex + 1) * mWindowSize;
 
-	populateModel();
+	/*
+	if (!populateModel()) {
+		// this really shouldn't happen, but it can if the database connection was unexpectedly closed for example
+		requestRealSize();
 
-	//qDebug("(2) Requested new window [old: %d, %d] [new: %d, %d], size: %d | offset = %d", mWindowBegin, mWindowEnd, windowIndex * mWindowSize + mWindowOffset, mWindowEnd, mWindowSize, mWindowOffset);
+		emit modelChanged();
+	}
+	*/
+
+	return populateModel();
 }
 
 bool MatchModel::isValidIndex(int index) const {
@@ -164,9 +172,15 @@ void MatchModel::genericFilter(const QString& key, const QString& filter) {
 void MatchModel::neighbours(int index, NeighbourMode mode, bool keepParameters) {
 	if (!mDb) return;
 
-	SQLFragmentConf& c = getSQL(index);
+	if (!isValidIndex(index)) {
+		qDebug() << "MatchModel::neighbours: index wasn't valid";
 
-	neighbours(c, mode, keepParameters);
+		return;
+	}
+
+	SQLFragmentConf *c = getSQL(index);
+
+	if (c) neighbours(*c, mode, keepParameters);
 }
 
 inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, NeighbourMode mode, bool keepParameters) {
@@ -260,10 +274,15 @@ void MatchModel::endBatchModification() {
 	}
 }
 
-thera::IFragmentConf& MatchModel::get(int index) {
-	return getSQL(index);
+IFragmentConf& MatchModel::get(int index) {
+	//qDebug() << "get:" << index;
+
+	SQLFragmentConf *conf = getSQL(index);
+
+	return (conf) ? static_cast<IFragmentConf&>(*conf) : static_cast<IFragmentConf&>(mInvalidFragmentConf);
 }
 
+/*
 inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 	//qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd << "| mMatches.size() =" << mMatches.size() << "and window size =" << mWindowSize;
 
@@ -275,6 +294,18 @@ inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 	//qDebug("MatchModel::getSQL: (%d - %d) %% %d = %d, ", index, mWindowOffset, mMatches.size(), (index - mWindowOffset) % mMatches.size());
 
 	return mMatches[(index - mWindowOffset) % mMatches.size()];
+}
+*/
+
+inline SQLFragmentConf *MatchModel::getSQL(int index) {
+	if (index < mWindowBegin || index > mWindowEnd) {
+		// if the index is outside of the window, request another window in which it fits
+		if (!requestWindow((index - mNextWindowOffset) / mWindowSize)) return NULL;
+	}
+
+	if (mMatches.isEmpty()) return NULL;
+
+	return &mMatches[(index - mWindowOffset) % mMatches.size()];
 }
 
 void MatchModel::setParameters(const ModelParameters& parameters) {
@@ -428,18 +459,42 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 	}
 }
 
-void MatchModel::populateModel() {
+bool MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
 	mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
+	if (mMatches.isEmpty()) {
+		if (mDb->detectClosedDb()) {
+			// emergency!
+			qDebug() << "MatchModel::populateModel: database was apparently closed by an external factor";
+
+			QTimer::singleShot(0, mDb, SLOT(close()));
+
+			return false;
+		}
+		else if (mRealSize != 0) {
+			// let's hope not receiving anything was the intention, still going to print out to easily detect unwanted errors
+			// it shouldn't be frequent
+			qDebug() << "MatchModel::populateModel: database still opened but getMatches() returned 0 matches and the real amount of matches was"
+				"not 0, was this intentional? This could lead to segmentation faults";
+
+			QTimer::singleShot(0, mDb, SLOT(close()));
+
+			// for now we return false on this
+			return false;
+		}
+	}
+
 	// without a window
 	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
 	//mRealSize = mMatches.size();
 
 	qDebug() << "MatchModel::populateModel: Done repopulating model," << timer.elapsed() << "milliseconds";
+
+	return true;
 }
 
 void MatchModel::requestRealSize() {
@@ -448,7 +503,7 @@ void MatchModel::requestRealSize() {
 
 	mRealSize = mDb->getNumberOfMatches(mPar.filter);
 
-	qDebug() << "MatchModel::populateModel: Get # of matches," << timer.elapsed() << "milliseconds [result" << mRealSize << "matches]";
+	qDebug() << "MatchModel::requestRealSize: Get # of matches," << timer.elapsed() << "milliseconds [result" << mRealSize << "matches]";
 }
 
 void MatchModel::resetWindow() {
@@ -540,5 +595,5 @@ void MatchModel::databaseModified() {
 		emit modelChanged();
 	}
 
-	qDebug() << "MatchModel::databaseModified: apparently, the database was modified, now available:" << size();
+	qDebug() << "MatchModel::databaseModified: the database was modified, now available:" << size();
 }

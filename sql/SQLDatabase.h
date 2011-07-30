@@ -25,6 +25,7 @@ class SQLDatabase : public QObject {
 
 	public:
 		bool isOpen() const;
+		virtual bool detectClosedDb() const; // a special routine that will detect closing of the connection even if the normal isOpen() call wouldn't, is more expensive though
 
 		// reads connection data from a .dbd file describing the database to connect to
 		// if the file is .xml or .dbd it will be read as a database connection parameters description
@@ -77,6 +78,9 @@ class SQLDatabase : public QObject {
 		void matchCountChanged();
 		void matchFieldsChanged();
 
+	public slots:
+		void close();
+
 	protected:
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 		virtual bool reopen();
@@ -90,11 +94,11 @@ class SQLDatabase : public QObject {
 		virtual bool transaction() const;
 		virtual bool commit() const;
 		virtual void setPragmas() = 0;
+		virtual void setConnectOptions() const;
 
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 
 		QSqlDatabase database() const;
-		void close();
 		void reset();
 		void setup(const QString& schemaFile);
 

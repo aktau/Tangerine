@@ -66,6 +66,12 @@ void SQLMySqlDatabase::setPragmas() {
 
 }
 
+void SQLMySqlDatabase::setConnectOptions() const {
+	//database().setConnectOptions("MYSQL_OPT_RECONNECT=1");
+
+	//qDebug("SQLMySqlDatabase::setConnectOptions: tried to set connection options");
+}
+
 QSet<QString> SQLMySqlDatabase::tableFields(const QString& tableName) const {
 	QSet<QString> fields;
 
@@ -88,3 +94,17 @@ QSet<QString> SQLMySqlDatabase::tableFields(const QString& tableName) const {
 
 	return fields;
 }
+
+// efficient reconnection code from here: http://lists.qt.nokia.com/pipermail/qt-interest/2009-September/012796.html
+/*
+QVariant v = db.driver()->handle();
+if( qstrcmp( v.typeName(), "MYSQL*" ) == 0 )
+{
+     MYSQL *handle = *static_cast<MYSQL **>( v.data() );
+     if( handle != 0 )
+     {
+	my_bool reconnect = 1;
+	mysql_options( handle, MYSQL_OPT_RECONNECT, &reconnect );
+     }
+}
+*/

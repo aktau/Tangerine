@@ -14,6 +14,7 @@ class SQLMySqlDatabase : public SQLDatabase {
 	protected:
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual void setPragmas();
+		virtual void setConnectOptions() const;
 		virtual bool transaction() const;
 		virtual bool commit() const;
 		virtual QSet<QString> tableFields(const QString& tableName) const;

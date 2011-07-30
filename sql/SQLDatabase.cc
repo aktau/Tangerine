@@ -142,6 +142,8 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 			db.setPassword(pass);
 		}
 
+		setConnectOptions();
+
 		if (db.open()) {
 			if (!hasCorrectCapabilities()) {
 				qDebug() << "SQLDatabase::open:" << mType << "Did not have all the correct capabilities, certain methods may fail";
@@ -194,7 +196,7 @@ QString SQLDatabase::connectionName() const {
 
 SQLDatabase::SQLDatabase(QObject *parent, const QString& type, bool trackHistory)
 	: QObject(parent), mType(type), mTrackHistory(trackHistory) {
-	QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
+	//QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
 }
 
@@ -225,6 +227,11 @@ SQLDatabase& SQLDatabase::operator=(const SQLDatabase& that) {
 
 bool SQLDatabase::isOpen() const {
 	return database().isValid() && database().isOpen();
+}
+
+bool SQLDatabase::detectClosedDb() const {
+	// TODO: build real detection code for MySQL (i.e.: prepare a statement and see if it errors out)
+	return isOpen();
 }
 
 // the default implementation does nothing
@@ -310,6 +317,10 @@ bool SQLDatabase::transaction() const {
 
 bool SQLDatabase::commit() const {
 	return database().commit();
+}
+
+void SQLDatabase::setConnectOptions() const {
+	// the default is no connection options
 }
 
 void SQLDatabase::loadFromXML(const QString& XMLFile) {
@@ -974,6 +985,9 @@ void SQLDatabase::createHistory(const QString& table) {
 
 
 void SQLDatabase::close() {
+	// resource cleanup in any case, after this function is done we should be 100% sure that the database is closed and the resources are cleaned up
+	resetQueries();
+
 	if (isOpen()) {
 		qDebug() << "SQLDatabase::close: Closing database with connection name" << database().connectionName();
 
