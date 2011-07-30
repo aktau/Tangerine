@@ -6,11 +6,11 @@
 namespace thera {
 	class InvalidFragmentConf : public IFragmentConf  {
 		public:
-			InvalidFragmentConf() { }
+			InvalidFragmentConf() { for (int i = 0; i < MAX_FRAGMENTS; ++i) mFragments[i] = -1; }
 			virtual ~InvalidFragmentConf() { }
 
 		public:
-			virtual int index() const { qDebug() << "InvalidFragmentConf::index: tried to access index"; return 0; }
+			virtual int index() const { qDebug() << "InvalidFragmentConf::index: tried to access index"; return -1; }
 			virtual void updateID(int id) { qDebug() << "InvalidFragmentConf::updateID: tried to set id" << id; }
 
 			virtual bool setMetaData(const QString &field, const QString &value) const { qDebug() << "InvalidFragmentConf::setMetaData: " << field << "|" << value; return false; }
