@@ -4,6 +4,7 @@
 
 namespace Merge {
 	typedef enum {
+		NONE,
 		CHOOSE_MASTER,
 		CHOOSE_SLAVE,
 		PREFER_USER,

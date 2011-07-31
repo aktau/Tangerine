@@ -98,6 +98,11 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 
 				continue;
 			}
+			else {
+				// this means the current item on the left matches on on the right
+				// and has the same ID, nothing needs to happen
+				continue;
+			}
 		}
 
 		// this means the current item from right doesn't match any in left
@@ -115,18 +120,21 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 			}
 
 			mItems << new MatchMergeItem(rightConf.getSourceId(), rightConf.getTargetId(), xf);
+			AssignIdAction action;
+			action.visit(mItems.last());
 		}
 	}
 }
 
 inline int MatchMerger::idOfIdenticalMatch(const thera::SQLFragmentConf& conf , const FragConfList& list, float threshold) const {
 	// compare based on XF, the fragments are already the same
-
 	// TODO: detect the case in which fragments are reversed and then complain about it (might be slow and shouldn't happen though)
+	// TODO: remove "norms", it's just for debugging purposes
 
 	const XF baseXF = conf.mXF;
 
 	QList<float> norms;
+	norms.reserve(list.size());
 
 	float smallestNorm = std::numeric_limits<float>::max();
 	int id = -1;
@@ -136,7 +144,7 @@ inline int MatchMerger::idOfIdenticalMatch(const thera::SQLFragmentConf& conf , 
 
 		if (norms.last() < smallestNorm) {
 			smallestNorm = norms.last();
-			id  = possibleConf->index();
+			id = possibleConf->index();
 		}
 	}
 

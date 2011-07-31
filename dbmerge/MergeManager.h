@@ -2,14 +2,17 @@
 #define MERGEMANAGER_H_
 
 #include <QDialog>
-#include <QTableWidget>
+#include <QPushButton>
 #include <QDialogButtonBox>
 #include <QSharedPointer>
 #include <QList>
 
+#include "SQLDatabase.h"
+
+#include "MergeTableWidget.h"
 #include "Merger.h"
 #include "MergeMapper.h"
-#include "SQLDatabase.h"
+#include "ActionFactory.h"
 
 class MergeManager : public QDialog {
 		Q_OBJECT
@@ -23,24 +26,42 @@ class MergeManager : public QDialog {
 		void addMerger(Merger *merger);
 
 	protected:
-		// will run all the added mergers in FIFO sequence
-		void merge(QSharedPointer<SQLDatabase> left, QSharedPointer<SQLDatabase> right);
+		void merge();
 
 		void addItemsToTable(const QList<MergeItem *>& items);
 
 	private slots:
 		void pickDatabases();
+		void pickAction(QTableWidgetItem *item);
+
+		void goBackward();
+		void goForward();
+
+		void updateProgressButtons();
+
+	private:
+		bool isValidPhase() const;
+		bool canGoBack() const;
+		bool canAdvance() const;
+		bool haveDatabases() const;
 
 	private:
 		// widgets
-		QTableWidget *mItemList;
+		//QTableWidget *mItemList;
+		MergeTableWidget *mItemList;
 		QDialogButtonBox *mButtonBox;
 
+		QPushButton *mBackwardButton;
+		QPushButton *mForwardButton;
+
 		// merge fields
-		QSharedPointer<SQLDatabase> mMaster;
+		QSharedPointer<SQLDatabase> mLeft, mRight;
 		QList<Merger *> mMergers;
 
 		MergeMapper mMapper;
+		ActionFactory mActionFactory;
+
+		int mCurrentPhase;
 };
 
 #endif /* MERGEMANAGER_H_ */
