@@ -319,6 +319,58 @@ bool SQLDatabase::commit() const {
 	return database().commit();
 }
 
+thera::SQLFragmentConf SQLDatabase::addMatch(const QString& sourceName, const QString& targetName, const thera::XF& xf, int id) {
+	const QString queryKey = (id == -1) ? "addMatchNoId" : "addMatchWithId";
+	const QString queryString = (id == -1)
+			?
+			"INSERT INTO matches (source_id, source_name, target_id, target_name, transformation) "
+			"VALUES (:source_id, :source_name, :target_id, :target_name, :transformation)"
+			:
+			"INSERT INTO matches (match_id, source_id, source_name, target_id, target_name, transformation) "
+			"VALUES (:match_id, :source_id, :source_name, :target_id, :target_name, :transformation)";
+
+	QSqlQuery &query = getOrElse(queryKey, queryString);
+
+	QString xfs;
+
+	for (int col = 0; col < 4; ++col) {
+		for (int row = 0; row < 4; ++row) {
+			xfs += QString("%1 ").arg(xf[4 * row + col], 0, 'e', 20);
+		}
+	}
+
+	if (id == -1) query.bindValue(":match_id", id);
+	query.bindValue(":source_id", 0); // TODO: not use dummy value
+	query.bindValue(":source_name", sourceName);
+	query.bindValue(":target_id", 0); // TODO: not use dummy value
+	query.bindValue(":target_name", targetName);
+	query.bindValue(":transformation", xfs);
+
+	SQLDatabase *db = NULL;
+	int realId = -1;
+	int fragments[IFragmentConf::MAX_FRAGMENTS];
+
+	if (query.exec()) {
+		db = this;
+		realId = query.lastInsertId().toInt();
+
+		fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+		fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+	}
+	else {
+		qDebug() << "SQLDatabase::addMatch: could not insert match record, returning invalid SQLFragmentConf:" << query.lastError();
+
+		fragments[IFragmentConf::SOURCE] = -1;
+		fragments[IFragmentConf::TARGET] = -1;
+	}
+
+	if (id != -1 && realId != id) {
+		qDebug() << "SQLDatabase::addMatch: the inserted id was valid but differed from the requested id. Id" << id << "vs requested id" << realId;
+	}
+
+	return SQLFragmentConf(db, realId, fragments, 1.0f, xf);
+}
+
 void SQLDatabase::setConnectOptions() const {
 	// the default is no connection options
 }

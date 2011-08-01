@@ -69,6 +69,15 @@ class SQLDatabase : public QObject {
 
 		int matchCount() const;
 
+		virtual bool transaction() const;
+		virtual bool commit() const;
+
+		// if the 'id' parameters is -1, a new id is created
+		//		WARNING: if an id is specified and a configuration with the same id already existed, the results are UNDEFINED
+		// returns the fragment conf of the inserted match
+		// the fragment conf will be invalid if the query failed (index == -1)
+		virtual thera::SQLFragmentConf addMatch(const QString& sourceName, const QString& targetName, const thera::XF& xf, int id = -1);
+
 	signals:
 		void databaseOpened();
 		void databaseClosed();
@@ -89,10 +98,7 @@ class SQLDatabase : public QObject {
 
 		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
-		//virtual FieldType fieldType(const QString& fieldName) const;
 
-		virtual bool transaction() const;
-		virtual bool commit() const;
 		virtual void setPragmas() = 0;
 		virtual void setConnectOptions() const;
 
@@ -108,6 +114,9 @@ class SQLDatabase : public QObject {
 
 		// only for use in getDb
 		void setConnectionName(const QString& connectionName);
+
+		// fetches a specific query by key and makes it if it doesn't exist
+		QSqlQuery& getOrElse(const QString& key, const QString& queryString);
 
 	protected slots:
 		virtual void resetQueries();
@@ -165,19 +174,22 @@ inline bool SQLDatabase::matchHasField(const QString& field) const {
 	return mMatchFields.contains(field.toLower());
 }
 
-template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
-	const QString queryKey = field % "update";
+inline QSqlQuery& SQLDatabase::getOrElse(const QString& key, const QString& queryString) {
+	FieldQueryMap::const_iterator i = mFieldQueryMap.constFind(key);
 
-	if (!mFieldQueryMap.contains(queryKey)) {
-		// doesn't exist yet, make and insert
-		QSqlQuery *q = new QSqlQuery(database());
+	if (i == mFieldQueryMap.constEnd()) {
+		QSqlQuery *query = new QSqlQuery(database());
 
-		q->prepare(QString("UPDATE %1 SET %1 = :value WHERE match_id = :match_id").arg(field));
+		query->prepare(queryString);
 
-		mFieldQueryMap.insert(queryKey, q);
+		i = mFieldQueryMap.insert(key, query);
 	}
 
-	QSqlQuery &query = *mFieldQueryMap.value(queryKey);
+	return *(i.value());
+}
+
+template<typename T> inline void SQLDatabase::matchSetValue(int id, const QString& field, const T& value) {
+	QSqlQuery &query = getOrElse(field % "update", QString("UPDATE %1 SET %1 = :value WHERE match_id = :match_id").arg(field));
 
 	query.bindValue(":match_id", id);
 	query.bindValue(":value", QVariant(value).toString());
@@ -196,18 +208,7 @@ template<typename T> inline void SQLDatabase::matchSetValue(int id, const QStrin
 }
 
 template<typename T> inline void SQLDatabase::matchAddHistoryRecord(int id, const QString& field, const T& value) {
-	const QString queryKey = field % "history";
-
-	if (!mFieldQueryMap.contains(queryKey)) {
-		// doesn't exist yet, make and insert
-		QSqlQuery *q = new QSqlQuery(database());
-
-		q->prepare(QString("INSERT INTO %1_history (timestamp, user_id, match_id, %1) VALUES (:timestamp, :user_id, :match_id, :value)").arg(field));
-
-		mFieldQueryMap.insert(queryKey, q);
-	}
-
-	QSqlQuery &query = *mFieldQueryMap.value(queryKey);
+	QSqlQuery &query = getOrElse(field % "history", QString("INSERT INTO %1_history (timestamp, user_id, match_id, %1) VALUES (:timestamp, :user_id, :match_id, :value)").arg(field));
 
 	query.bindValue(":timestamp", QDateTime::currentDateTime().toTime_t());
 	query.bindValue(":user_id", 0);
