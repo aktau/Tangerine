@@ -5,6 +5,7 @@
 #include <QPushButton>
 #include <QDialogButtonBox>
 #include <QSharedPointer>
+#include <QLineEdit>
 #include <QList>
 
 #include "SQLDatabase.h"
@@ -38,6 +39,7 @@ class MergeManager : public QDialog {
 		void goForward();
 
 		void updateProgressButtons();
+		void updateDbInfo();
 
 	private:
 		bool isValidPhase() const;
@@ -53,6 +55,12 @@ class MergeManager : public QDialog {
 
 		QPushButton *mBackwardButton;
 		QPushButton *mForwardButton;
+
+		QPushButton *mMasterDbButton;
+		QPushButton *mSlaveDbButton;
+
+		QLineEdit *mMasterDbInfo;
+		QLineEdit *mSlaveDbInfo;
 
 		// merge fields
 		QSharedPointer<SQLDatabase> mLeft, mRight;

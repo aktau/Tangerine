@@ -12,6 +12,7 @@ class MergeAction {
 		MergeAction() { }
 		virtual ~MergeAction() { }
 
+		virtual MergeAction *clone() const = 0;
 		virtual Merge::Action type() const = 0;
 		virtual QString description() const = 0;
 		virtual QWidget *createWidget() const { return NULL; };
@@ -20,6 +21,7 @@ class MergeAction {
 };
 
 class NoAction : public MergeAction {
+	MergeAction *clone() const { return new NoAction(*this); }
 	Merge::Action type() const { return Merge::NONE; }
 	QString description() const { return "No action"; }
 
@@ -32,22 +34,40 @@ class SimpleMergeAction : public MergeAction {
 
 class ChooseMasterAction : public SimpleMergeAction {
 	public:
+		MergeAction *clone() const { return new ChooseMasterAction(*this); }
 		Merge::Action type() const { return Merge::CHOOSE_MASTER; }
 		QString description() const { return "Choose master"; }
 
 		void visit(MergeItem *item) const { item->accept(this); }
 };
 
-class AssignIdAction : public SimpleMergeAction {
+class DontMergeAction : public SimpleMergeAction {
 	public:
-		Merge::Action type() const { return Merge::ASSIGN_NEW_ID; }
-		QString description() const { return "Assign a new (random) ID"; }
+		MergeAction *clone() const { return new DontMergeAction(*this); }
+		Merge::Action type() const { return Merge::DONT_MERGE; }
+		QString description() const { return "Don't merge"; }
 
 		void visit(MergeItem *item) const { item->accept(this); }
 };
 
+class AssignIdAction : public SimpleMergeAction {
+	public:
+		AssignIdAction() : mNewId(0) { }
+		AssignIdAction(int newId) : mNewId(newId) { }
+
+		MergeAction *clone() const { return new AssignIdAction(*this); }
+		Merge::Action type() const { return Merge::ASSIGN_NEW_ID; }
+		QString description() const { return QString("Assign a new (random) Id: %1").arg(mNewId); }
+
+		void visit(MergeItem *item) const { item->accept(this); }
+
+	private:
+		int mNewId;
+};
+
 class PreferUserAction : public MergeAction {
 	public:
+		MergeAction *clone() const { return new PreferUserAction(*this); }
 		Merge::Action type() const { return Merge::PREFER_USER; }
 		QString description() const { return "Prefer user"; }
 

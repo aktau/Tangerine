@@ -18,7 +18,7 @@ class ActionFactory {
 
 		// ownership is transferred to the caller
 		MergeAction *createAction(Merge::Action type);
-		QList<MergeAction *> createActions(const QList<Merge::Action>& typeList);
+		QList<MergeAction *> createActions(const QList<Merge::Action>& typeList, MergeAction *insertAction = NULL); // the insert action is inserted in the place where a "default" action would otherwise be inserted, this is for convenience
 
 	protected:
 		typedef QMap<Merge::Action, const MergeAction *> ConstActionMap;

@@ -12,7 +12,7 @@ class MatchMergeItem : public MergeItem {
 		MatchMergeItem(const QString& sourceId, const QString& targetId, const QString& xfString)
 			: mSourceId(sourceId), mTargetId(targetId), mXFString(xfString) { }
 
-		virtual QString getMessage() const {
+		virtual QString message() const {
 			return QString("Match ID conflict, ID already existed but match not the same: %1 <-> %2").arg(mSourceId).arg(mTargetId);
 		}
 
@@ -31,11 +31,11 @@ class MatchMergeItem : public MergeItem {
 					return;
 			}
 
-			mCurrentAction = action->type();
+			store(action);
 		}
 
 		virtual QString getQuery() const {
-			if (mCurrentAction == Merge::ASSIGN_NEW_ID) {
+			if (currentActionType() == Merge::ASSIGN_NEW_ID) {
 				return QString(
 					"INSERT INTO matches (source_id, source_name, target_id, target_name, transformation) "
 					"VALUES (0, %1, 0, %2, %3)"

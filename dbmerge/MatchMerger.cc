@@ -120,8 +120,8 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 			}
 
 			mItems << new MatchMergeItem(rightConf.getSourceId(), rightConf.getTargetId(), xf);
-			AssignIdAction action;
-			action.visit(mItems.last());
+			//AssignIdAction action(0xDEADBEEF);
+			//action.visit(mItems.last());
 		}
 	}
 }

@@ -3,6 +3,9 @@
 #include <QMouseEvent>
 #include <QDebug>
 
+#include "MergeItem.h"
+#include "MergeAction.h"
+
 MergeTableWidget::MergeTableWidget(QWidget *parent) : QTableWidget(parent), mClickableColumn(-1) { init(); }
 
 MergeTableWidget::MergeTableWidget(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent), mClickableColumn(-1) { init(); }
@@ -19,6 +22,16 @@ void MergeTableWidget::setClickableColumn(int column) {
 
 int MergeTableWidget::clickableColumn() const {
 	return mClickableColumn;
+}
+
+void MergeTableWidget::setRow(int row, const MergeItem *item) {
+	const MergeAction *action = item->currentAction();
+	QTableWidgetItem *actionDescription = new QTableWidgetItem(action->description());
+	actionDescription->setForeground((action->type() == Merge::NONE) ? QBrush(Qt::red) : QBrush(Qt::green));
+
+	setItem(row, 0, new QTableWidgetItem("Merge match"));
+	setItem(row, 1, actionDescription);
+	setItem(row, 2, new QTableWidgetItem(item->message()));
 }
 
 void MergeTableWidget::mouseMoveEvent(QMouseEvent *event) {

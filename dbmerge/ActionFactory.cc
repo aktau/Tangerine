@@ -51,7 +51,7 @@ MergeAction *ActionFactory::createAction(Merge::Action type) {
 		case Merge::PREFER_USER: return new NoAction;
 		case Merge::MOST_RECENT: return new NoAction;
 		case Merge::ASSIGN_NEW_ID: return new AssignIdAction;
-		case Merge::DONT_MERGE: return new NoAction;
+		case Merge::DONT_MERGE: return new DontMergeAction;
 
 		default:
 			qDebug() << "ActionFactory::createAction: MATCHTYPE NOT RECOGNIZED" << type;
@@ -59,11 +59,16 @@ MergeAction *ActionFactory::createAction(Merge::Action type) {
 	}
 }
 
-QList<MergeAction *> ActionFactory::createActions(const QList<Merge::Action>& typeList) {
+QList<MergeAction *> ActionFactory::createActions(const QList<Merge::Action>& typeList, MergeAction *insertAction) {
 	QList<MergeAction *> actionList;
 
 	foreach (Merge::Action type, typeList) {
-		actionList << createAction(type);
+		if (insertAction && insertAction->type() == type) {
+			actionList << insertAction;
+		}
+		else {
+			actionList << createAction(type);
+		}
 	}
 
 	return actionList;

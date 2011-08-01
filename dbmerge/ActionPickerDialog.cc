@@ -2,34 +2,23 @@
 
 #include <QtGui>
 
-ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f) {
+ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f), mActionBox(NULL) {
 	mButtonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
 
-	QGridLayout *grid = new QGridLayout;
+	//QGridLayout *grid = new QGridLayout;
 
-	QGroupBox *groupBox = new QGroupBox(tr("All possible actions"));
+	mGroupBox = new QGroupBox(tr("All possible actions"));
 
-	/*
-	QRadioButton *radio1 = new QRadioButton(tr("&Radio button 1"));
-	QRadioButton *radio2 = new QRadioButton(tr("R&adio button 2"));
-	QRadioButton *radio3 = new QRadioButton(tr("Ra&dio button 3"));
-	*/
+	//mActionBox = new QVBoxLayout;
 
-	mActionBox = new QVBoxLayout;
+	//mActionBox->addStretch(1);
 
-	/*
-	mActionBox->addWidget(radio1);
-	mActionBox->addWidget(radio2);
-	mActionBox->addWidget(radio3);
-	*/
-	mActionBox->addStretch(1);
+	//groupBox->setLayout(mActionBox);
 
-	groupBox->setLayout(mActionBox);
-
-	grid->addWidget(groupBox, 0, 0);
+	//grid->addWidget(mGroupBox, 0, 0);
 
 	QVBoxLayout *layout = new QVBoxLayout;
-	layout->addWidget(groupBox);
+	layout->addWidget(mGroupBox);
 	layout->addWidget(mButtonBox);
 
 	connect(mButtonBox, SIGNAL(accepted()), this, SLOT(accept()));
@@ -44,14 +33,46 @@ ActionPickerDialog::~ActionPickerDialog() {
 }
 
 void ActionPickerDialog::setActions(const QList<MergeAction *>& actions) {
-	mActions = actions;
+	//qDebug() << "ActionPickerDialog::setActions:";
+	//qDebug() << actions;
 
-	foreach (MergeAction *action, mActions) {
+	delete mActionBox;
+	mActionBox = new QVBoxLayout;
+
+	foreach (MergeAction *action, actions) {
 		QRadioButton *radio = new QRadioButton(action->description());
 		mActionBox->addWidget(radio);
+
+		mActionMap << ButtonActionPair(radio, action);
 	}
+
+	// make sure at least one is checked
+	mActionMap.first().first->setChecked(true);
+
+	mGroupBox->setLayout(mActionBox);
+
+	//qDebug() << "ActionPickerDialog::setActions: done";
+}
+
+void ActionPickerDialog::setDefaultAction(const MergeAction *action) {
+	foreach (ButtonActionPair pair, mActionMap) {
+		if (pair.second == action) {
+			pair.first->setChecked(true);
+			return;
+		}
+	}
+
+	qDebug() << "ActionPickerDialog::setDefaultAction: action wasn't encountered among the already instantiated actions";
 }
 
 MergeAction *ActionPickerDialog::chosenAction() const {
+	foreach (ButtonActionPair pair, mActionMap) {
+		if (pair.first->isChecked()) {
+			return pair.second;
+		}
+	}
 
+	qDebug() << "ActionPickerDialog::setDefaultAction: no check action was found! Returning NULL (which will probably cause problems)";
+
+	return NULL;
 }

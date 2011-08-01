@@ -3,6 +3,8 @@
 
 #include <QTableWidget>
 
+class MergeItem;
+
 class MergeTableWidget : public QTableWidget {
 		Q_OBJECT
 
@@ -13,6 +15,8 @@ class MergeTableWidget : public QTableWidget {
 
 		int clickableColumn() const;
 		void setClickableColumn(int column);
+
+		void setRow(int row, const MergeItem *item);
 
 	protected:
 		void mouseMoveEvent(QMouseEvent *event);

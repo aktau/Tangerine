@@ -31,7 +31,7 @@ MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) 
 	connect(mButtonBox, SIGNAL(accepted()), this, SLOT(accept()));
 	connect(mButtonBox, SIGNAL(rejected()), this, SLOT(reject()));
 
-	mItemList = new MergeTableWidget(1, 3);
+	mItemList = new MergeTableWidget(0, 3);
 	mItemList->setHorizontalHeaderLabels(QStringList() << tr("Type") << tr("Action") << tr("Message"));
 	mItemList->setColumnWidth(0, 50);
 	mItemList->setColumnWidth(1, 50);
@@ -46,7 +46,33 @@ MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) 
 
 	connect(mItemList, SIGNAL(itemDoubleClicked(QTableWidgetItem *)), this, SLOT(pickAction(QTableWidgetItem *)));
 
+	// showing which databases are selected
+	QWidget *databaseChooseWidget = new QWidget;
+	QGridLayout *formLayout = new QGridLayout;
+
+	mMasterDbButton = new QPushButton(QIcon(":/rcc/fatcow/32x32/folder_explore.png"), QString());
+	connect(mMasterDbButton, SIGNAL(clicked()), this, SLOT(pickDatabases()));
+
+	mSlaveDbButton = new QPushButton(QIcon(":/rcc/fatcow/32x32/folder_explore.png"), QString());
+	connect(mSlaveDbButton, SIGNAL(clicked()), this, SLOT(pickDatabases()));
+
+	mMasterDbInfo = new QLineEdit(tr(""));
+	mMasterDbInfo->setEnabled(false);
+
+	mSlaveDbInfo = new QLineEdit(tr(""));
+	mSlaveDbInfo->setEnabled(false);
+
+	formLayout->addWidget(new QLabel("Master database:"), 0, 0);
+	formLayout->addWidget(mMasterDbInfo, 0, 1);
+	formLayout->addWidget(mMasterDbButton , 0, 2);
+	formLayout->addWidget(new QLabel("Slave database:"), 1, 0);
+	formLayout->addWidget(mSlaveDbInfo, 1, 1);
+	formLayout->addWidget(mSlaveDbButton, 1, 2);
+
+	databaseChooseWidget->setLayout(formLayout);
+
 	QVBoxLayout *layout = new QVBoxLayout;
+	layout->addWidget(databaseChooseWidget);
 	layout->addWidget(mItemList);
 	layout->addWidget(mButtonBox);
 
@@ -54,6 +80,9 @@ MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) 
 	setLayout(layout);
 
 	setWindowTitle(tr("Merge databases"));
+
+	updateDbInfo();
+	updateProgressButtons();
 }
 
 MergeManager::~MergeManager() {
@@ -92,11 +121,16 @@ void MergeManager::merge() {
 void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
 	qDebug() << "MergeManager::addItemsToTable: Going to add" << items.size() << "to table";
 
+	mItemList->clearContents();
+
 	mItemList->setRowCount(items.size());
 
 	int row = 0;
 	foreach (const MergeItem *item, items) {
-		const MergeAction *action = mActionFactory.getConstAction(item->getCurrentAction());
+		mItemList->setRow(row++, item);
+		//const MergeAction *action = mActionFactory.getConstAction(item->getCurrentAction());
+		/*
+		const MergeAction *action = item->currentAction();
 
 		mItemList->setItem(row, 0, new QTableWidgetItem("Merge match"));
 
@@ -104,9 +138,10 @@ void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
 		actionDescription->setForeground((action->type() == Merge::NONE) ? QBrush(Qt::red) : QBrush(Qt::green));
 		mItemList->setItem(row, 1, actionDescription);
 
-		mItemList->setItem(row, 2, new QTableWidgetItem(item->getMessage()));
+		mItemList->setItem(row, 2, new QTableWidgetItem(item->message()));
 
 		++row;
+		*/
 	}
 
 	mItemList->resizeColumnToContents(0);
@@ -115,6 +150,26 @@ void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
 }
 
 void MergeManager::pickDatabases() {
+	bool pickOnlyOne = false;
+
+	int i = 0;
+
+	//QPushButton *button = qobject_cast<QPushButton *>(sender());
+
+	if (sender() == mMasterDbButton) {
+		i = 0;
+		pickOnlyOne = true;
+	}
+	else if (sender() == mSlaveDbButton) {
+		i = 1;
+		pickOnlyOne = true;
+	}
+	else {
+		if (!mLeft.isNull() && mLeft->isOpen()) {
+			++i;
+		}
+	}
+
 	QSettings settings;
 	QString lastMatchDb = settings.value(SETTINGS_DB_LASTMATCHDB_KEY).toString();
 
@@ -122,17 +177,6 @@ void MergeManager::pickDatabases() {
 		QFileInfo fi(lastMatchDb);
 		lastMatchDb = fi.dir().path();
 	}
-
-	//QSharedPointer<SQLDatabase> left, right;
-
-	int i = 0;
-
-	if (!mLeft.isNull() && mLeft->isOpen()) {
-		//left = mLeft;
-		++i;
-	}
-
-	bool success = true;
 
 	while (i < 2) {
 		QSharedPointer<SQLDatabase> &current = (i == 0) ? mLeft : mRight;
@@ -155,21 +199,40 @@ void MergeManager::pickDatabases() {
 			}
 			else {
 				++i;
+
+				if (pickOnlyOne) break;
 			}
 		}
 		else {
-			success = false;
 			break;
 		}
 	}
 
-	/*
-	if (success) {
-		merge();
-	}
-	*/
-
 	updateProgressButtons();
+	updateDbInfo();
+}
+
+void MergeManager::updateDbInfo() {
+	QStringList info;
+
+	for (int i = 0; i < 2; ++i) {
+		QSharedPointer<SQLDatabase> &current = (i == 0) ? mLeft : mRight;
+
+		if (current.isNull()) {
+			info << "No db chosen";
+		}
+		else if (!current->isOpen()) {
+			info << "database not open, pick another one";
+		}
+		else {
+			info << current->connectionName();
+		}
+	}
+
+	assert(info.size() == 2);
+
+	mMasterDbInfo->setText(info.at(0));
+	mSlaveDbInfo->setText(info.at(1));
 }
 
 void MergeManager::pickAction(QTableWidgetItem *item) {
@@ -191,12 +254,23 @@ void MergeManager::pickAction(QTableWidgetItem *item) {
 			if (rowIndex >= 0 && rowIndex < items.size()) {
 				MergeItem *item = items.at(rowIndex);
 
-				QList<MergeAction *> actionList = mActionFactory.createActions(item->acceptedActions());
+				MergeAction *currentActionCopy = item->currentAction()->clone();
+				QList<MergeAction *> actionList = mActionFactory.createActions(item->acceptedActions(), currentActionCopy);
 
 				{
 					ActionPickerDialog actionPicker(this);
 					actionPicker.setActions(actionList);
-					actionPicker.exec();
+					actionPicker.setDefaultAction(currentActionCopy);
+
+					if (actionPicker.exec() == QDialog::Accepted) {
+						// check if apply to all etc
+						// if (actionPicker.applyToAll()) { ... }
+
+						actionPicker.chosenAction()->visit(item);
+
+						// refresh the list?
+						addItemsToTable(merger->items());
+					}
 				}
 
 				qDeleteAll(actionList);

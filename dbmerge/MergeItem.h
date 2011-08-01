@@ -8,16 +8,18 @@
 
 class SimpleMergeAction;
 class PreferUserAction;
+class MergeAction;
 
 class MergeItem {
 	public:
 		MergeItem();
 		virtual ~MergeItem();
 
-		inline bool isResolved() const { return mResolved; }
-		inline Merge::Action getCurrentAction() const { return mCurrentAction; }
+		bool isResolved() const;
+		Merge::Action currentActionType() const;
+		const MergeAction *currentAction() const;
 
-		virtual QString getMessage() const = 0;
+		virtual QString message() const = 0;
 
 		virtual QList<Merge::Action> acceptedActions() const { return QList<Merge::Action>(); }
 
@@ -31,10 +33,10 @@ class MergeItem {
 		virtual QString getQuery() const { return QString(); }
 
 	protected:
-		// this means that whatever is extracted from query can be taken to be "correct" (even if it is empty, which means a NOOP was necessary)
-		bool mResolved;
+		void store(const MergeAction *action);
 
-		Merge::Action mCurrentAction;
+	protected:
+		MergeAction *mAction;
 
 		QString mQuery;
 };

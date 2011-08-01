@@ -5,11 +5,11 @@
 namespace Merge {
 	typedef enum {
 		NONE,
+		DONT_MERGE, // this is NOT the same as NONE: NONE is an invalid action, DONT_MERGE is not
 		CHOOSE_MASTER,
 		CHOOSE_SLAVE,
 		PREFER_USER,
 		MOST_RECENT,
-		DONT_MERGE,
 		ASSIGN_NEW_ID
 	} Action;
 }

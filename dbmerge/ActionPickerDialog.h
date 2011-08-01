@@ -2,8 +2,11 @@
 #define ACTIONPICKERDIALOG_H_
 
 #include <QDialog>
+#include <QGroupBox>
 #include <QDialogButtonBox>
+#include <QRadioButton>
 #include <QLayout>
+#include <QMap>
 
 #include "MergeAction.h"
 
@@ -14,16 +17,21 @@ class ActionPickerDialog : public QDialog {
 		ActionPickerDialog(QWidget *parent = 0, Qt::WindowFlags f = 0);
 		virtual ~ActionPickerDialog();
 
-		// does not take ownership of the actions, don't delete them while the dialog is active
+		// does NOT take ownership of the actions, don't delete them while the dialog is active
 		void setActions(const QList<MergeAction *>& actions);
+		void setDefaultAction(const MergeAction *action);
 		MergeAction *chosenAction() const;
 
 	private:
 		QDialogButtonBox *mButtonBox;
 
-		QList<MergeAction *> mActions;
+		typedef QPair<QRadioButton *, MergeAction *> ButtonActionPair;
+		QList<ButtonActionPair> mActionMap;
+		//QMap<QRadioButton *, MergeAction *> mActionMap;
+		//QList<MergeAction *> mActions;
 
 		QVBoxLayout *mActionBox;
+		QGroupBox *mGroupBox;
 };
 
 #endif /* ACTIONPICKERDIALOG_H_ */
