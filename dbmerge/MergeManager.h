@@ -51,6 +51,8 @@ public:
 		void updateDbInfo();
 
 	private:
+		QList<MergeItem *> getCurrentItems() const;
+
 		bool isValidPhase() const;
 		bool isProcessPhase() const;
 		bool isBeginPhase() const;
