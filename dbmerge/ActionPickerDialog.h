@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QGroupBox>
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QRadioButton>
 #include <QLayout>
@@ -22,6 +23,9 @@ class ActionPickerDialog : public QDialog {
 		void setDefaultAction(const MergeAction *action);
 		MergeAction *chosenAction() const;
 
+		bool applyToSameType() const;
+		bool applyToAccepting() const;
+
 	private:
 		QDialogButtonBox *mButtonBox;
 
@@ -32,6 +36,9 @@ class ActionPickerDialog : public QDialog {
 
 		QVBoxLayout *mActionBox;
 		QGroupBox *mGroupBox;
+
+		QCheckBox *mAllSameType;
+		QCheckBox *mAllAccepting;
 };
 
 #endif /* ACTIONPICKERDIALOG_H_ */

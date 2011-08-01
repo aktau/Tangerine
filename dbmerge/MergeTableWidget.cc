@@ -26,10 +26,11 @@ int MergeTableWidget::clickableColumn() const {
 
 void MergeTableWidget::setRow(int row, const MergeItem *item) {
 	const MergeAction *action = item->currentAction();
-	QTableWidgetItem *actionDescription = new QTableWidgetItem(action->description());
-	actionDescription->setForeground((action->type() == Merge::NONE) ? QBrush(Qt::red) : QBrush(Qt::green));
 
-	setItem(row, 0, new QTableWidgetItem("Merge match"));
+	QTableWidgetItem *actionDescription = new QTableWidgetItem(action->description());
+	actionDescription->setForeground(!item->isResolved() ? QBrush(Qt::red) : QBrush(Qt::green));
+
+	setItem(row, 0, new QTableWidgetItem(item->typeString()));
 	setItem(row, 1, actionDescription);
 	setItem(row, 2, new QTableWidgetItem(item->message()));
 }

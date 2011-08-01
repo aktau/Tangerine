@@ -110,16 +110,18 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 		if (leftIndices.contains(rightConf.index())) {
 			// it's occupied, we have to pick a new one
 			qDebug() << "MatchMerger::merge: ID conflict, reassigning" << rightConf.index() << "to another ID. right (source <-> conf) = " << rightConf.getSourceId() << "<->" << rightConf.getTargetId();
-			mMapper->addMapping(MergeMapper::MATCH_ID, rightConf.index(), 0xDEADBEEF);
+			//mMapper->addMapping(MergeMapper::MATCH_ID, rightConf.index(), 0xDEADBEEF);
 
+			/*
 			QString xf;
 			for (int col = 0; col < 4; ++col) {
 				for (int row = 0; row < 4; ++row) {
 					xf += QString("%1 ").arg(rightConf.mXF[4 * row + col], 0, 'e', 20);
 				}
 			}
+			*/
 
-			mItems << new MatchMergeItem(rightConf.getSourceId(), rightConf.getTargetId(), xf);
+			mItems << new MatchMergeItem(rightConf.index(), rightConf.getSourceId(), rightConf.getTargetId(), rightConf.mXF);
 			//AssignIdAction action(0xDEADBEEF);
 			//action.visit(mItems.last());
 		}

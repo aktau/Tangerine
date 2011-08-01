@@ -6,6 +6,7 @@
 #include <QDialogButtonBox>
 #include <QSharedPointer>
 #include <QLineEdit>
+#include <QCheckBox>
 #include <QList>
 
 #include "SQLDatabase.h"
@@ -18,6 +19,12 @@
 class MergeManager : public QDialog {
 		Q_OBJECT
 
+public:
+		typedef enum {
+			JUST_THIS,
+			SAME_TYPE,
+			SAME_ACCEPT,
+		} ActionApplyToItem;
 	public:
 		MergeManager(QWidget *parent = NULL, QSharedPointer<SQLDatabase> master = QSharedPointer<SQLDatabase>());
 		~MergeManager();
@@ -29,9 +36,11 @@ class MergeManager : public QDialog {
 	protected:
 		void merge();
 
-		void addItemsToTable(const QList<MergeItem *>& items);
+		void applyActionTo(const MergeAction *action, MergeItem *item, ActionApplyToItem mode);
 
 	private slots:
+		void refresh(); // refresh the table widget (reload data according to current options/phase/etc
+
 		void pickDatabases();
 		void pickAction(QTableWidgetItem *item);
 
@@ -43,6 +52,9 @@ class MergeManager : public QDialog {
 
 	private:
 		bool isValidPhase() const;
+		bool isProcessPhase() const;
+		bool isBeginPhase() const;
+		bool isEndPhase() const;
 		bool canGoBack() const;
 		bool canAdvance() const;
 		bool haveDatabases() const;
@@ -61,6 +73,8 @@ class MergeManager : public QDialog {
 
 		QLineEdit *mMasterDbInfo;
 		QLineEdit *mSlaveDbInfo;
+
+		QCheckBox *mShowResolvedEntries;
 
 		// merge fields
 		QSharedPointer<SQLDatabase> mLeft, mRight;
