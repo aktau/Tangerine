@@ -354,8 +354,8 @@ thera::SQLFragmentConf SQLDatabase::addMatch(const QString& sourceName, const QS
 		db = this;
 		realId = query.lastInsertId().toInt();
 
-		fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
-		fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+		fragments[IFragmentConf::SOURCE] = Database::entryIndex(sourceName);
+		fragments[IFragmentConf::TARGET] = Database::entryIndex(targetName);
 	}
 	else {
 		qDebug() << "SQLDatabase::addMatch: could not insert match record, returning invalid SQLFragmentConf:" << query.lastError();
