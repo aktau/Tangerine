@@ -15,6 +15,7 @@ class MatchMerger: public Merger {
 
 	public:
 		void merge(SQLDatabase *left, SQLDatabase *right);
+		void execute(SQLDatabase *left, MergeMapper *mapper);
 
 	private:
 		typedef QPair<int, int> IntPair;

@@ -52,14 +52,18 @@ class DontMergeAction : public SimpleMergeAction {
 
 class AssignIdAction : public SimpleMergeAction {
 	public:
-		AssignIdAction() : mNewId(0) { }
+		AssignIdAction() : mNewId(-1) { }
 		AssignIdAction(int newId) : mNewId(newId) { }
 
 		MergeAction *clone() const { return new AssignIdAction(*this); }
 		Merge::Action type() const { return Merge::ASSIGN_NEW_ID; }
-		QString description() const { return QString("Assign a new (random) Id: %1").arg(mNewId); }
+		QString description() const {
+			return (mNewId != -1) ? QString("Assign id: %1").arg(mNewId) : QString("Assign a new random id");
+		}
 
 		void visit(MergeItem *item) const { item->accept(this); }
+
+		int assignId() const { return mNewId; }
 
 	private:
 		int mNewId;

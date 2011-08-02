@@ -23,7 +23,9 @@ class ActionPickerDialog : public QDialog {
 		void setDefaultAction(const MergeAction *action);
 		MergeAction *chosenAction() const;
 
+		bool applyToSameTypeUnresolved() const;
 		bool applyToSameType() const;
+		bool applyToAcceptingUnresolved() const;
 		bool applyToAccepting() const;
 
 	private:
@@ -37,8 +39,8 @@ class ActionPickerDialog : public QDialog {
 		QVBoxLayout *mActionBox;
 		QGroupBox *mGroupBox;
 
-		QCheckBox *mAllSameType;
-		QCheckBox *mAllAccepting;
+		QCheckBox *mAllSameType, *mAllSameTypeUnresolved;
+		QCheckBox *mAllAccepting, *mAllAcceptingUnresolved;
 };
 
 #endif /* ACTIONPICKERDIALOG_H_ */

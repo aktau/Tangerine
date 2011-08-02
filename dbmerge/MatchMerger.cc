@@ -35,6 +35,9 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 	QList<SQLFragmentConf> leftMatches = left->getMatches();
 	QList<SQLFragmentConf> rightMatches = right->getMatches();
 
+	QList<MergeItem *> fixedIdList;
+	QList<MergeItem *> newIdList;
+
 	QElapsedTimer timer;
 	timer.start();
 
@@ -110,22 +113,40 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 		if (leftIndices.contains(rightConf.index())) {
 			// it's occupied, we have to pick a new one
 			qDebug() << "MatchMerger::merge: ID conflict, reassigning" << rightConf.index() << "to another ID. right (source <-> conf) = " << rightConf.getSourceId() << "<->" << rightConf.getTargetId();
-			//mMapper->addMapping(MergeMapper::MATCH_ID, rightConf.index(), 0xDEADBEEF);
 
-			/*
-			QString xf;
-			for (int col = 0; col < 4; ++col) {
-				for (int row = 0; row < 4; ++row) {
-					xf += QString("%1 ").arg(rightConf.mXF[4 * row + col], 0, 'e', 20);
-				}
-			}
-			*/
+			newIdList << new MatchMergeItem(rightConf.index(), rightConf.getSourceId(), rightConf.getTargetId(), rightConf.mXF);
+		}
+		// in this case the match didn't conflict with any id, we can merge it in
+		// under the same id
+		// these should be inserted under their original id and also shouldn't receive a mapping/
+		// we already assign an action
+		else {
+			qDebug() << "MatchMerger::merge: merging in but keeping id:" << rightConf.index();
 
-			mItems << new MatchMergeItem(rightConf.index(), rightConf.getSourceId(), rightConf.getTargetId(), rightConf.mXF);
-			//AssignIdAction action(0xDEADBEEF);
-			//action.visit(mItems.last());
+			MatchMergeItem *item = new MatchMergeItem(rightConf.index(), rightConf.getSourceId(), rightConf.getTargetId(), rightConf.mXF);
+			AssignIdAction action(rightConf.index());
+			action.visit(item);
+			fixedIdList << item;
+
 		}
 	}
+
+	// fixed ID's first!
+	mItems << fixedIdList;
+	mItems << newIdList;
+}
+
+void MatchMerger::execute(SQLDatabase *left, MergeMapper *mapper) {
+	assert(left != NULL && mapper != NULL);
+
+	// order transactions correctly (those without ID reassignment first!)
+	left->transaction();
+	foreach (MergeItem *item, mItems) {
+		if (!item->execute(left, mapper)) {
+			qDebug() << "MatchMerger::execute: item" << item->message() << "did not execute properly";
+		}
+	}
+	left->commit();
 }
 
 inline int MatchMerger::idOfIdenticalMatch(const thera::SQLFragmentConf& conf , const FragConfList& list, float threshold) const {

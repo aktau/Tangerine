@@ -65,7 +65,6 @@ MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) 
 
 	mShowResolvedEntries = new QCheckBox(tr("&show resolved entries"));
 	mShowResolvedEntries->setChecked(true);
-	//connect(mShowResolvedEntries, SIGNAL(toggled()), this, SLOT(refresh()));
 	connect(mShowResolvedEntries, SIGNAL(toggled(bool)), this, SLOT(refresh()));
 
 	QHBoxLayout *bottomRowLayout = new QHBoxLayout;
@@ -111,10 +110,6 @@ void MergeManager::merge() {
 
 		merger->setMapper(&mMapper);
 		merger->merge(mLeft.data(), mRight.data());
-
-		//refresh();
-
-		//addItemsToTable(merger->items());
 	}
 	else {
 		qDebug() << "MergeManager::merge: was called but the manager state is not right" << haveDatabases() << "and current phase is" << mCurrentPhase << "of" << mMergers.size();
@@ -139,30 +134,11 @@ void MergeManager::refresh() {
 		mItemList->setRow(row++, item);
 	}
 
-	mItemList->resizeColumnToContents(0);
-	mItemList->resizeColumnToContents(1);
-}
-
-/*
-void MergeManager::addItemsToTable(const QList<MergeItem *>& items) {
-	qDebug() << "MergeManager::addItemsToTable: Going to add" << items.size() << "to table";
-
-	mItemList->clearContents();
-
-	mItemList->setRowCount(items.size());
-
-	int row = 0;
-	foreach (const MergeItem *item, items) {
-		if (item->isResolved() && !mShowResolvedEntries->isChecked()) continue;
-
-		mItemList->setRow(row++, item);
-	}
+	mItemList->setRowCount(row);
 
 	mItemList->resizeColumnToContents(0);
 	mItemList->resizeColumnToContents(1);
-	//mItemList->resizeRowsToContents();
 }
-*/
 
 void MergeManager::pickDatabases() {
 	bool pickOnlyOne = false;
@@ -227,13 +203,17 @@ void MergeManager::pickDatabases() {
 		}
 	}
 
-	updateProgressButtons();
-	updateDbInfo();
+	updateAll();
 
 	if (haveDatabases() && isBeginPhase()) {
 		// save the user from having to click on the button
 		goForward();
 	}
+}
+
+void MergeManager::updateAll() {
+	updateDbInfo();
+	updateProgressButtons();
 }
 
 void MergeManager::updateDbInfo() {
@@ -294,8 +274,10 @@ void MergeManager::pickAction(QTableWidgetItem *item) {
 
 						ActionApplyToItem mode = JUST_THIS;
 
-						if (actionPicker.applyToSameType()) mode = SAME_TYPE;
-						else if (actionPicker.applyToAccepting()) mode = SAME_ACCEPT;
+						if (actionPicker.applyToSameType()) mode = SAME_TYPE_ALL;
+						else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
+						else if (actionPicker.applyToAccepting()) mode = SAME_ACCEPT_ALL;
+						else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
 
 						applyActionTo(chosenAction, item, mode);
 
@@ -309,7 +291,7 @@ void MergeManager::pickAction(QTableWidgetItem *item) {
 		}
 	}
 
-	updateProgressButtons();
+	updateAll();
 }
 
 void MergeManager::applyActionTo(const MergeAction *action, MergeItem *mainItem, ActionApplyToItem mode) {
@@ -321,15 +303,19 @@ void MergeManager::applyActionTo(const MergeAction *action, MergeItem *mainItem,
 	if (mode == JUST_THIS) {
 		action->visit(mainItem);
 	}
-	else if (mode == SAME_TYPE) {
+	else if (mode == SAME_TYPE_ALL || mode == SAME_TYPE_UNRESOLVED) {
 		foreach (MergeItem *item, items) {
+			if (mode == SAME_TYPE_UNRESOLVED && item->isResolved()) continue;
+
 			if (item->type() == mainItem->type()) {
 				action->visit(item);
 			}
 		}
 	}
-	else if (mode == SAME_ACCEPT) {
+	else if (mode == SAME_ACCEPT_ALL || mode == SAME_ACCEPT_UNRESOLVED) {
 		foreach (MergeItem *item, items) {
+			if (mode == SAME_ACCEPT_UNRESOLVED && item->isResolved()) continue;
+
 			if (item->acceptsAction(action)) {
 				action->visit(item);
 			}
@@ -345,10 +331,17 @@ void MergeManager::goBackward() {
 	assert(isValidPhase());
 
 	refresh();
-	updateProgressButtons();
+	updateAll();
 }
 
 void MergeManager::goForward() {
+	// execute this phase
+	assert(canAdvance());
+
+	if (isProcessPhase()) {
+		currentMerger()->execute(mLeft.data(), &mMapper);
+	}
+
 	++mCurrentPhase;
 	assert(isValidPhase());
 
@@ -357,8 +350,7 @@ void MergeManager::goForward() {
 	}
 
 	refresh();
-	updateProgressButtons();
-	updateDbInfo();
+	updateAll();
 }
 
 void MergeManager::updateProgressButtons() {
@@ -387,11 +379,11 @@ inline bool MergeManager::isEndPhase() const {
 }
 
 inline bool MergeManager::haveDatabases() const {
-	return (!mLeft.isNull() && !mRight.isNull());
+	return (!mLeft.isNull() && mLeft->isOpen() && !mRight.isNull() && mRight->isOpen());
 }
 
 inline bool MergeManager::canGoBack() const {
-	return haveDatabases() && (mCurrentPhase > 0);
+	return haveDatabases() && (isProcessPhase() || isEndPhase());
 }
 
 inline bool MergeManager::canAdvance() const {
@@ -408,6 +400,10 @@ inline bool MergeManager::canAdvance() const {
 	return haveDatabases() && (mCurrentPhase < mMergers.size()) && allResolved;
 }
 
-QList<MergeItem *> MergeManager::getCurrentItems() const {
-	return isProcessPhase() ? mMergers.at(mCurrentPhase)->items() : QList<MergeItem *>();
+inline Merger *MergeManager::currentMerger() const {
+	return mMergers.at(mCurrentPhase);
+}
+
+inline QList<MergeItem *> MergeManager::getCurrentItems() const {
+	return isProcessPhase() ? currentMerger()->items() : QList<MergeItem *>();
 }

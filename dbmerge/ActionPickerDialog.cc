@@ -17,12 +17,36 @@ ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDi
 	// options
 	QGroupBox *groupBox = new QGroupBox(tr("Options"));
 
-	mAllSameType = new QCheckBox(tr("Apply action to all items of the same type"));
-	mAllAccepting = new QCheckBox(tr("Apply action to all items that accept it"));
+	mAllSameTypeUnresolved = new QCheckBox(tr("Apply action to all unresolved items of the same type"));
+	mAllAcceptingUnresolved = new QCheckBox(tr("Apply action to all unresolved items that accept it"));
+	mAllSameType = new QCheckBox(tr("Apply action to all resolved items as well"));
+	mAllSameType->setEnabled(false);
+	mAllAccepting = new QCheckBox(tr("Apply action to all resolved items as well"));
+	mAllAccepting->setEnabled(false);
 
 	QVBoxLayout *vbox = new QVBoxLayout;
-	vbox->addWidget(mAllSameType);
-	vbox->addWidget(mAllAccepting);
+
+	vbox->addWidget(mAllSameTypeUnresolved);
+	{
+		QHBoxLayout *hbl = new QHBoxLayout;
+		hbl->addWidget(new QLabel("Optional:"));
+		hbl->addWidget(mAllSameType);
+		vbox->addLayout(hbl);
+	}
+	connect(mAllSameTypeUnresolved, SIGNAL(toggled(bool)),mAllSameType, SLOT(setEnabled(bool)));
+
+	vbox->addWidget(mAllAcceptingUnresolved);
+	{
+		QHBoxLayout *hbl = new QHBoxLayout;
+		hbl->addWidget(new QLabel("Optional:"));
+		hbl->addWidget(mAllAccepting);
+		vbox->addLayout(hbl);
+	}
+	connect(mAllAcceptingUnresolved, SIGNAL(toggled(bool)), mAllAccepting, SLOT(setEnabled(bool)));
+
+	//vbox->addWidget(mAllSameType);
+	//vbox->addWidget(mAllAccepting);
+
 	vbox->addStretch(1);
 	groupBox->setLayout(vbox);
 
@@ -86,10 +110,18 @@ MergeAction *ActionPickerDialog::chosenAction() const {
 	return NULL;
 }
 
+bool ActionPickerDialog::applyToSameTypeUnresolved() const {
+	return mAllSameTypeUnresolved->isChecked();
+}
+
+bool ActionPickerDialog::applyToAcceptingUnresolved() const {
+	return mAllAcceptingUnresolved->isChecked();
+}
+
 bool ActionPickerDialog::applyToSameType() const {
-	return mAllSameType->isChecked();
+	return mAllSameTypeUnresolved->isChecked() && mAllSameType->isChecked();
 }
 
 bool ActionPickerDialog::applyToAccepting() const {
-	return mAllAccepting->isChecked();
+	return mAllAcceptingUnresolved->isChecked() && mAllAccepting->isChecked();
 }

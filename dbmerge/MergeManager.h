@@ -22,8 +22,10 @@ class MergeManager : public QDialog {
 public:
 		typedef enum {
 			JUST_THIS,
-			SAME_TYPE,
-			SAME_ACCEPT,
+			SAME_TYPE_UNRESOLVED,
+			SAME_ACCEPT_UNRESOLVED,
+			SAME_TYPE_ALL,
+			SAME_ACCEPT_ALL,
 		} ActionApplyToItem;
 	public:
 		MergeManager(QWidget *parent = NULL, QSharedPointer<SQLDatabase> master = QSharedPointer<SQLDatabase>());
@@ -47,10 +49,12 @@ public:
 		void goBackward();
 		void goForward();
 
+		void updateAll();
 		void updateProgressButtons();
 		void updateDbInfo();
 
 	private:
+		Merger *currentMerger() const;
 		QList<MergeItem *> getCurrentItems() const;
 
 		bool isValidPhase() const;

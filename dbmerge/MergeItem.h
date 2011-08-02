@@ -23,7 +23,8 @@ class MergeItem {
 		MergeItem();
 		virtual ~MergeItem();
 
-		bool isResolved() const;
+		bool isResolved() const; // will return true if it has a valid action assigned
+		bool isDone() const; // will return true if it has been correctly executed
 		Merge::Action currentActionType() const;
 		const MergeAction *currentAction() const;
 
@@ -42,12 +43,16 @@ class MergeItem {
 
 		// TODO: create static QStrings and return by const reference
 		//virtual QString getQuery() const { return QString(); }
-		virtual bool execute(SQLDatabase *db, MergeMapper *mapper) const = 0;
+		virtual bool execute(SQLDatabase *db, MergeMapper *mapper) = 0;
 
 	protected:
 		void store(const MergeAction *action);
 
+		void setDone(bool done);
+
 	protected:
+		bool mDone;
+
 		MergeAction *mAction;
 
 		QString mQuery;

@@ -10,13 +10,27 @@
 class MatchMergeItem : public MergeItem {
 	public:
 		MatchMergeItem(int oldId, const QString& sourceId, const QString& targetId, const thera::XF& xf)
-			: mOldId(oldId), mSourceId(sourceId), mTargetId(targetId), mXF(xf) { }
+			: mOldId(oldId), mNewId(-1), mSourceId(sourceId), mTargetId(targetId), mXF(xf) { }
 
 		virtual MergeItemType type() const { return MATCHMERGEITEM; }
 		virtual QString typeString() const { return "Match merge"; };
 
 		virtual QString message() const {
-			return QString("Match ID conflict, ID already existed but match not the same: %1 <-> %2").arg(mSourceId).arg(mTargetId);
+			QString message;
+
+			if (!isDone()) {
+				if (mNewId == mOldId != -1) {
+					message = QString("Id %3 didn't exist in master and no similar match to %1 <-> %2 was found").arg(mSourceId).arg(mTargetId).arg(mOldId);
+				}
+				else {
+					message = QString("Id %3 already existed in master but no similar match to %1 <-> %2 was found").arg(mSourceId).arg(mTargetId).arg(mOldId);
+				}
+			}
+			else {
+				message = QString("Done, old ID %1, new ID %2").arg(mOldId).arg(mNewId);
+			}
+
+			return message;
 		}
 
 		// TODO: replace by static QList so it doesn't need to be constructed all the time
@@ -26,7 +40,12 @@ class MatchMergeItem : public MergeItem {
 
 		virtual void accept(const SimpleMergeAction *action) {
 			switch (action->type()) {
-				case Merge::ASSIGN_NEW_ID: break;
+				case Merge::ASSIGN_NEW_ID: {
+					const AssignIdAction *assignIdAction = static_cast<const AssignIdAction *>(action);
+
+					mNewId = assignIdAction->assignId();
+				} break;
+
 				case Merge::DONT_MERGE: break;
 
 				default:
@@ -37,48 +56,38 @@ class MatchMergeItem : public MergeItem {
 			store(action);
 		}
 
-		/*
-		virtual QString getQuery() const {
+		virtual bool execute(SQLDatabase *db, MergeMapper *mapper) {
 			if (currentActionType() == Merge::ASSIGN_NEW_ID) {
-				return QString(
-					"INSERT INTO matches (source_id, source_name, target_id, target_name, transformation) "
-					"VALUES (0, %1, 0, %2, %3)"
-				).arg(mSourceId).arg(mTargetId).arg(mXFString);
-			}
-			else {
-				return QString();
-			}
-		}
-		*/
+				const thera::SQLFragmentConf& c = (mNewId == -1) ? db->addMatch(mSourceId, mTargetId, mXF) : db->addMatch(mSourceId, mTargetId, mXF, mNewId);
 
-		virtual bool execute(SQLDatabase *db, MergeMapper *mapper) const {
-			if (currentActionType() == Merge::ASSIGN_NEW_ID) {
-				/*
-				return QString(
-					"INSERT INTO matches (source_id, source_name, target_id, target_name, transformation) "
-					"VALUES (0, %1, 0, %2, %3)"
-				).arg(mSourceId).arg(mTargetId).arg(mXFString);
-				*/
+				if (c.index() == -1) {
+					qDebug() << "MatchMergeItem::execute: got an invalid fragment conf";
 
-				const thera::SQLFragmentConf& c = db->addMatch(mSourceId, mTargetId, mXF);
-
-				if (c.index() != -1) {
-					if (mapper->exists(MergeMapper::MATCH_ID, mOldId)) {
-						qDebug() << "execute: mapping" << MergeMapper::MATCH_ID << "->" << mOldId << "somehow already existed, this could lead to problems down the road";
-					}
-
-					mapper->addMapping(MergeMapper::MATCH_ID, mOldId, c.index());
-				}
-				else {
 					return false;
 				}
+
+				if (mNewId == -1) {
+					// TODO: technically superfluous since the mapper already displays something if this happens
+					if (mapper->exists(MergeMapper::MATCH_ID, mOldId)) {
+						qDebug() << "MatchMergeItem::execute: mapping" << MergeMapper::MATCH_ID << "->" << mOldId << "somehow already existed, this could lead to problems down the road";
+					}
+
+					mapper->addMapping(MergeMapper::MATCH_ID, mOldId, mNewId);
+
+					mNewId = c.index();
+				}
+				else {
+					if (mNewId != c.index()) qDebug() << "MatchMergeItem::execute: returned id did not match with expected id";
+				}
+
+				setDone(true);
 			}
 
 			return true;
 		}
 
 	private:
-		int mOldId;
+		int mOldId, mNewId;
 
 		QString mSourceId, mTargetId;
 
