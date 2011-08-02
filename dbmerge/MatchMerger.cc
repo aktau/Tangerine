@@ -143,8 +143,10 @@ void MatchMerger::execute(SQLDatabase *left, MergeMapper *mapper) {
 	// order transactions correctly (those without ID reassignment first!)
 	left->transaction();
 	foreach (MergeItem *item, mItems) {
-		if (!item->execute(left, mapper)) {
-			qDebug() << "MatchMerger::execute: item" << item->message() << "did not execute properly";
+		if (!item->isDone()) {
+			if (!item->execute(left, mapper)) {
+				qDebug() << "MatchMerger::execute: item" << item->message() << "did not execute properly";
+			}
 		}
 	}
 	left->commit();

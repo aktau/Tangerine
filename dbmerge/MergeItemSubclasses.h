@@ -83,9 +83,9 @@ class MatchMergeItem : public MergeItem {
 						mNewId = c.index();
 					}
 				}
-
-				setDone(true);
 			}
+
+			setDone(true);
 
 			return true;
 		}

@@ -24,6 +24,9 @@ class Merger : public QObject {
 		virtual const QList<MergeItem *>& items();
 		virtual void clear();
 
+		virtual bool isResolved() const; // all items have an action assigned to them
+		virtual bool isDone() const; // all items have been executed
+
 	protected:
 		QList<MergeItem *> mItems;
 

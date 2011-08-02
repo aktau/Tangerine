@@ -20,3 +20,23 @@ void Merger::clear() {
 	qDeleteAll(mItems);
 	mItems.clear();
 }
+
+bool Merger::isResolved() const {
+	bool allResolved = true;
+
+	foreach (const MergeItem *item, mItems) {
+		if ((allResolved = item->isResolved()) == false) break;
+	}
+
+	return allResolved;
+}
+
+bool Merger::isDone() const {
+	bool allDone = true;
+
+	foreach (const MergeItem *item, mItems) {
+		if ((allDone = item->isDone()) == false) break;
+	}
+
+	return allDone;
+}

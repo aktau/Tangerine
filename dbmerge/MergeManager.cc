@@ -7,6 +7,8 @@
 
 #include "ActionPickerDialog.h"
 
+static const QString RESOLVED_TEXT = QString("&show resolved entries (%1 left)");
+
 MergeManager::MergeManager(QSharedPointer<SQLDatabase> master, QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f), mLeft(master), mCurrentPhase(-1) {
 	mButtonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
 
@@ -63,7 +65,8 @@ MergeManager::MergeManager(QSharedPointer<SQLDatabase> master, QWidget *parent, 
 	formLayout->addWidget(mSlaveDbInfo, 1, 1);
 	formLayout->addWidget(mSlaveDbButton, 1, 2);
 
-	mShowResolvedEntries = new QCheckBox(tr("&show resolved entries"));
+	//mShowResolvedEntries = new QCheckBox(tr("&show resolved entries (0 left)"));
+	mShowResolvedEntries = new QCheckBox(RESOLVED_TEXT.arg(0));
 	mShowResolvedEntries->setChecked(true);
 	connect(mShowResolvedEntries, SIGNAL(toggled(bool)), this, SLOT(refresh()));
 
@@ -126,13 +129,19 @@ void MergeManager::refresh() {
 	mItemList->setRowCount(items.size());
 
 	int row = 0;
+	int unresolved = 0;
 	foreach (const MergeItem *item, items) {
-		if (item->isResolved() && !mShowResolvedEntries->isChecked()) {
-			continue;
+		if (item->isResolved()) {
+			if (!mShowResolvedEntries->isChecked()) continue;
+		}
+		else {
+			++unresolved;
 		}
 
 		mItemList->setRow(row++, item);
 	}
+
+	mShowResolvedEntries->setText(RESOLVED_TEXT.arg(unresolved));
 
 	mItemList->setRowCount(row);
 
@@ -383,11 +392,7 @@ inline bool MergeManager::canAdvance() const {
 	bool allResolved = isBeginPhase();
 
 	if (isProcessPhase()) {
-		allResolved = true;
-
-		foreach (const MergeItem *item, getCurrentItems()) {
-			if ((allResolved = item->isResolved()) == false) break;
-		}
+		allResolved = currentMerger()->isResolved();
 	}
 
 	return haveDatabases() && (mCurrentPhase < mMergers.size()) && allResolved;
