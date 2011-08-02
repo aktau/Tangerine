@@ -48,7 +48,7 @@ class Tangerine : public QMainWindow {
 		void loadFragmentDatabase();
 		void fragmentDatabaseLoadAttempted();
 		void matchCountChanged();
-		void loadMatchDatabase();
+		void loadMatchDatabase(bool autoload = false);
 		void chooseImageFolder();
 		void saveDatabase();
 		void mergeDatabases();
@@ -60,6 +60,8 @@ class Tangerine : public QMainWindow {
 
 		void normalView();
 		void nodeView();
+
+		void autoloadMatchDbChanged(bool toggled);
 
 		void about();
 
@@ -125,6 +127,8 @@ class Tangerine : public QMainWindow {
 		QAction *mNodeViewAct;
 
 		QAction *mHelpAboutAct;
+
+		QAction *mAutoLoadMatchDbAct;
 
 		static const int MIN_WIDTH;
 		static const int MIN_HEIGHT;

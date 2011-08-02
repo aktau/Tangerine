@@ -4,6 +4,7 @@
 #define SETTINGS_DB_ROOT_KEY "db/root"
 #define SETTINGS_DB_IMAGECACHE_KEY "matchdb/images"
 #define SETTINGS_DB_LASTMATCHDB_KEY "matchdb/root"
+#define SETTINGS_APP_AUTOLOAD_MATCHDB_KEY "app/autoload/matchdb"
 
 #define DEV_PHASE "Alpha"
 #define MAJ_VERSION 0

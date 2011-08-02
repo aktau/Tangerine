@@ -76,6 +76,9 @@ void Tangerine::setupWindow() {
 	mFileMenu->addAction(mImportXMLAct);
 	mFileMenu->addAction(mSaveXMLAct);
 
+	mFileMenu->addSeparator();
+	mFileMenu->addAction(mAutoLoadMatchDbAct);
+
 	mEditMenu = menuBar()->addMenu(tr("&Edit"));
 	mEditMenu->addAction(mAddAttributeAct);
 	mEditMenu->addAction(mRemoveAttributeAct);
@@ -194,6 +197,8 @@ void Tangerine::setupWindow() {
 }
 
 void Tangerine::createActions() {
+	QSettings settings;
+
 	mLoadFragDbAct = new QAction(QIcon(":/rcc/fatcow/32x32/folder_table.png"), tr("Load &fragment database"), this);
 	mLoadFragDbAct->setStatusTip(tr("Select and load a fragment database"));
 	connect(mLoadFragDbAct, SIGNAL(triggered()), this, SLOT(loadFragmentDatabase()));
@@ -239,6 +244,12 @@ void Tangerine::createActions() {
 	mViewGroup->addAction(mNormalViewAct);
 	mViewGroup->addAction(mNodeViewAct);
 	mNormalViewAct->setChecked(true);
+
+	mAutoLoadMatchDbAct = new QAction(tr("Autoload last match db"), this);
+	mAutoLoadMatchDbAct->setCheckable(true);
+	mAutoLoadMatchDbAct->setChecked(settings.value(SETTINGS_APP_AUTOLOAD_MATCHDB_KEY, false).toBool());
+	mAutoLoadMatchDbAct->setStatusTip(tr("Autoload last used match database on startup"));
+	connect(mAutoLoadMatchDbAct, SIGNAL(toggled(bool)), this, SLOT(autoloadMatchDbChanged(bool)));
 
 	mAddAttributeAct = new QAction(QIcon(":/rcc/fatcow/32x32/cog_add.png"), tr("Add an attribute to the matches"), this);
 	mAddAttributeAct->setStatusTip(tr("Add an attribute to the matches"));
@@ -319,6 +330,10 @@ void Tangerine::fragmentDatabaseLoadAttempted() {
 		settings.setValue(SETTINGS_DB_ROOT_KEY, mFragDbLocations.dequeue());
 
 		emit fragmentDatabaseOpened();
+
+		if (settings.value(SETTINGS_APP_AUTOLOAD_MATCHDB_KEY, false).toBool()) {
+			loadMatchDatabase(true);
+		}
 	}
 }
 
@@ -360,25 +375,30 @@ void Tangerine::setMainDatabase(const QString& file) {
 	}
 }
 
-void Tangerine::loadMatchDatabase() {
+void Tangerine::loadMatchDatabase(bool autoload) {
 	QSettings settings;
 	QString lastMatchDb = settings.value(SETTINGS_DB_LASTMATCHDB_KEY).toString();
 
-	if (!lastMatchDb.isEmpty()) {
-		QFileInfo fi(lastMatchDb);
-		lastMatchDb = fi.dir().path();
-
-		qDebug() << "Tangerine::loadMatchDatabase: was able to retrieve last match db:" << lastMatchDb << "| current is:" << QDir::current();
+	if (autoload && !lastMatchDb.isEmpty()) {
+		setMainDatabase(lastMatchDb);
 	}
+	else {
+		if (!lastMatchDb.isEmpty()) {
+			QFileInfo fi(lastMatchDb);
+			lastMatchDb = fi.dir().path();
 
-	//qDebug() << "Tangerine::loadMatchDatabase: getSaveFileName with" << lastMatchDb;
-	QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), lastMatchDb, QString(), 0, QFileDialog::DontConfirmOverwrite);
-	//QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), "D:/thesis", QString(), 0, QFileDialog::DontConfirmOverwrite);
+			qDebug() << "Tangerine::loadMatchDatabase: was able to retrieve last match db:" << lastMatchDb << "| current is:" << QDir::current();
+		}
 
-	if (!fileName.isEmpty()) {
-		setMainDatabase(fileName);
+		//qDebug() << "Tangerine::loadMatchDatabase: getSaveFileName with" << lastMatchDb;
+		QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), lastMatchDb, QString(), 0, QFileDialog::DontConfirmOverwrite);
+		//QString fileName = QFileDialog::getSaveFileName(this, tr("Open database file or make one"), "D:/thesis", QString(), 0, QFileDialog::DontConfirmOverwrite);
 
-		settings.setValue(SETTINGS_DB_LASTMATCHDB_KEY, fileName);
+		if (!fileName.isEmpty()) {
+			setMainDatabase(fileName);
+
+			settings.setValue(SETTINGS_DB_LASTMATCHDB_KEY, fileName);
+		}
 	}
 }
 
@@ -534,6 +554,12 @@ void Tangerine::nodeView() {
 #endif
 
 	mCentralWidget->setCurrentIndex(1);
+}
+
+void Tangerine::autoloadMatchDbChanged(bool toggled) {
+	QSettings settings;
+
+	settings.setValue(SETTINGS_APP_AUTOLOAD_MATCHDB_KEY, toggled);
 }
 
 void Tangerine::fragmentDatabaseOpened() {
