@@ -28,7 +28,7 @@ INCLUDEPATH += ../nicolash
 # UI_DIR    = ui
 # FORMS     = ui/*.ui
 
-DESTDIR=$${REPOSDIR}/bin/$${UNAME}.$${DBGNAME}
+DESTDIR = $${REPOSDIR}/bin/$${UNAME}.$${DBGNAME}
 
 LIBS += $${THERAGUILIB}
 LIBS += $${QTGUIAUXLIB}  # has to come after theraguilib
@@ -50,10 +50,9 @@ SOURCES += sql/*.cc
 HEADERS += sql/*.h
 INCLUDEPATH += sql
 
-SOURCES += dbmerge/*.cc
-HEADERS += dbmerge/*.h
-INCLUDEPATH += dbmerge
-
+SOURCES += dbmerge/*.cc dbmerge/actions/*.cc dbmerge/gui/*.cc dbmerge/mergers/*.cc
+HEADERS += dbmerge/*.h dbmerge/actions/*.h dbmerge/gui/*.h dbmerge/mergers/*.h
+INCLUDEPATH += dbmerge dbmerge/actions dbmerge/gui dbmerge/mergers
 
 tileview {
 	message(Tangerine: Tileview support was added)

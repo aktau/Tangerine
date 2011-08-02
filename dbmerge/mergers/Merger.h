@@ -5,7 +5,6 @@
 #include <QList>
 
 #include "SQLDatabase.h"
-#include "MergeConflict.h"
 #include "MergeMapper.h"
 #include "MergeItem.h"
 
