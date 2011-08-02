@@ -4,8 +4,11 @@
 #include <QtAlgorithms>
 
 #include "main.h"
+#include "WarningLabel.h"
 
 #include "ActionPickerDialog.h"
+
+#define SETTINGS_MERGEMANAGER_FIRSTTIME "mergemanager/showwarning"
 
 static const QString RESOLVED_TEXT = QString("&show resolved entries (%1 left)");
 
@@ -76,11 +79,25 @@ MergeManager::MergeManager(QSharedPointer<SQLDatabase> master, QWidget *parent, 
 
 	QVBoxLayout *layout = new QVBoxLayout;
 	layout->addLayout(formLayout);
+	//layout->addWidget(new WarningLabel(tr("?"), this));
 	layout->addWidget(mItemList);
 	layout->addLayout(bottomRowLayout);
 
 	resize(800, 380);
 	setLayout(layout);
+
+	QSettings settings;
+	if (settings.value(SETTINGS_MERGEMANAGER_FIRSTTIME, true).toBool()) {
+		WarningLabel *warning = new WarningLabel(tr("Warning"), tr("Every phase changes the database irrevocably, use caution"), this);
+		warning->setEndOpacity(0.4);
+		warning->show();
+		warning->fade();
+
+		//warning->setOneLine();
+		//layout->insertWidget(1, warning);
+
+		settings.setValue(SETTINGS_MERGEMANAGER_FIRSTTIME, false);
+	}
 
 	setWindowTitle(tr("Merge databases"));
 
