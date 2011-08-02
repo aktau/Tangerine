@@ -32,6 +32,8 @@ MatchMerger::~MatchMerger() {
 void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 	assert(mMapper != NULL);
 
+	clear(); // avoid memory leaks
+
 	QList<SQLFragmentConf> leftMatches = left->getMatches();
 	QList<SQLFragmentConf> rightMatches = right->getMatches();
 
@@ -127,7 +129,6 @@ void MatchMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 			AssignIdAction action(rightConf.index());
 			action.visit(item);
 			fixedIdList << item;
-
 		}
 	}
 

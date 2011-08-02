@@ -19,7 +19,7 @@ class MatchMergeItem : public MergeItem {
 			QString message;
 
 			if (!isDone()) {
-				if (mNewId == mOldId != -1) {
+				if (mNewId == mOldId && mOldId != -1) {
 					message = QString("Id %3 didn't exist in master and no similar match to %1 <-> %2 was found").arg(mSourceId).arg(mTargetId).arg(mOldId);
 				}
 				else {
@@ -77,7 +77,11 @@ class MatchMergeItem : public MergeItem {
 					mNewId = c.index();
 				}
 				else {
-					if (mNewId != c.index()) qDebug() << "MatchMergeItem::execute: returned id did not match with expected id";
+					if (mNewId != c.index()) {
+						qDebug() << "MatchMergeItem::execute: returned id did not match with expected id: expected = " << mNewId << " and actual =" << c.index();
+
+						mNewId = c.index();
+					}
 				}
 
 				setDone(true);

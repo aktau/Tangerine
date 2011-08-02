@@ -28,7 +28,7 @@ public:
 			SAME_ACCEPT_ALL,
 		} ActionApplyToItem;
 	public:
-		MergeManager(QWidget *parent = NULL, QSharedPointer<SQLDatabase> master = QSharedPointer<SQLDatabase>());
+		MergeManager(QSharedPointer<SQLDatabase> master = QSharedPointer<SQLDatabase>(), QWidget *parent = NULL, Qt::WindowFlags f = 0);
 		~MergeManager();
 
 	public:

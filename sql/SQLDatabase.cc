@@ -339,7 +339,7 @@ thera::SQLFragmentConf SQLDatabase::addMatch(const QString& sourceName, const QS
 		}
 	}
 
-	if (id == -1) query.bindValue(":match_id", id);
+	if (id != -1) query.bindValue(":match_id", id);
 	query.bindValue(":source_id", 0); // TODO: not use dummy value
 	query.bindValue(":source_name", sourceName);
 	query.bindValue(":target_id", 0); // TODO: not use dummy value
@@ -365,7 +365,10 @@ thera::SQLFragmentConf SQLDatabase::addMatch(const QString& sourceName, const QS
 	}
 
 	if (id != -1 && realId != id) {
-		qDebug() << "SQLDatabase::addMatch: the inserted id was valid but differed from the requested id. Id" << id << "vs requested id" << realId;
+		qDebug() << "SQLDatabase::addMatch: the inserted id was valid but differed from the requested id. Got " << realId << " as opposed to requested id" << id
+			<< "\n\tqueryKey =" << queryKey
+			<< "\n\t" << query.lastQuery()
+			<< "\n\t" << query.boundValues();
 	}
 
 	return SQLFragmentConf(db, realId, fragments, 1.0f, xf);

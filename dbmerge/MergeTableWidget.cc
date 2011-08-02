@@ -29,6 +29,7 @@ void MergeTableWidget::setRow(int row, const MergeItem *item) {
 
 	QTableWidgetItem *actionDescription = new QTableWidgetItem(action->description());
 	actionDescription->setForeground(!item->isResolved() ? QBrush(Qt::red) : QBrush(Qt::green));
+	actionDescription->setData(Qt::UserRole, qVariantFromValue((void *) item));
 
 	setItem(row, 0, new QTableWidgetItem(item->typeString()));
 	setItem(row, 1, actionDescription);

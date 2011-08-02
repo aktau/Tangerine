@@ -7,7 +7,7 @@
 
 #include "ActionPickerDialog.h"
 
-MergeManager::MergeManager(QWidget *parent, QSharedPointer<SQLDatabase> master) : QDialog(parent), mLeft(master), mCurrentPhase(-1) {
+MergeManager::MergeManager(QSharedPointer<SQLDatabase> master, QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f), mLeft(master), mCurrentPhase(-1) {
 	mButtonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
 
 	// disable the OK button for now
@@ -242,54 +242,47 @@ void MergeManager::updateDbInfo() {
 	mSlaveDbButton->setEnabled(isBeginPhase());
 }
 
-void MergeManager::pickAction(QTableWidgetItem *item) {
-	qDebug() << "One:" << item->column() << mItemList->clickableColumn();
+void MergeManager::pickAction(QTableWidgetItem *tableItem) {
+	qDebug() << "One:" << tableItem->column() << mItemList->clickableColumn();
 
-	if (item->column() == mItemList->clickableColumn()) {
-		int rowIndex = item->row();
-		int lastPhase = mCurrentPhase;
-		// show a dialog/messagebox/... where the user can choose an appropriate action
+	if (tableItem->column() != mItemList->clickableColumn()) return;
 
-		qDebug() << "Two:" << rowIndex << "and phase =" << mCurrentPhase;
+	void *dataPointer = tableItem->data(Qt::UserRole).value<void *>();
 
-		if (lastPhase >= 0 && lastPhase < mMergers.size()) {
-			Merger *merger =  mMergers.at(lastPhase);
-			const QList<MergeItem *>& items = merger->items();
+	if (dataPointer == NULL) {
+		qDebug() << "MergeManager::pickAction: pointer to item was NULL";
 
-			qDebug() << "Three:" << merger << items.size();
+		return;
+	}
 
-			if (rowIndex >= 0 && rowIndex < items.size()) {
-				MergeItem *item = items.at(rowIndex);
+	MergeItem *item = static_cast<MergeItem *>(dataPointer);
 
-				MergeAction *currentActionCopy = item->currentAction()->clone();
-				QList<MergeAction *> actionList = mActionFactory.createActions(item->acceptedActions(), currentActionCopy);
+	MergeAction *currentActionCopy = item->currentAction()->clone();
+	QList<MergeAction *> actionList = mActionFactory.createActions(item->acceptedActions(), currentActionCopy);
 
-				{
-					ActionPickerDialog actionPicker(this);
-					actionPicker.setActions(actionList);
-					actionPicker.setDefaultAction(currentActionCopy);
+	{
+		ActionPickerDialog actionPicker(this);
+		actionPicker.setActions(actionList);
+		actionPicker.setDefaultAction(currentActionCopy);
 
-					if (actionPicker.exec() == QDialog::Accepted) {
-						MergeAction *chosenAction = actionPicker.chosenAction();
+		if (actionPicker.exec() == QDialog::Accepted) {
+			MergeAction *chosenAction = actionPicker.chosenAction();
 
-						ActionApplyToItem mode = JUST_THIS;
+			ActionApplyToItem mode = JUST_THIS;
 
-						if (actionPicker.applyToSameType()) mode = SAME_TYPE_ALL;
-						else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
-						else if (actionPicker.applyToAccepting()) mode = SAME_ACCEPT_ALL;
-						else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
+			if (actionPicker.applyToSameType()) mode = SAME_TYPE_ALL;
+			else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
+			else if (actionPicker.applyToAccepting()) mode = SAME_ACCEPT_ALL;
+			else if (actionPicker.applyToSameTypeUnresolved()) mode = SAME_ACCEPT_UNRESOLVED;
 
-						applyActionTo(chosenAction, item, mode);
+			applyActionTo(chosenAction, item, mode);
 
-						refresh();
-					}
-				}
-
-				qDeleteAll(actionList);
-				actionList.clear();
-			}
+			refresh();
 		}
 	}
+
+	qDeleteAll(actionList);
+	actionList.clear();
 
 	updateAll();
 }

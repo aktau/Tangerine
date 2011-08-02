@@ -440,7 +440,7 @@ void Tangerine::saveDatabase() {
 }
 
 void Tangerine::mergeDatabases() {
-	MergeManager m(this, (!mDb.isNull() && mDb->isOpen()) ? mDb : QSharedPointer<SQLDatabase>());
+	MergeManager m((!mDb.isNull() && mDb->isOpen()) ? mDb : QSharedPointer<SQLDatabase>(), this, Qt::WindowMaximizeButtonHint);
 
 	m.addMerger(new MatchMerger);
 
