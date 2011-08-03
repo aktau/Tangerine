@@ -16,6 +16,7 @@
 #include "MatchSelectionModel.h"
 #include "TabletopModel.h"
 #include "ThumbLabel.h"
+#include "WarningLabel.h"
 
 #ifdef WITH_DETAILVIEW
 #	include "DetailView.h"
@@ -111,6 +112,8 @@ class MatchTileView : public QScrollArea {
 		QList<QWidget *> mStatusBarWidgets;
 		QLabel *mStatusBarLabel;
 		QLineEdit *mFilterEdit;
+
+		WarningLabel *mWarningLabel;
 
 		QMenu *mStatusMenu;
 		QMenu *mDuplicatesMenu;

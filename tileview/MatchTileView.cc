@@ -31,7 +31,7 @@ using namespace thera;
 #define THUMB_GUTTER 10
 
 MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, int columns, float scale) :
-		QScrollArea(parent), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale)
+		QScrollArea(parent), mWarningLabel(NULL), mThumbDir(thumbDir), mModel(NULL), mSelectionModel(NULL), mScale(scale)
 #ifdef WITH_DETAILVIEW
 		//, mDetailScene(this)
 	, mDetailView(NULL), mDetailScene(NULL)
@@ -531,6 +531,14 @@ void MatchTileView::markDuplicates() {
 
 			updateStatusBar();
 
+			//WarningLabel *warning = new WarningLabel(tr("Choosing a master"), tr("The next match you click will become the master of the chosen group"), WarningLabel::TopBarFull, this);
+			if (mWarningLabel) delete mWarningLabel;
+			mWarningLabel = new WarningLabel(this);
+			mWarningLabel->setText(tr("Choosing a master"), tr("The next match you click will become the master of the chosen group"), "b", QString(), true);
+			mWarningLabel->setPosition(WarningLabel::TopBarFull);
+			mWarningLabel->setLinger(true, 0.5);
+			mWarningLabel->fade();
+
 			QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor)); // will be restored once again in clicked()
 		}
 	}
@@ -828,12 +836,16 @@ void MatchTileView::clicked(int idx, QMouseEvent *event) {
 	}
 
 	if (s().isSelectingMaster) {
+		if (mWarningLabel) {
+			delete mWarningLabel;
+			mWarningLabel = NULL;
+		}
+
 		if (event->buttons() == Qt::LeftButton) {
 			markDuplicates();
 		}
 
 		s().isSelectingMaster = false;
-
 		QApplication::restoreOverrideCursor();
 		updateStatusBar();
 	}
