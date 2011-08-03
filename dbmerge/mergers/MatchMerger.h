@@ -6,7 +6,7 @@
 #include <QSet>
 #include <QHash>
 
-class MatchMerger: public Merger {
+class MatchMerger : public Merger {
 		Q_OBJECT
 
 	public:
