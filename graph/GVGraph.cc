@@ -226,7 +226,8 @@ QList<GVNode> GVGraph::nodes() const {
 QList<GVEdge> GVGraph::edges() const {
 	QList<GVEdge> list;
 
-	double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
+	const double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
+	const double scale = (dpi / DotDefaultDPI);
 
 	for (EdgeMap::const_iterator it = mEdges.begin(), end = mEdges.end(); it != end; ++it) {
 		const Agedge_t *edge = it.value();
@@ -239,6 +240,55 @@ QList<GVEdge> GVGraph::edges() const {
 		//Calculate the path from the spline (only one spline, as the graph is strict. If it
 		//wasn't, we would have to iterate over the first list too)
 		//Calculate the path from the spline (only one as the graph is strict)
+		const splines * const spl = ED_spl(edge);
+		const bezier * const firstBezier = spl->list;
+		const boxf bb = GD_bb(mGraph);
+
+		if ((spl->list != 0) && (spl->list->size % 3 == 1)) {
+			if (spl->size > 1) {
+				qDebug("GVGraph::edges: %d splines were available but only 1 will be rendered because there is no functionality for multiple splines yet", spl->size);
+			}
+
+			//If there is a starting point, draw a line from it to the first curve point
+			if (firstBezier->sflag) {
+				object.path.moveTo(
+					firstBezier->sp.x * scale,
+					(bb.UR.y - firstBezier->sp.y) * scale
+				);
+				object.path.lineTo(
+					firstBezier->list[0].x * scale,
+					(bb.UR.y - firstBezier->list[0].y) * scale
+				);
+			}
+			else {
+				object.path.moveTo(
+					firstBezier->list[0].x * scale,
+					(bb.UR.y - firstBezier->list[0].y) * scale
+				);
+			}
+
+			//Loop over the curve points
+			for (int i = 1; i < firstBezier->size; i += 3) {
+				object.path.cubicTo(
+					firstBezier->list[i].x * scale,
+					(bb.UR.y - firstBezier->list[i].y) * scale,
+					firstBezier->list[i + 1].x * scale,
+					(bb.UR.y - firstBezier->list[i + 1].y) * scale,
+					firstBezier->list[i + 2].x * scale,
+					(bb.UR.y - firstBezier->list[i + 2].y) * scale
+				);
+			}
+
+			//If there is an ending point, draw a line to it
+			if (firstBezier->eflag) {
+				object.path.lineTo(
+					firstBezier->ep.x * scale,
+					(bb.UR.y - firstBezier->ep.y) * scale
+				);
+			}
+		}
+
+		/*
 		if ((edge->u.spl->list != 0) && (edge->u.spl->list->size % 3 == 1)) {
 			//If there is a starting point, draw a line from it to the first curve point
 			if (edge->u.spl->list->sflag) {
@@ -278,6 +328,7 @@ QList<GVEdge> GVGraph::edges() const {
 				);
 			}
 		}
+		*/
 
 		list << object;
 	}
