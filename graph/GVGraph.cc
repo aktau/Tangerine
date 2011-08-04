@@ -77,6 +77,7 @@ void GVGraph::removeNode(const QString& name) {
 void GVGraph::clearNodes() {
 	QList<QString> keys = mNodes.keys();
 
+	// free all location information added by a layout algorithm first (safe to call multiple times)
 	gvFreeLayout(mContext, mGraph);
 
 	qDebug() << "GVGraph::clearNodes: freed layout";
@@ -112,13 +113,13 @@ void GVGraph::addEdge(const QString &source, const QString &target) {
 		// in which case agedge returns the same pointer instead of creating a new edge
 
 		if (!mEdges.values(key).contains(edge)) {
-			mEdges.insertMulti(key, agedge(mGraph, mNodes[source], mNodes[target]));
+			mEdges.insertMulti(key, edge);
 		}
 	}
 }
 
 void GVGraph::removeEdges(const QString &source, const QString &target) {
-	removeEdges(QPair<QString, QString> (source, target));
+	removeEdges(QPair<QString, QString>(source, target));
 }
 
 void GVGraph::removeEdges(const QPair<QString, QString>& key) {
@@ -180,7 +181,7 @@ void GVGraph::applyLayout() {
 }
 
 QRectF GVGraph::boundingRect() const {
-    double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
+    const double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
 
     return QRectF(
 		mGraph->u.bb.LL.x * (dpi/DotDefaultDPI),
@@ -287,48 +288,6 @@ QList<GVEdge> GVGraph::edges() const {
 				);
 			}
 		}
-
-		/*
-		if ((edge->u.spl->list != 0) && (edge->u.spl->list->size % 3 == 1)) {
-			//If there is a starting point, draw a line from it to the first curve point
-			if (edge->u.spl->list->sflag) {
-				object.path.moveTo(
-					edge->u.spl->list->sp.x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->sp.y) * (dpi / DotDefaultDPI)
-				);
-				object.path.lineTo(
-					edge->u.spl->list->list[0].x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->list[0].y) * (dpi / DotDefaultDPI)
-				);
-			}
-			else {
-				object.path.moveTo(
-					edge->u.spl->list->list[0].x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->list[0].y) * (dpi / DotDefaultDPI)
-				);
-			}
-
-			//Loop over the curve points
-			for (int i = 1; i < edge->u.spl->list->size; i += 3) {
-				object.path.cubicTo(
-					edge->u.spl->list->list[i].x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->list[i].y) * (dpi / DotDefaultDPI),
-					edge->u.spl->list->list[i + 1].x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->list[i + 1].y) * (dpi / DotDefaultDPI),
-					edge->u.spl->list->list[i + 2].x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->list[i + 2].y) * (dpi / DotDefaultDPI)
-				);
-			}
-
-			//If there is an ending point, draw a line to it
-			if (edge->u.spl->list->eflag) {
-				object.path.lineTo(
-					edge->u.spl->list->ep.x * (dpi / DotDefaultDPI),
-					(mGraph->u.bb.UR.y - edge->u.spl->list->ep.y) * (dpi / DotDefaultDPI)
-				);
-			}
-		}
-		*/
 
 		list << object;
 	}

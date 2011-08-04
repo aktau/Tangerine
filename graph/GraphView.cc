@@ -4,6 +4,7 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <QStringList>
+#include <QGLWidget>
 
 #include "math.h"
 
@@ -27,10 +28,10 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	/* view attributes */
 	setDragMode(QGraphicsView::ScrollHandDrag);
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-	//setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+	setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	//mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
-	mGraph = new GVGraph("Tangerine", "neato", AGRAPHSTRICT, QFont(), 200);
+	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
+	//mGraph = new GVGraph("Tangerine", "neato", AGRAPHSTRICT, QFont(), 200);
 
 	setModel(&EmptyMatchModel::EMPTY);
 }
