@@ -385,6 +385,9 @@ void MatchTileView::filterStatuses() {
 	int ret = dialog.exec();
 
 	if (!!ret) {
+		// we're going to change it, save the state
+		saveState();
+
 		statuses = dialog.getStatuses();
 
 		QStringList disabled;
