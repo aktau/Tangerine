@@ -19,10 +19,8 @@ class AttributeMerger : public Merger {
 		void execute(SQLDatabase *left, MergeMapper *mapper);
 
 	private:
-		//typedef QList<HistoryRecord *> HistoryPointerList;
-		//typedef QHash<int, HistoryPointerList> IdToHistoryMap;
-		typedef QList<const HistoryRecord *> HistoryPointerList;
-		typedef QHash<int, HistoryPointerList> IdToHistoryMap;
+		typedef QList<HistoryRecord> HistoryList;
+		typedef QHash<int, HistoryList> IdToHistoryMap;
 
 	private:
 		void mergeAttribute(const QString& attribute, const IdToHistoryMap& leftHistoryMap, const IdToHistoryMap& rightHistoryMap);

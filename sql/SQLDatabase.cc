@@ -50,9 +50,6 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 					i.remove();
 				}
 			}
-
-
-			//else qDebug() << "SQLDatabase::getDb: the connection" << i.key() << "is still intact";
 		}
 
 		QString connName = dbd.getConnectionName();
@@ -764,15 +761,37 @@ bool SQLDatabase::historyAvailable() const {
 QList<HistoryRecord> SQLDatabase::getHistory(const QString& field, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
 	QList<HistoryRecord> list;
 
+	if (!matchHasField(field)) {
+		qDebug() << "SQLDatabase::getHistory: field" << field << "did not exist";
+
+		return list;
+	}
+
 	QString queryString = QString("SELECT user_id, match_id, timestamp, %1 FROM %1_history").arg(field);
+
+	QSet<QString> historyFields = QSet<QString>() << "match_id" << "user_id" << "timestamp" << field;
+	if (!sortField.isEmpty()) {
+		if (!historyFields.contains(sortField)) {
+			qDebug() << "SQLDatabase::getHistory: attempted to sort on field" << sortField << "which doesn't exist";
+		}
+	}
+
+	// add filter clauses
+	/*
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
+	}
+	*/
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);
 
 	if (query.exec(queryString)) {
 		while (query.next()) {
-			//qDebug() << query.value(0).type() << query.value(1).type();
-
 			list << HistoryRecord(
 				query.value(0).toInt(),
 				query.value(1).toInt(),
@@ -785,6 +804,14 @@ QList<HistoryRecord> SQLDatabase::getHistory(const QString& field, const QString
 		qDebug() << "SQLDatabase::getHistory query failed:" << query.lastError()
 			<< "\nQuery executed:" << query.lastQuery();
 	}
+
+	return list;
+}
+
+QList<AttributeRecord> SQLDatabase::getAttribute(const QString& field) {
+	QList<AttributeRecord> list;
+
+	// TODO: obviously...
 
 	return list;
 }
@@ -1072,6 +1099,8 @@ void SQLDatabase::makeFieldsSet() {
 
 	// clear just in case
 	mMatchFields.clear();
+	mNormalMatchFields.clear();
+	mViewMatchFields.clear();
 
 	foreach (const QString& table, tables()) {
 		// check if the tables name is not the 'matches' table itself

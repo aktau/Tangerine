@@ -1,19 +1,16 @@
 #include "AttributeMerger.h"
 
-// yea, Qt doesn't really provide these things exactly and I don't feel like rolling my own buggy versions
-// I'm paying the cost for the STL already anyway
-//#include <set>
-//#include <algorithm>
-
 #include <QtAlgorithms>
 
-#define MERGE_DEBUG 1
+#include <AttributeMergeItem.h>
 
+/*
 struct HistoryLessThan : public std::binary_function<HistoryRecord *, HistoryRecord *, bool> {
     bool operator()(const HistoryRecord *lhs, const HistoryRecord *rhs) const {
         return lhs->timestamp < rhs->timestamp;
     }
 };
+*/
 
 AttributeMerger::AttributeMerger() {
 
@@ -53,7 +50,7 @@ void AttributeMerger::merge(SQLDatabase *left, SQLDatabase *right) {
 
 		//qDebug() << "AttributeMerger::merge: master map size =" << leftIdToHistoryMap.size() << ", slave map size =" << rightIdToHistoryMap.size();
 
-		// TODO: assert / sanity check to see if the list contain duplicate pointers
+		// TODO: assert / sanity check to see if the list contains duplicate pointers
 		{
 			QList<AttributeRecord> leftAttributes = left->getAttribute(attribute);
 			QList<AttributeRecord> rightAttributes = right->getAttribute(attribute);
@@ -91,83 +88,31 @@ inline void AttributeMerger::mergeAttribute(const QString& attribute, const IdTo
 		IdToHistoryMap::const_iterator rightIterator = rightHistoryMap.constFind(id);
 
 		if (rightIterator == rightHistoryMap.constEnd()) {
-			qDebug() << "AttributeMerger::mergeAttribute: this should never happen";
+			qDebug() << "AttributeMerger::mergeAttribute: this should never happen" << id;
+
+			continue;
 		}
+
+		//qDebug() << "got here";
 
 		if (leftIterator == leftHistoryMap.constEnd()) {
 			// just merge in
 			qDebug() << "No history for" << id << "->" << attribute << "in master, merging...";
+
+			mItems << new AttributeMergeItem(id, HistoryList(), *rightIterator);
+			MostRecentAction action;
+			action.visit(mItems.last());
 		}
 		else {
-			const HistoryPointerList& leftHistory = leftIterator.value();
-			const HistoryPointerList& rightHistory = rightIterator.value();
-
-			const HistoryRecord *leftMostRecent = leftHistory.last();
-			const HistoryRecord *rightMostRecent = rightHistory.last();
-
-			if (*leftMostRecent == *rightMostRecent) {
-			#ifdef MERGE_DEBUG
-				qDebug() << "RESULT: Both were equal, not doing anything: " << leftMostRecent->toString();
-				qDebug() << "----------------------------------";
-			#endif
-
-				continue;
-			}
-
-			#if MERGE_DEBUG == 2
-			qDebug() << "Master history";
-			int i = 0;
-			foreach (const HistoryRecord *r, leftHistory) {
-				qDebug() << ++i << "-" << r->toString();
-			}
-
-			qDebug() << "Slave history";
-			i = 0;
-			foreach (const HistoryRecord *r, rightHistory) {
-				qDebug() << ++i << "-" << r->toString();
-			}
-			#endif
-			HistoryLessThan hLess;
-			HistoryPointerList::const_iterator found = qBinaryFind(rightHistory.begin(), rightHistory.end(), leftMostRecent, hLess);
-
-			// look for shared history, conflict, resolve
-			if (found != rightHistory.end()) {
-				if (*leftMostRecent == **found) {
-					qDebug() << "RESULT: Found master history inside of slave: supposed to merge!";
-				}
-				else {
-					qDebug() << "RESULT: Freak accident #1: exactly the same timestamp but not the same, what to do?:" << leftMostRecent->toString() << "vs" << (*found)->toString();
-
-					//while (++found != rightHistory.end()) { ... }
-				}
-			}
-			else {
-				qDebug() << "RESULT: Did NOT find master history inside of slave";
-
-				found = qBinaryFind(leftHistory.begin(), leftHistory.end(), rightMostRecent, hLess);
-				if (found != leftHistory.end()) {
-					if (*rightMostRecent == **found) {
-						qDebug() << "RESULT: Found last slave update inside of master history: do not merge, master is more recent!";
-					}
-					else {
-						qDebug() << "RESULT: Freak accident #2: exactly the same timestamp but not the same, what to do?:" << rightMostRecent->toString() << "vs" << (*found)->toString();
-					}
-				}
-				else {
-					qDebug() << "RESULT: Histories diverged or were never the same in the first place: conflict resolution magic here";
-				}
-			}
-
-			qDebug() << "----------------------------------";
+			mItems << new AttributeMergeItem(id, *leftIterator, *rightIterator);
+			ChooseHistoryAction action;
+			action.visit(mItems.last());
 		}
 	}
-
-	//mItems << fixedIdList;
 }
 
 void AttributeMerger::fillHistoryMap(IdToHistoryMap& map, QList<HistoryRecord>& historyList, bool mapIndices) {
 	for (int i = 0; i < historyList.size(); ++i) {
-	//foreach (HistoryRecord& histRecord, historyList) {
 		HistoryRecord& histRecord = historyList[i];
 
 		// if the attribute wasn't mapped to -1
@@ -180,7 +125,7 @@ void AttributeMerger::fillHistoryMap(IdToHistoryMap& map, QList<HistoryRecord>& 
 		else if (realId == -2) {
 			qDebug() << "AttributeMerger::fillHistoryMap: No mapping was found for this match... strange. Attribute name =" << "?" << "and match id =" << histRecord.matchId;
 
-			map[histRecord.matchId] << &histRecord;
+			map[histRecord.matchId] << histRecord;
 		}
 		else {
 			if (histRecord.matchId != realId) {
@@ -196,71 +141,7 @@ void AttributeMerger::fillHistoryMap(IdToHistoryMap& map, QList<HistoryRecord>& 
 			}
 
 			// should create key if it didn't exist already
-			map[histRecord.matchId] << &histRecord;
+			map[histRecord.matchId] << histRecord;
 		}
 	}
 }
-
-
-/*
-const HistoryPointerList& leftHistory = leftIterator.value();
-const HistoryPointerList& rightHistory = rightIterator.value();
-
-const HistoryRecord *leftMostRecent = leftHistory.last();
-const HistoryRecord *rightMostRecent = rightHistory.last();
-
-if (*leftMostRecent == *rightMostRecent) {
-#ifdef MERGE_DEBUG
-	qDebug() << "RESULT: Both were equal, not doing anything: " << leftMostRecent->toString();
-	qDebug() << "----------------------------------";
-#endif
-
-	continue;
-}
-
-#if MERGE_DEBUG == 2
-qDebug() << "Master history";
-int i = 0;
-foreach (const HistoryRecord *r, leftHistory) {
-	qDebug() << ++i << "-" << r->toString();
-}
-
-qDebug() << "Slave history";
-i = 0;
-foreach (const HistoryRecord *r, rightHistory) {
-	qDebug() << ++i << "-" << r->toString();
-}
-#endif
-HistoryLessThan hLess;
-HistoryPointerList::const_iterator found = qBinaryFind(rightHistory.begin(), rightHistory.end(), leftMostRecent, hLess);
-
-// look for shared history, conflict, resolve
-if (found != rightHistory.end()) {
-	if (*leftMostRecent == **found) {
-		qDebug() << "RESULT: Found master history inside of slave: supposed to merge!";
-	}
-	else {
-		qDebug() << "RESULT: Freak accident #1: exactly the same timestamp but not the same, what to do?:" << leftMostRecent->toString() << "vs" << (*found)->toString();
-
-		//while (++found != rightHistory.end()) { ... }
-	}
-}
-else {
-	qDebug() << "RESULT: Did NOT find master history inside of slave";
-
-	found = qBinaryFind(leftHistory.begin(), leftHistory.end(), rightMostRecent, hLess);
-	if (found != leftHistory.end()) {
-		if (*rightMostRecent == **found) {
-			qDebug() << "RESULT: Found last slave update inside of master history: do not merge, master is more recent!";
-		}
-		else {
-			qDebug() << "RESULT: Freak accident #2: exactly the same timestamp but not the same, what to do?:" << rightMostRecent->toString() << "vs" << (*found)->toString();
-		}
-	}
-	else {
-		qDebug() << "RESULT: Histories diverged or were never the same in the first place: conflict resolution magic here";
-	}
-}
-
-qDebug() << "----------------------------------";
-*/

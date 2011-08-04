@@ -4,6 +4,19 @@
 #include <QDateTime>
 #include <QVariant>
 
+/**
+ * These classes are meant for the times when intense modification of the database is necessary, most
+ * of this functionality is exposed through the SQLFragmentConf interface but when dealing with huge
+ * amounts of matches it might in some cases be more performant/easier to request the records themselves
+ */
+
+struct AttributeRecord {
+	int matchId;
+
+	QVariant value;
+};
+
+// TODO: use an AttributeRecord internally
 struct HistoryRecord {
 	int matchId;
 	int userId;
@@ -13,6 +26,14 @@ struct HistoryRecord {
 
 	HistoryRecord(int _userId, int _matchId, const QDateTime& _timestamp, const QVariant _value)
 		: matchId(_matchId), userId(_userId), timestamp(_timestamp), value(_value)  { }
+
+	QString toString() const {
+		return QString("Match: %1, user: %2, value: %3 @ date: %4").arg(matchId).arg(userId).arg(value.toString()).arg(timestamp.toString());
+	}
+
+	bool operator==(const HistoryRecord& other) const {
+		return timestamp == other.timestamp && matchId == other.matchId && userId == other.userId && value == other.value;
+	}
 };
 
 /**

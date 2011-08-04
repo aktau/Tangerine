@@ -41,6 +41,13 @@ class MergeMapper {
 			return mStringMap.contains(FieldStringPair(field, from));
 		}
 
+		// this variant will return the 'from' parameter as the result if nothing was found
+		int get(MergeMapper::IntField field, int from) const {
+			IntMap::const_iterator i = mIntMap.constFind(FieldIntPair(field, from));
+
+			return (i != mIntMap.constEnd()) ? i.value() : from;
+		}
+
 		int get(MergeMapper::IntField field, int from, int deflt) const {
 			IntMap::const_iterator i = mIntMap.constFind(FieldIntPair(field, from));
 

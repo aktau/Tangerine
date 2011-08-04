@@ -88,13 +88,9 @@ MergeManager::MergeManager(QSharedPointer<SQLDatabase> master, QWidget *parent, 
 
 	QSettings settings;
 	if (settings.value(SETTINGS_MERGEMANAGER_FIRSTTIME, true).toBool()) {
-		WarningLabel *warning = new WarningLabel(tr("Warning"), tr("Every phase changes the database irrevocably, use caution"), this);
-		warning->setEndOpacity(0.4);
-		warning->show();
+		WarningLabel *warning = new WarningLabel(tr("Warning"), tr("Every phase changes the database irrevocably, use caution"), WarningLabel::Center, this);
+		warning->setLinger(false, 0.4); // will delete itself when clicked
 		warning->fade();
-
-		//warning->setOneLine();
-		//layout->insertWidget(1, warning);
 
 		settings.setValue(SETTINGS_MERGEMANAGER_FIRSTTIME, false);
 	}
@@ -117,14 +113,6 @@ void MergeManager::addMerger(Merger *merger) {
 }
 
 void MergeManager::merge() {
-	/*
-	QList<HistoryRecord> leftHistory = left->getHistory("comment");
-
-	foreach (const HistoryRecord& record, leftHistory) {
-		qDebug() << record.userId << record.matchId << record.timestamp << record.value;
-	}
-	*/
-
 	if (haveDatabases() && mCurrentPhase >= 0 && mCurrentPhase < mMergers.size()) {
 		Merger *merger = mMergers.at(mCurrentPhase);
 
@@ -216,7 +204,6 @@ void MergeManager::pickDatabases() {
 
 			if (!current->isOpen()) {
 				QMessageBox::information(this, tr("Error while opening database"), tr("Couldn't open database, please try again or try another database"));
-				--i;
 			}
 			else {
 				++i;
@@ -225,6 +212,7 @@ void MergeManager::pickDatabases() {
 			}
 		}
 		else {
+			// user pressed cancel
 			break;
 		}
 	}
@@ -284,6 +272,7 @@ void MergeManager::pickAction(QTableWidgetItem *tableItem) {
 	MergeItem *item = static_cast<MergeItem *>(dataPointer);
 
 	MergeAction *currentActionCopy = item->currentAction()->clone();
+
 	QList<MergeAction *> actionList = mActionFactory.createActions(item->acceptedActions(), currentActionCopy);
 
 	{
@@ -364,7 +353,7 @@ void MergeManager::goForward() {
 	++mCurrentPhase;
 	assert(isValidPhase());
 
-	if (!isEndPhase()) {
+	if (!isEndPhase() && currentMerger()->items().isEmpty()) {
 		merge();
 	}
 

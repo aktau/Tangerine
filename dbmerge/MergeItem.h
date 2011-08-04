@@ -16,7 +16,8 @@ class MergeAction;
 class MergeItem {
 	public:
 		typedef enum {
-			MATCHMERGEITEM
+			MATCHMERGEITEM,
+			ATTRIBUTEMERGEITEM
 		} MergeItemType;
 
 	public:

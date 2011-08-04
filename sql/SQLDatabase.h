@@ -14,7 +14,7 @@
 #include "SQLFragmentConf.h"
 #include "SQLFilter.h"
 
-#include "MatchHistory.h"
+#include "SQLRawTheraRecords.h"
 
 class SQLDatabase : public QObject {
 		Q_OBJECT
@@ -41,7 +41,7 @@ class SQLDatabase : public QObject {
 		virtual bool addMatchField(const QString& name, double defaultValue);
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
 		virtual bool addMatchField(const QString& name, int defaultValue);
-		virtual bool addMetaMatchField(const QString& name, const QString& sql); // a metafield is a field computed from other fields, it is implemented through an SQL view
+		virtual bool addMetaMatchField(const QString& name, const QString& sql); // a metafield is a field computed from other fields, it is usually implemented through an SQL view
 		virtual bool removeMatchField(const QString& name);
 
 		// in the filters QMap, the key is the field dependencies and the value is the SQL clause that will be put into a WHERE, they will be concatenated with AND
@@ -53,19 +53,26 @@ class SQLDatabase : public QObject {
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
 		bool historyAvailable() const;
-		//QList<MatchHistory> getHistory(const QString& field);
 		QList<HistoryRecord> getHistory(const QString& field, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
-		//QMap<QString, QList<HistoryRecord> > getHistory();
+
+		// you can see this as a simplified version of getHistory(), it will return all the current values for the attribute of each match
+		QList<AttributeRecord> getAttribute(const QString& field);
 
 		// the following method will try to convert any standard function that is not available
 		// in the instantiated DB type into a specialized function, an example:
-		// ANSI string contatenation: 'foo' || 'bar' = 'foobar'
+		// ANSI string concatenation: 'foo' || 'bar' = 'foobar'
 		// MySQL doesn't understand this, but does understand: CONCAT('foo','bar') = 'foobar'
 		// So makeCompatible will convert double pipes if the database is MySQL
 		virtual QString makeCompatible(const QString& statement) const;
 
 		bool matchHasField(const QString& field) const;
 		const QSet<QString>& matchFields() const;
+
+		bool matchHasRealField(const QString& field) const;
+		const QSet<QString>& realMatchFields() const;
+
+		//bool historyHasField(const QString& field) const;
+		//const QSet<QString>& historyFields() const;
 
 		int matchCount() const;
 
@@ -77,6 +84,7 @@ class SQLDatabase : public QObject {
 		// returns the fragment conf of the inserted match
 		// the fragment conf will be invalid if the query failed (index == -1)
 		virtual thera::SQLFragmentConf addMatch(const QString& sourceName, const QString& targetName, const thera::XF& xf, int id = -1);
+		// virtual thera::SQLFragmentConf addMatch(const thera::IfragmentConf& conf);
 
 	signals:
 		void databaseOpened();
@@ -170,8 +178,20 @@ class SQLDatabase : public QObject {
 		friend class thera::SQLFragmentConf;
 };
 
+inline const QSet<QString>& SQLDatabase::matchFields() const {
+	return mMatchFields;
+}
+
 inline bool SQLDatabase::matchHasField(const QString& field) const {
 	return mMatchFields.contains(field.toLower());
+}
+
+inline const QSet<QString>& SQLDatabase::realMatchFields() const {
+	return mNormalMatchFields;
+}
+
+inline bool SQLDatabase::matchHasRealField(const QString& field) const {
+	return mNormalMatchFields.contains(field.toLower());
 }
 
 inline QSqlQuery& SQLDatabase::getOrElse(const QString& key, const QString& queryString) {
@@ -256,10 +276,6 @@ template<typename T> inline T SQLDatabase::matchGetValue(int id, const QString& 
 
 inline QSqlDatabase SQLDatabase::database() const {
 	return QSqlDatabase::database(mConnectionName, false);
-}
-
-inline const QSet<QString>& SQLDatabase::matchFields() const {
-	return mMatchFields;
 }
 
 #endif /* SQLDATABASE_H_ */

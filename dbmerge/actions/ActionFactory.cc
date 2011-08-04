@@ -38,7 +38,6 @@ QList<const MergeAction *> ActionFactory::getConstActions(const QList<Merge::Act
 MergeAction *ActionFactory::createAction(Merge::Action type) {
 	/*
   		NONE,
-		CHOOSE_MASTER,
 		CHOOSE_SLAVE,
 		PREFER_USER,
 		MOST_RECENT,
@@ -46,10 +45,11 @@ MergeAction *ActionFactory::createAction(Merge::Action type) {
 		ASSIGN_NEW_ID
 	 */
 	switch (type) {
-		case Merge::CHOOSE_MASTER: return new ChooseMasterAction;
-		case Merge::CHOOSE_SLAVE: return new NoAction;
-		case Merge::PREFER_USER: return new NoAction;
-		case Merge::MOST_RECENT: return new NoAction;
+		//case Merge::CHOOSE_MASTER: return new ChooseMasterAction;
+		case Merge::CHOOSE_SLAVE: return new ChooseSlaveAction;
+		case Merge::CHOOSE_HISTORY: return new ChooseHistoryAction;
+		case Merge::PREFER_USER: return new PreferUserAction;
+		case Merge::MOST_RECENT: return new MostRecentAction;
 		case Merge::ASSIGN_NEW_ID: return new AssignIdAction;
 		case Merge::DONT_MERGE: return new DontMergeAction;
 

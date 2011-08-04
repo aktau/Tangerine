@@ -10,6 +10,7 @@
 
 #include "MergeManager.h"
 #include "MatchMerger.h"
+#include "AttributeMerger.h"
 
 using namespace thera;
 
@@ -443,6 +444,7 @@ void Tangerine::mergeDatabases() {
 	MergeManager m((!mDb.isNull() && mDb->isOpen()) ? mDb : QSharedPointer<SQLDatabase>(), this, Qt::WindowMaximizeButtonHint);
 
 	m.addMerger(new MatchMerger);
+	m.addMerger(new AttributeMerger);
 
 	m.exec();
 }
