@@ -531,8 +531,9 @@ void DetailScene::updateDisplayInformation() {
 		"<ul>"
 		"<li>Quality: <b>%2</b> (press 'h' to change)</li>"
 		"<li>Zoom: <b>%3</b> (use the scroll button)</li>"
+		"<li>Transparency: <b>%4</b> (press 't' to change)</li>"
 		"</ul>"
-	).arg(match).arg(mState.highQuality ? "high" : "low").arg(mDistanceExponential);
+	).arg(match).arg(mState.highQuality ? "high" : "low").arg(mDistanceExponential).arg(mState.transparancyEnabled ? "Yes" : "No");
 
 	if (mWatcher.isRunning()) {
 		html = QString("<h1>Loading data, please be patient</h1>") + html;
