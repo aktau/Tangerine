@@ -8,7 +8,7 @@ CONFIG   += qt
 CONFIG   -= app_bundle
 
 # compile-time modules support
-#CONFIG += graphviz
+CONFIG += graphviz
 CONFIG += tileview
 CONFIG += detailview
 

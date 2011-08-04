@@ -85,6 +85,8 @@ void GVGraph::clearNodes() {
 		removeNode(keys.at(i));
 	}
 
+	qDebug() << "GVGraph::clearNodes: removed nodes";
+
 	assert(mNodes.isEmpty());
 }
 
@@ -104,7 +106,14 @@ void GVGraph::addEdge(const QString &source, const QString &target) {
 		}
 		*/
 
-		mEdges.insertMulti(key, agedge(mGraph, mNodes[source], mNodes[target]));
+		Agedge_t *edge = agedge(mGraph, mNodes[source], mNodes[target]);
+
+		// if this edge pointer already existed then the graph is probably strict
+		// in which case agedge returns the same pointer instead of creating a new edge
+
+		if (!mEdges.values(key).contains(edge)) {
+			mEdges.insertMulti(key, agedge(mGraph, mNodes[source], mNodes[target]));
+		}
 	}
 }
 
@@ -113,15 +122,24 @@ void GVGraph::removeEdges(const QString &source, const QString &target) {
 }
 
 void GVGraph::removeEdges(const QPair<QString, QString>& key) {
+	qDebug() << "Attempting to delete edge:" << key << "there are" << mEdges.size() << "edges left";
+
 	if (mEdges.contains(key)) {
+		qDebug() << key << "exists, there are" << mEdges.values(key).size() << "subedges";
+
 		foreach (Agedge_t *edge, mEdges.values(key)) {
+			qDebug() << "Going to delete" << mGraph << edge;
 			agdelete(mGraph, edge);
 		}
+
+		qDebug() << "Foreach traversed!";
 
 		//agdelete(mGraph, mEdges[key]);
 
 		mEdges.remove(key);
 	}
+
+	qDebug() << "succesfully terminated";
 }
 
 void GVGraph::setFont(QFont font) {

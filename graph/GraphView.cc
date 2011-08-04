@@ -35,12 +35,6 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	setModel(&EmptyMatchModel::EMPTY);
 }
 
-/*
-GraphView::GraphView(QGraphicsScene *scene, QWidget *parent) : QGraphicsView(scene, parent) {
-	setDragMode(QGraphicsView::ScrollHandDrag);
-}
-*/
-
 GraphView::~GraphView() {
 	delete mGraph;
 
@@ -60,7 +54,7 @@ void GraphView::setModel(IMatchModel *model) {
 		modelChanged();
 	}
 	else {
-		qDebug() << "GraphView::setModel: Invalid model";
+		qDebug() << "GraphView::setModel: NULL model not accepted";
 	}
 }
 
