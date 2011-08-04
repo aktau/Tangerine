@@ -526,11 +526,11 @@ void DetailScene::updateDisplayInformation() {
 
 	QString html = QString(
 		"<h1>Detailed match information</h1> "
-		"<b>Showing match %1</b>"
+		"<b>Showing fragments %1</b>"
 		"<hr />"
 		"<ul>"
-		"<li>Quality: <b>%2</b></li>"
-		"<li>Zoom: <b>%3</b></li>"
+		"<li>Quality: <b>%2</b> (press 'h' to change)</li>"
+		"<li>Zoom: <b>%3</b> (use the scroll button)</li>"
 		"</ul>"
 	).arg(match).arg(mState.highQuality ? "high" : "low").arg(mDistanceExponential);
 
