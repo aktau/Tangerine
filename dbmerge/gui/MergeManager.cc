@@ -277,6 +277,7 @@ void MergeManager::pickAction(QTableWidgetItem *tableItem) {
 
 	{
 		ActionPickerDialog actionPicker(this);
+		actionPicker.setInformationWidget(item->informationWidget());
 		actionPicker.setActions(actionList);
 		actionPicker.setDefaultAction(currentActionCopy);
 

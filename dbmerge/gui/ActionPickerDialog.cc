@@ -2,7 +2,7 @@
 
 #include <QtGui>
 
-ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f), mActionBox(NULL) {
+ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDialog(parent, f), mInformationWidget(NULL), mActionBox(NULL) {
 	mButtonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
 	connect(mButtonBox, SIGNAL(accepted()), this, SLOT(accept()));
 	connect(mButtonBox, SIGNAL(rejected()), this, SLOT(reject()));
@@ -50,19 +50,33 @@ ActionPickerDialog::ActionPickerDialog(QWidget *parent, Qt::WindowFlags f) : QDi
 	vbox->addStretch(1);
 	groupBox->setLayout(vbox);
 
-	QVBoxLayout *layout = new QVBoxLayout;
+	mMainLayout = new QVBoxLayout;
 	{
-		layout->addWidget(mGroupBox);
-		layout->addWidget(groupBox);
-		layout->addWidget(mButtonBox);
+		mMainLayout->addWidget(mGroupBox);
+		mMainLayout->addWidget(groupBox);
+		mMainLayout->addWidget(mButtonBox);
 	}
-	setLayout(layout);
+	setLayout(mMainLayout);
 
 	setWindowTitle(tr("Pick the action you wish to take"));
 }
 
 ActionPickerDialog::~ActionPickerDialog() {
+	delete mInformationWidget;
+}
 
+/*
+void ActionPickerDialog::setItem(const MergeItem *item) {
+	mItem = item;
+}
+*/
+
+void ActionPickerDialog::setInformationWidget(QWidget *widget) {
+	if (widget != NULL) {
+		mInformationWidget = widget;
+
+		mMainLayout->insertWidget(0, mInformationWidget);
+	}
 }
 
 void ActionPickerDialog::setActions(const QList<MergeAction *>& actions) {

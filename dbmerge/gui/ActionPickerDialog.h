@@ -11,6 +11,8 @@
 
 #include "MergeAction.h"
 
+class MergeItem;
+
 class ActionPickerDialog : public QDialog {
 		Q_OBJECT
 
@@ -18,7 +20,11 @@ class ActionPickerDialog : public QDialog {
 		ActionPickerDialog(QWidget *parent = 0, Qt::WindowFlags f = 0);
 		virtual ~ActionPickerDialog();
 
-		// does NOT take ownership of the actions, don't delete them while the dialog is active
+		//void setItem(const MergeItem *item);
+		// takes ownership
+		void setInformationWidget(QWidget *widget);
+
+		// below methods do NOT take ownership of anything, don't delete pointers while the dialog is active
 		void setActions(const QList<MergeAction *>& actions);
 		void setDefaultAction(const MergeAction *action);
 		MergeAction *chosenAction() const;
@@ -31,11 +37,14 @@ class ActionPickerDialog : public QDialog {
 	private:
 		QDialogButtonBox *mButtonBox;
 
+		QWidget *mInformationWidget;
+
 		typedef QPair<QRadioButton *, MergeAction *> ButtonActionPair;
 		QList<ButtonActionPair> mActionMap;
 		//QMap<QRadioButton *, MergeAction *> mActionMap;
 		//QList<MergeAction *> mActions;
 
+		QVBoxLayout *mMainLayout;
 		QVBoxLayout *mActionBox;
 		QGroupBox *mGroupBox;
 

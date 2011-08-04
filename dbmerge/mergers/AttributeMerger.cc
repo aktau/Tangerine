@@ -99,12 +99,12 @@ inline void AttributeMerger::mergeAttribute(const QString& attribute, const IdTo
 			// just merge in
 			qDebug() << "No history for" << id << "->" << attribute << "in master, merging...";
 
-			mItems << new AttributeMergeItem(id, HistoryList(), *rightIterator);
+			mItems << new AttributeMergeItem(id, HistoryList(), *rightIterator, attribute);
 			MostRecentAction action;
 			action.visit(mItems.last());
 		}
 		else {
-			mItems << new AttributeMergeItem(id, *leftIterator, *rightIterator);
+			mItems << new AttributeMergeItem(id, *leftIterator, *rightIterator, attribute);
 			ChooseHistoryAction action;
 			action.visit(mItems.last());
 		}

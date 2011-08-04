@@ -46,6 +46,10 @@ class MergeItem {
 		//virtual QString getQuery() const { return QString(); }
 		virtual bool execute(SQLDatabase *db, MergeMapper *mapper) = 0;
 
+		// creates a widget that displays more information about the internal data of this item
+		// returns NULL if no widget is available, ownership is transferred to the caller
+		virtual QWidget *informationWidget() const { return NULL; }
+
 	protected:
 		void store(const MergeAction *action);
 
