@@ -837,8 +837,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 	timer.start();
 	qint64 queryTime = 0, fillTime = 0;
 
-	qDebug() << database().tables() << "\n\t" << tables();
-
 	if (query.exec(queryString)) {
 		QSqlRecord rec = query.record();
 
