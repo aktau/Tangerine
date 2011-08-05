@@ -365,7 +365,6 @@ bool Tangerine::threadedDbInit(const QDir& dbDir) {
 }
 
 void Tangerine::setMainDatabase(const QString& file) {
-	//SQLDatabase *db = SQLDatabase::getDb(file, this);
 	QSharedPointer<SQLDatabase> db = SQLDatabase::getDb(file, this);
 
 	if (!db) {
