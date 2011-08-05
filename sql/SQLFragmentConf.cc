@@ -6,14 +6,17 @@ namespace thera {
 	SQLFragmentConf::SQLFragmentConf(SQLDatabase *db, int id) : mDb(db), mId(id) { }
 	SQLFragmentConf::SQLFragmentConf(SQLDatabase *db, int id, int *fragments, float relevance, const XF& xf, const vec3& CP, float CPRadius)
 		: IFragmentConf(fragments, relevance, xf, CP, CPRadius), mDb(db), mId(id) {}
+	SQLFragmentConf::SQLFragmentConf(SQLDatabase *db, const QMap<QString, QVariant>& cache, int id, int *fragments, float relevance, const XF& xf, const vec3& CP, float CPRadius)
+		: IFragmentConf(fragments, relevance, xf, CP, CPRadius), mDb(db), mCache(cache), mId(id) {}
 	SQLFragmentConf::~SQLFragmentConf() { }
-	SQLFragmentConf::SQLFragmentConf(const SQLFragmentConf& that) : IFragmentConf(that), mDb(that.mDb), mId(that.mId) { }
+	SQLFragmentConf::SQLFragmentConf(const SQLFragmentConf& that) : IFragmentConf(that), mDb(that.mDb), mCache(that.mCache), mId(that.mId) { }
 	SQLFragmentConf& SQLFragmentConf::operator=(const SQLFragmentConf& that) {
 		if (this != &that) {
 			IFragmentConf::operator=(that);
 
 			mDb = that.mDb;
 			mId = that.mId;
+			mCache = that.mCache;
 		}
 
 		return *this;

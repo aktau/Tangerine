@@ -15,6 +15,7 @@ namespace thera {
 		public:
 			SQLFragmentConf(SQLDatabase *db = NULL, int id = -1);
 			SQLFragmentConf(SQLDatabase *db, int id, int *fragments, float relevance, const XF& xf, const vec3& CP = illegal<vec3>(), float CPRadius = illegal<float>());
+			SQLFragmentConf(SQLDatabase *db, const QMap<QString, QVariant>& cache, int id, int *fragments, float relevance, const XF& xf, const vec3& CP = illegal<vec3>(), float CPRadius = illegal<float>());
 
 			virtual ~SQLFragmentConf();
 			SQLFragmentConf(const SQLFragmentConf&);

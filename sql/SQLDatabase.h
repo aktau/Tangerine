@@ -50,6 +50,7 @@ class SQLDatabase : public QObject {
 		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
 		thera::SQLFragmentConf getMatch(int id);
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+		QList<thera::SQLFragmentConf> getPreloadedMatches(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
 		bool historyAvailable() const;

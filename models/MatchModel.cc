@@ -463,7 +463,9 @@ bool MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	//QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
+	mMatches = mDb->getPreloadedMatches(QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates", mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	//mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
 	if (mMatches.isEmpty()) {

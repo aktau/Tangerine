@@ -5,6 +5,7 @@
 
 #include <QFile>
 #include <QTextStream>
+#include <QPair>
 
 #include "XF.h"
 
@@ -762,6 +763,118 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 			ts >> xf;
 
 			list << SQLFragmentConf(this, query.value(0).toInt(), fragments, 1.0f, xf);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	fillTime = timer.elapsed();
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec";
+
+	return list;
+}
+
+QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
+	if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
+
+	QList<SQLFragmentConf> list;
+
+	QStringList preloadFields = _preloadFields;
+
+	// join in dependencies
+	// << "source_name" << "target_name" << "transformation";
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	// add all preloads to the dependencies
+	foreach (const QString& field, preloadFields) {
+		if (matchHasField(field)) {
+			dependencies << field;
+		}
+		else {
+			preloadFields.removeOne(field);
+		}
+	}
+
+	QString queryString = QString("SELECT matches.match_id, source_name, target_name, transformation, %1 FROM matches").arg(preloadFields.join(","));
+
+	if (!sortField.isEmpty()) {
+		if (matchHasField(sortField)) dependencies << sortField;
+		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
+	}
+
+	//join in dependencies
+	foreach (const QString& field, dependencies) {
+		if (mViewMatchFields.contains(field)) {
+			queryString += QString(" LEFT JOIN %1 ON matches.match_id = %1.match_id").arg(field);
+		}
+		else {
+			queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
+		}
+	}
+
+	// add filter clauses
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
+	}
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
+
+	if (offset != -1 && limit != -1) {
+		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
+	}
+
+	int fragments[IFragmentConf::MAX_FRAGMENTS];
+	XF xf;
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+
+	QElapsedTimer timer;
+	timer.start();
+	qint64 queryTime = 0, fillTime = 0;
+
+	qDebug() << database().tables() << "\n\t" << tables();
+
+	if (query.exec(queryString)) {
+		QSqlRecord rec = query.record();
+
+		typedef QPair<QString, int> StringIntPair;
+		QList<StringIntPair> fieldIndexList;
+		foreach (const QString& field, preloadFields) {
+			fieldIndexList << StringIntPair(field, rec.indexOf(field));
+		}
+
+		queryTime = timer.restart();
+
+		while (query.next()) {
+			fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+
+			QMap<QString, QVariant> cache;
+			foreach (const StringIntPair& pair, fieldIndexList) {
+				//qDebug() << "Caching: " << pair << "for id" << query.value(0).toInt();
+
+				cache.insert(pair.first, query.value(pair.second));
+			}
+
+			/*
+			if (fragments[IFragmentConf::SOURCE] == -1 || fragments[IFragmentConf::TARGET] == -1) {
+				qDebug() << "SQLDatabase::getMatches: match with id" << query.value(0).toInt()
+					<< "was ignored because at least one of its fragments could not be found in the fragment database"
+					<< "\n\tSOURCE:" << query.value(1).toString() << "returned" << fragments[IFragmentConf::SOURCE]
+					<< "\n\tTARGET:" << query.value(2).toString() << "returned" << fragments[IFragmentConf::TARGET];
+				continue;
+			}
+			*/
+
+			QTextStream ts(query.value(3).toString().toAscii());
+			ts >> xf;
+
+			list << SQLFragmentConf(this, cache, query.value(0).toInt(), fragments, 1.0f, xf);
 		}
 	}
 	else {
