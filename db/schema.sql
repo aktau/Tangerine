@@ -34,3 +34,7 @@ CREATE TABLE `old_volume` (
 	`match_id` INTEGER PRIMARY KEY,
 	`old_volume` REAL
 );
+CREATE TABLE `probability` (
+	`match_id` INTEGER PRIMARY KEY,
+	`probability` REAL
+);
