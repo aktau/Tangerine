@@ -547,12 +547,36 @@ bool MatchModel::setNameFilter(const QString& pattern, ModelParameters& p) {
 		if (!pattern.isEmpty()) {
 			QString normalizedFilter = pattern;
 
+			/*
+			// escape '_' and '%' (we possibly might have to move this to makeCompatible but for now it looks like all databases support it
+			QString newStatement = filter;
+			QRegExp rx("\\bLIKE\\s+'(\\S*)'(?!\\s+ESCAPE\\b)"); // advanced version that doesn't try to escape already escaped clauses
+			int pos = 0;
+
+			while ((pos = rx.indexIn(filter, pos)) != -1) {
+				QString c;
+
+				if (!(c = rx.cap(1)).isEmpty()) {
+					// LIKE 'bloee_bla' ==> LIKE 'bloee\_bla' ESCAPE '\'
+					// c == 'bloee_bla'
+					QString escapedLikeTerm = c.replace("_", "\\_").replace("%", "\\%");
+					qDebug() << "c = " << c << "\n\tescapedLikeTerm =" << escapedLikeTerm;
+					newStatement = newStatement.replace(rx.cap(0), "LIKE '" + escapedLikeTerm + "' ESCAPE '\\'");
+				}
+
+				pos += rx.matchedLength();
+			}
+
+			qDebug() << "FILTER =" << filter << "\n\tVS NEWSTATEMENT =" << newStatement;
+			*/
+
 			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
 			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
 
-			normalizedFilter = QString(normalizedFilter).replace("*","%").replace("?","_");
+			normalizedFilter = normalizedFilter.replace("_","\\_").replace("%", "\\%");
+			normalizedFilter = normalizedFilter.replace("*","%").replace("?","_");
 
-			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
+			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '\\' OR target_name || source_name LIKE '%1' ESCAPE '\\'").arg(normalizedFilter));
 		}
 		else {
 			p.filter.removeFilter("matchmodel_names");
