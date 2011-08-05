@@ -15,6 +15,7 @@
 using namespace thera;
 
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
+const QString Tangerine::CURRENT_DB_TEXT = "current database: %1";
 
 const int Tangerine::MIN_WIDTH = 1280;
 const int Tangerine::MIN_HEIGHT = 600;
@@ -288,7 +289,10 @@ void Tangerine::updateStatusBar() {
 			statusBar()->showMessage(tr("Please load a fragment database first, and then a match database to get started"));
 	}
 
-	mNumberOfMatchesLabel->setText(MATCH_COUNT_TEXT.arg(mDb->matchCount()));
+	QString connection = (!mDb) ? "no database connected" : CURRENT_DB_TEXT.arg(mDb->connectionName());
+	QString matches = MATCH_COUNT_TEXT.arg((!mDb) ? 0 : mDb->matchCount());
+
+	mNumberOfMatchesLabel->setText(matches + ", " + connection);
 }
 
 void Tangerine::loadFragmentDatabase() {
@@ -307,8 +311,23 @@ void Tangerine::loadFragmentDatabase() {
 		mFragDbLocations.enqueue(path);
 	}
 
+	/*
+	QWidget *warningParent = (mCentralWidget->currentWidget()) ? mCentralWidget->currentWidget() : this;
+
+	WarningLabel *warning = new WarningLabel(warningParent);
+
+	warning->setText(tr("Loading fragment database"), tr("This could take a minute"));
+	warning->setPosition(WarningLabel::Center);
+	warning->setLinger(true, 0.5);
+	warning->fade();
+	warning->show();
+	*/
+
 	QFuture<bool> future = QtConcurrent::run(this, &Tangerine::threadedDbInit, mFragDbLocations.head());
 	mFragDbFutureWatcher.setFuture(future);
+
+	//connect(&mFragDbFutureWatcher, SIGNAL(finished()), warning, SLOT(deleteLater()));
+	//connect(&mFragDbFutureWatcher, SIGNAL(canceled()), warning, SLOT(deleteLater()));
 }
 
 void Tangerine::fragmentDatabaseLoadAttempted() {
@@ -349,7 +368,11 @@ void Tangerine::setMainDatabase(const QString& file) {
 	//SQLDatabase *db = SQLDatabase::getDb(file, this);
 	QSharedPointer<SQLDatabase> db = SQLDatabase::getDb(file, this);
 
-	if (!db) return;
+	if (!db) {
+		qDebug() << "Tangerine::setMainDatabase: got a NULL database, aborting";
+
+		return;
+	}
 
 	if (mDb != db) {
 		if (!mDb.isNull()) disconnect(mDb.data(), 0, this, 0);
@@ -374,6 +397,9 @@ void Tangerine::setMainDatabase(const QString& file) {
 
 		matchCountChanged();
 	}
+	else {
+		qDebug() << "Tangerine::setMainDatabase: the database" << mDb->connectionName() << "is already the current database";
+	}
 }
 
 void Tangerine::loadMatchDatabase(bool autoload) {
@@ -381,6 +407,13 @@ void Tangerine::loadMatchDatabase(bool autoload) {
 	QString lastMatchDb = settings.value(SETTINGS_DB_LASTMATCHDB_KEY).toString();
 
 	if (autoload && !lastMatchDb.isEmpty()) {
+		QString thumb = settings.value(SETTINGS_DB_IMAGECACHE_KEY, QString()).toString();
+
+		if (!thumb.isEmpty()) {
+			mThumbDir = thumb;
+			emit thumbDirectoryChanged(mThumbDir);
+		}
+
 		setMainDatabase(lastMatchDb);
 	}
 	else {

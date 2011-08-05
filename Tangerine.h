@@ -134,6 +134,7 @@ class Tangerine : public QMainWindow {
 		static const int MIN_HEIGHT;
 
 		static const QString MATCH_COUNT_TEXT;
+		static const QString CURRENT_DB_TEXT;
 };
 
 #endif /* TANGERINE_H_ */
