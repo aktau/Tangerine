@@ -93,6 +93,7 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 		}
 	}
 	else {
+		qDebug() << "SQLDatabase::getDb: Database description file" << file << "was invalid, returning invalid database";
 		db = QSharedPointer<SQLDatabase>(new SQLNullDatabase(parent));
 	}
 
