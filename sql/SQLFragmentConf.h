@@ -5,6 +5,9 @@
 
 #include <assert.h>
 
+#include <QMap>
+#include <QVariant>
+
 class SQLDatabase;
 
 namespace thera {
@@ -37,9 +40,14 @@ namespace thera {
 
 		private:
 			template<typename T> T get(const QString &field, T deflt) const;
+			template<typename T> bool set(const QString &field, T value) const;
 
 		private:
 			SQLDatabase *mDb;
+
+			// the cache is supposed to be transparant, so we can declare it mutable for some const-correctness
+			typedef QMap<QString, QVariant> CacheMap;
+			mutable QMap<QString, QVariant> mCache;
 
 			int mId;
 	};

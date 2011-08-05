@@ -32,33 +32,11 @@ namespace thera {
 	}
 
 	bool SQLFragmentConf::setMetaData(const QString& field, const QString& value) const {
-		assert(mId != -1 && mDb != NULL);
-
-		if (mDb->matchHasField(field)) {
-			mDb->matchSetValue(mId, field, value);
-		}
-		else {
-			qDebug() << "SQLFragmentConf::setMetaData: field" << field << "was not found in" << mDb->matchFields() << ", tried to insert" << value;
-
-			return false;
-		}
-
-		return true;
+		return set(field, value);
 	}
 
 	bool SQLFragmentConf::setMetaData(const QString& field, double value) const {
-		assert(mId != -1 && mDb != NULL);
-
-		if (mDb->matchHasField(field)) {
-			mDb->matchSetValue(mId, field, value);
-		}
-		else {
-			qDebug() << "SQLFragmentConf::setMetaData: field" << field << "was not found in" << mDb->matchFields() << ", tried to insert" << value;
-
-			return false;
-		}
-
-		return true;
+		return set(field, value);
 	}
 
 	QString SQLFragmentConf::getString(const QString& field, const QString& deflt) const {
@@ -76,13 +54,42 @@ namespace thera {
     template<typename T> inline T SQLFragmentConf::get(const QString &field, T deflt) const {
     	assert(mId != -1 && mDb != NULL);
 
-    	if (mDb->matchHasField(field)) {
-    		return mDb->matchGetValue<T>(mId, field, deflt);
+    	if (!mDb->matchHasField(field)) {
+    		qDebug() << "SQLFragmentConf::get: match doesn't have field" << field;
+
+    		return deflt;
     	}
 
-    	qDebug() << "SQLFragmentConf::get: match doesn't have field" << field;
+    	CacheMap::const_iterator i = mCache.constFind(field);
 
-    	return deflt;
+    	if (i == mCache.constEnd()) {
+			i = mCache.insert(field, mDb->matchGetValue<T>(mId, field, deflt));
+
+			//qDebug() << "SQLFragmentConf::get: uncached hit for" << field << "|" << mId << "|" << i.value().toString();
+    	}
+    	else {
+    		//qDebug() << "SQLFragmentConf::get: cached hit for" << field << "|" << mId << "|" << i.value().toString();
+    	}
+
+    	return i.value().value<T>();
+    }
+
+    template<typename T> inline bool SQLFragmentConf::set(const QString &field, T value) const {
+    	assert(mId != -1 && mDb != NULL);
+
+		if (!mDb->matchHasField(field)) {
+			qDebug() << "SQLFragmentConf::setMetaData: field" << field << "was not found in" << mDb->matchFields() << ", tried to insert" << value;
+
+			return false;
+		}
+		else {
+			// cache is write-through because there are too many things we can't control
+			mCache.insert(field, value);
+
+			mDb->matchSetValue(mId, field, value);
+		}
+
+		return true;
     }
 
     bool SQLFragmentConf::isValid() const {
