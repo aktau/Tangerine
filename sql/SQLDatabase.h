@@ -112,6 +112,8 @@ class SQLDatabase : public QObject {
 
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 
+		virtual void createIndex(const QString& table, const QString& field);
+
 		QSqlDatabase database() const;
 		void reset();
 		void setup(const QString& schemaFile);
@@ -138,7 +140,7 @@ class SQLDatabase : public QObject {
 		const QDomDocument toXML();
 
 		// doesn't send the matchFieldsChanged() singal, you have to do that yourself if necessary
-		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
+		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue, bool indexValue = true);
 
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);
 		template<typename T> T matchGetValue(int id, const QString& field, const T& deflt) const;

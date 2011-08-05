@@ -318,6 +318,16 @@ bool SQLDatabase::commit() const {
 	return database().commit();
 }
 
+void SQLDatabase::createIndex(const QString& table, const QString& field) {
+	QSqlQuery query(database());
+	if (query.exec(QString("CREATE INDEX %2_index ON %1(%2);").arg(table).arg(field))) {
+		qDebug() << "SQLDatabase::createIndex: succesfully created index" << field << "on" << table;
+	}
+	else {
+		qDebug() << "SQLDatabase::createIndex: failed creating index" << field << "on" << table << "->" << query.lastError();
+	}
+}
+
 thera::SQLFragmentConf SQLDatabase::addMatch(const QString& sourceName, const QString& targetName, const thera::XF& xf, int id) {
 	const QString queryKey = (id == -1) ? "addMatchNoId" : "addMatchWithId";
 	const QString queryString = (id == -1)
@@ -469,7 +479,7 @@ bool SQLDatabase::addMatchField(const QString& name, int defaultValue) {
 	return false;
 }
 
-template<typename T> bool SQLDatabase::addMatchField(const QString& name, const QString& sqlType, T defaultValue) {
+template<typename T> bool SQLDatabase::addMatchField(const QString& name, const QString& sqlType, T defaultValue, bool indexValue) {
 	if (matchHasField(name)) {
 		qDebug() << "SQLDatabase::addMatchField: field" << name << "already exists";
 
@@ -534,6 +544,10 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 		else {
 			qDebug() << "SQLDatabase::addMatchField couldn't create default values:" << idQuery.lastError()
 				<< "\nQuery executed:" << idQuery.lastQuery();
+		}
+
+		if (indexValue) {
+			createIndex(name, name);
 		}
 
 		qDebug() << "SQLDatabase::addMatchField succesfully created field:" << name;
