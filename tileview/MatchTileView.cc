@@ -1249,7 +1249,7 @@ void MatchTileView::refresh() {
 	//static bool busy = false;
 	//busy = true;
 
-	qDebug() << "REFRESHING";
+	//qDebug() << "REFRESHING";
 
 	int max = mModel->size();
 
@@ -1259,10 +1259,11 @@ void MatchTileView::refresh() {
 	s().currentPosition = new_pos;
 
 	mRefreshIteration = 0;
+	mWindowLoadBenchmarkTimer.start();
 
 	QTimer::singleShot(0, this, SLOT(refreshItem()));
 
-	qDebug() << "ENDREFRESH";
+	//qDebug() << "ENDREFRESH";
 
 	/*
 	QElapsedTimer timer;
@@ -1324,7 +1325,10 @@ void MatchTileView::refreshItem() {
 			updateThumbnailImageAndStatusOnly(thumbNailIndex, modelIndex);
 		}
 
+		if (mRefreshIteration == 19) qDebug() << "MatchTileView::refreshItem: loaded all images and status in" << mWindowLoadBenchmarkTimer.restart() << "msec";
+
 		if (++mRefreshIteration < mNumThumbs * 2) QTimer::singleShot(0, this, SLOT(refreshItem()));
+		else qDebug() << "MatchTileView::refreshItem: loaded all other fragment data in" << mWindowLoadBenchmarkTimer.elapsed() << "msec";
 		//else qDebug() << "MatchTileView::refreshItem: Last refreshItem() called!";
 	}
 }

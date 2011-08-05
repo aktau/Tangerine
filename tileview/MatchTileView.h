@@ -140,6 +140,7 @@ class MatchTileView : public QScrollArea {
 		int mNumThumbs;
 		float mScale;
 
+		QElapsedTimer mWindowLoadBenchmarkTimer;
 		int mRefreshIteration;
 
 #ifdef WITH_DETAILVIEW
