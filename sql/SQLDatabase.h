@@ -117,8 +117,8 @@ class SQLDatabase : public QObject {
 		void setup(const QString& schemaFile);
 
 		// history methods
-		void createHistory();
-		virtual void createHistory(const QString& table);
+		//void createHistory();
+
 
 		// only for use in getDb
 		void setConnectionName(const QString& connectionName);
@@ -127,6 +127,9 @@ class SQLDatabase : public QObject {
 		QSqlQuery& getOrElse(const QString& key, const QString& queryString);
 
 	protected slots:
+		void createHistory();
+		virtual void createHistory(const QString& table);
+
 		virtual void resetQueries();
 		virtual void makeFieldsSet();
 
@@ -134,6 +137,7 @@ class SQLDatabase : public QObject {
 		void parseXML(const QDomElement &root);
 		const QDomDocument toXML();
 
+		// doesn't send the matchFieldsChanged() singal, you have to do that yourself if necessary
 		template<typename T> bool addMatchField(const QString& name, const QString& sqlType, T defaultValue);
 
 		template<typename T> void matchSetValue(int id, const QString& field, const T& value);

@@ -18,7 +18,8 @@ using namespace thera;
 
 QHash<QString, QWeakPointer<SQLDatabase> > SQLDatabase::mActiveConnections;
 
-const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
+//const QString SQLDatabase::SCHEMA_FILE = "db/schema.sql";
+const QString SQLDatabase::SCHEMA_FILE = "config/matches_schema.sql";
 
 const QString SQLDatabase::MATCHES_ROOTTAG = "matches";
 const QString SQLDatabase::MATCHES_DOCTYPE = "matches-cache";
@@ -160,9 +161,8 @@ bool SQLDatabase::open(const QString& connName, const QString& dbname, bool dbna
 				emit matchFieldsChanged();
 			}
 
-			if (mTrackHistory) {
-				createHistory();
-			}
+			// not necessary, will trigger on matchFieldsChanged() anyway
+			// if (mTrackHistory) createHistory();
 
 			// the order is actually important, because for example the models react to matchCountChanged, but matchFieldsChanged needs to have ran by then
 			emit databaseOpened();
@@ -196,6 +196,7 @@ SQLDatabase::SQLDatabase(QObject *parent, const QString& type, bool trackHistory
 	: QObject(parent), mType(type), mTrackHistory(trackHistory) {
 	//QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
+	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(createHistory()));
 }
 
 SQLDatabase::~SQLDatabase() {
@@ -203,7 +204,7 @@ SQLDatabase::~SQLDatabase() {
 	// object calling close() for us
 	// TODO: re-evaluate this decision
 
-	qDebug() << "SQLDatabase::~SQLDatabase: running, database is currently still" << (isOpen() ? "open" : "closed");
+	qDebug() << "SQLDatabase::~SQLDatabase:" << connectionName() << "running, database is currently still" << (isOpen() ? "open" : "closed");
 
 	close();
 }
@@ -229,7 +230,7 @@ bool SQLDatabase::isOpen() const {
 
 bool SQLDatabase::detectClosedDb() const {
 	// TODO: build real detection code for MySQL (i.e.: prepare a statement and see if it errors out)
-	return isOpen();
+	return !isOpen();
 }
 
 // the default implementation does nothing
@@ -439,15 +440,33 @@ void SQLDatabase::saveToXML(const QString& XMLFile) {
 }
 
 bool SQLDatabase::addMatchField(const QString& name, double defaultValue) {
-	return addMatchField(name, "REAL", defaultValue);
+	if (addMatchField(name, "REAL", defaultValue)) {
+		emit matchFieldsChanged();
+
+		return true;
+	}
+
+	return false;
 }
 
 bool SQLDatabase::addMatchField(const QString& name, const QString& defaultValue) {
-	return addMatchField(name, "TEXT", defaultValue);
+	if (addMatchField(name, "TEXT", defaultValue)) {
+		emit matchFieldsChanged();
+
+		return true;
+	}
+
+	return false;
 }
 
 bool SQLDatabase::addMatchField(const QString& name, int defaultValue) {
-	return addMatchField(name, "INTEGER", defaultValue);
+	if (addMatchField(name, "INTEGER", defaultValue)) {
+		emit matchFieldsChanged();
+
+		return true;
+	}
+
+	return false;
 }
 
 template<typename T> bool SQLDatabase::addMatchField(const QString& name, const QString& sqlType, T defaultValue) {
@@ -472,11 +491,13 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 		qDebug() << "SQLDatabase::addMatchField: could NOT start a transaction, the following might be very slow";
 	}
 
+	/*
 	if (query.exec("START TRANSACTION")) qDebug() << "SQLDatabase::addMatchField: Correctly manually started a transaction";
 	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
 
 	if (query.exec("BEGIN")) qDebug() << "SQLDatabase::addMatchField: Correctly manually started a transaction";
 	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
+	*/
 
 	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL)").arg(name).arg(sqlType));
 	if (success) {
@@ -486,8 +507,8 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 			"VALUES (:match_id, :value, :confidence)"
 		).arg(name));
 
-		int i = 0;
-		int step = 100;
+		//int i = 0;
+		//int step = 100;
 		QElapsedTimer timer;
 		timer.start();
 
@@ -503,9 +524,11 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 
 				query.exec();
 
+				/*
 				if (++i % step == 0) {
 					qDebug() << "Inserted another" << step << "rows for field" << name << "now at" << i << "used" << timer.restart() << "msec";
 				}
+				*/
 			}
 		}
 		else {
@@ -515,29 +538,12 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 
 		qDebug() << "SQLDatabase::addMatchField succesfully created field:" << name;
 
-		emit matchFieldsChanged();
+		//emit matchFieldsChanged();
 	}
 	else {
 		qDebug() << "SQLDatabase::addMatchField couldn't create table:" << query.lastError()
 			<< "\nQuery executed:" << query.lastQuery();
 	}
-
-	/*
-	if (query.exec("ROLLBACK")) qDebug() << "SQLDatabase::addMatchField: Rolled back!";
-	else qDebug() << "SQLDatabase::addMatchField: can't rollback" << query.lastError();
-	*/
-
-	/*
-	{
-		QSqlQuery commit(db);
-		if (commit.exec("COMMIT;")) {
-			qDebug() << "SQLDatabase::addMatchField: Correctly commited";
-		}
-		else {
-			qDebug() << "SQLDatabase::addMatchField: couldn't commit" << commit.lastError();
-		}
-	}
-	*/
 
 	commit();
 
@@ -887,14 +893,37 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 
 	QSqlDatabase db(database());
 
+	QStringList integerAttributes = QStringList() << "status";
+	QStringList floatAttributes = QStringList() << "error" << "overlap" << "volume" << "old_volume" << "probability";
+	QStringList stringAttributes = QStringList();
+
+	// create the attribute tables if they don't exist
+	foreach (const QString& attr, integerAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "INTEGER", "0");
+	}
+
+	foreach (const QString& attr, floatAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "REAL", "0");
+	}
+
+	foreach (const QString& attr, stringAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "TEXT", "0");
+	}
+
 	transaction();
 
 	// prepare queries
 	QSqlQuery matchesQuery(db);
 	matchesQuery.prepare(
+		"INSERT INTO matches (match_id, source_name,target_name, transformation) "
+		"VALUES (:match_id, :source_name, :target_name, :transformation)"
+	);
+	/*
+	matchesQuery.prepare(
 		"INSERT INTO matches (match_id, source_id, source_name, target_id, target_name, transformation) "
 		"VALUES (:match_id, :source_id, :source_name, :target_id, :target_name, :transformation)"
 	);
+	*/
 
 	QSqlQuery conflictsQuery(db);
 	conflictsQuery.prepare(
@@ -932,6 +961,12 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		"VALUES (:match_id, :old_volume)"
 	);
 
+	QSqlQuery probabilityQuery(db);
+	probabilityQuery.prepare(
+		"INSERT INTO probability (match_id, probability) "
+		"VALUES (:match_id, :probability)"
+	);
+
 	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
 
 	for (QDomElement match = root.firstChildElement("match"); !match.isNull(); match = match.nextSiblingElement()) {
@@ -950,9 +985,9 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		//rawTransformation >> transformation;
 
 		matchesQuery.bindValue(":match_id", matchId);
-		matchesQuery.bindValue(":source_id", 0); // TODO: not use dummy value
+		//matchesQuery.bindValue(":source_id", 0); // TODO: not use dummy value
 		matchesQuery.bindValue(":source_name", match.attribute("src"));
-		matchesQuery.bindValue(":target_id", 0); // TODO: not use dummy value
+		//matchesQuery.bindValue(":target_id", 0); // TODO: not use dummy value
 		matchesQuery.bindValue(":target_name", match.attribute("tgt"));
 		matchesQuery.bindValue(":transformation", rawTransformation);
 		matchesQuery.exec();
@@ -977,6 +1012,21 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 		old_volumeQuery.bindValue(":match_id", matchId);
 		old_volumeQuery.bindValue(":old_volume", match.attribute("old_volume", "0.0").toDouble());
 		old_volumeQuery.exec();
+
+		/*
+		static int j = 0;
+		if (j++ == 0) {
+			for (int k = 0; k < match.attributes().length(); ++k)
+				qDebug() << match.attributes().item(k).toText().data();
+		}
+		*/
+
+		// case sensitive!
+		if (match.hasAttribute("Probability")) {
+			probabilityQuery.bindValue(":match_id", matchId);
+			probabilityQuery.bindValue(":probability", match.attribute("Probability", "0.0").toDouble());
+			probabilityQuery.exec();
+		}
 
 		emit databaseOpStepDone(i);
 
@@ -1025,6 +1075,7 @@ void SQLDatabase::setup(const QString& schemaFile) {
 
 void SQLDatabase::createHistory() {
 	if (!isOpen()) return;
+	if (!mTrackHistory) return;
 
 	QSqlDatabase db = database();
 	QSqlQuery query(db);
