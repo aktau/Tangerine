@@ -4,18 +4,22 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <QStringList>
+#include <QElapsedTimer>
 #include <QGLWidget>
 
 #include "math.h"
 
 #include "GVGraph.h"
 #include "GraphNode.h"
+#include "GraphEdge.h"
 
 #include "IFragmentConf.h"
 #include "IMatchModel.h"
 #include "EmptyMatchModel.h"
 
-#define MAXNODES 5000
+#include <limits>
+
+#define MAXNODES 1000
 
 using namespace thera;
 
@@ -30,7 +34,7 @@ GraphView::GraphView(QWidget *parent) : QGraphicsView(parent), mGraph(NULL), mMo
 	setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 	setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
 
-	mGraph = new GVGraph("Tangerine", "neato", AGRAPH, QFont(), 200);
+	mGraph = new GVGraph("Tangerine", "sfdp", AGRAPH, QFont(), 200);
 	//mGraph = new GVGraph("Tangerine", "neato", AGRAPHSTRICT, QFont(), 200);
 
 	setModel(&EmptyMatchModel::EMPTY);
@@ -94,24 +98,41 @@ void GraphView::generate() {
 
 	qDebug() << "GraphView::generate: adding nodes";
 
+	mModel->prefetchHint(0, qMin(mModel->size(), MAXNODES));
+
+	mThicknessModifierAttribute = "error";
+	mMinThicknessModifier = std::numeric_limits<double>::max();
+	mMaxThicknessModifier = std::numeric_limits<double>::min();;
+
 	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
 		const IFragmentConf& conf = mModel->get(i);
 
-		//qDebug() << "GraphView::generate: adding new nodes";
+		//IMatchModel status = getInt("status", IMatchModel::UNKNOWN);
 
-		mGraph->addNode(conf.getSourceId());
-		mGraph->addNode(conf.getTargetId());
+		double thicknessModifier = conf.getDouble(mThicknessModifierAttribute, 0.0);
+		mMinThicknessModifier = qMin(mMinThicknessModifier, thicknessModifier);
+		mMaxThicknessModifier = qMax(mMaxThicknessModifier, thicknessModifier);
 
-		mGraph->addEdge(conf.getSourceId(), conf.getTargetId());
+		mGraph->addNode(conf.mFragments[IFragmentConf::SOURCE]);
+		mGraph->addNode(conf.mFragments[IFragmentConf::TARGET]);
+
+		mGraph->addEdge(conf.mFragments[IFragmentConf::SOURCE], conf.mFragments[IFragmentConf::TARGET], conf.index());
 	}
 
-	qDebug() << "GraphView::generate: applying layout";
+	qDebug() << "GraphView::generate: applying layout" << mGraph->layoutAlgorithm();
+
+	QElapsedTimer timer;
+	timer.start();
 
 	mGraph->applyLayout();
 
-	qDebug() << "GraphView::generate: drawing graph";
+	qDebug() << "GraphView::generate: applied layout in" << timer.restart() << "msec, drawing graph...";
 
 	draw();
+
+	qDebug() << "GraphView::generate: graph drawn in" << timer.elapsed() << "msec";
+
+	fitInView(scene()->sceneRect(), Qt::KeepAspectRatioByExpanding);
 }
 
 void GraphView::draw() {
@@ -133,7 +154,48 @@ void GraphView::draw() {
 	//scene()->setSceneRect(mGraph->boundingRect());
 
 	foreach (const GVEdge& edge, mGraph->edges()) {
-		scene()->addPath(edge.path, edgePen);
+		const IFragmentConf *conf = findCorresponding(edge);
+
+		if (conf) {
+			QColor c;
+			int thickness = 2;
+
+			// TODO: set thickness based on probability/error/...
+			double thicknessModifier = conf->getDouble(mThicknessModifierAttribute, 0.0);
+			double percentage = (thicknessModifier - mMinThicknessModifier) / (mMaxThicknessModifier - mMinThicknessModifier);
+
+			switch (conf->getInt("status", IMatchModel::UNKNOWN)) {
+				case IMatchModel::UNKNOWN: c = QColor(100, 100, 100, 100); break; // unknown
+				case IMatchModel::YES: { c = Qt::green; thickness = 15; } break; // correct
+				case IMatchModel::MAYBE: { c = QColor(255, 128, 0); thickness = 10; } break; // maybe
+				case IMatchModel::NO: { c = Qt::red; thickness = 1; } break; // no
+				case IMatchModel::CONFLICT: c = /* Qt::magenta */ QColor(128, 128, 128); break; // no by conflict
+
+				default: c = Qt::white;
+			}
+
+			if (!mState.scaleThicknessByStatus) thickness = 2;
+
+			if (mState.drawProbabilities) {
+				QColor pc = c;
+				pc.setAlpha(100);
+
+				GraphEdge *edgeItem = new GraphEdge(edge.path, QPen(pc, thickness + percentage * 3 * thickness, Qt::SolidLine));
+				//edgeItem->setZValue(100);
+				scene()->addItem(edgeItem);
+				//scene()->addPath(edge.path, QPen(pc, thickness + percentage * 3 * thickness, Qt::SolidLine));
+			}
+
+			GraphEdge *edgeItem = new GraphEdge(edge.path, QPen(c, thickness, Qt::SolidLine));
+			edgeItem->setInfo("<h1>" + conf->getSourceId() + " / " + conf->getTargetId() + "</h1>");
+			//edgeItem->setZValue(100);
+			scene()->addItem(edgeItem);
+			//scene()->addPath(edge.path, QPen(c, thickness, Qt::SolidLine));
+		}
+		else {
+			scene()->addItem(new GraphEdge(edge.path, edgePen));
+			//scene()->addPath(edge.path, edgePen);
+		}
 	}
 
 	foreach (const GVNode& node, mGraph->nodes()) {
@@ -150,6 +212,19 @@ void GraphView::draw() {
 
 		//item->setPos(node.topLeftPos());
 
+		scene()->addItem(item);
+
+		float width = node.width / 1.3;
+		float height = node.height / 1.3;
+		item = new GraphNode(QRectF(
+			node.centerPos.x() - width / 2.0f,
+			node.centerPos.y() - height / 2.0f,
+			width,
+			height
+		));
+
+		item->setPen(QPen(QColor("#96A879"), 5, Qt::SolidLine));
+		item->setBrush(QColor("#FFF0BA"));
 		scene()->addItem(item);
 
 		//qDebug() << "centerPos:" << node.centerPos << "| rect:" << node.rect();
@@ -174,9 +249,26 @@ void GraphView::keyPressEvent(QKeyEvent *event) {
 		}
 		break;
 
+		case Qt::Key_P:
+		{
+			mState.drawProbabilities = !mState.drawProbabilities;
+
+			draw();
+		}
+		break;
+
+		case Qt::Key_S:
+		{
+			mState.scaleThicknessByStatus = !mState.scaleThicknessByStatus;
+
+			draw();
+		}
+		break;
+
 		case Qt::Key_L:
 		{
-			static QStringList layouts = QStringList() << "neato" << "fdp" << "sfdp" << "circo" << "twopi";
+			// "twopi" crashes a lot
+			static QStringList layouts = QStringList() << "sfdp" << "fdp" << "neato"  << "circo";
 			static int index = 0;
 
 			index = (index + 1) % layouts.size();
@@ -201,6 +293,8 @@ void GraphView::keyPressEvent(QKeyEvent *event) {
 
 void GraphView::showEvent(QShowEvent *event) {
 	if (mDirty) {
+		qDebug() << "GraphView::showEvent: shown and dirty, generating...";
+
 		generate();
 	}
 }
@@ -217,3 +311,15 @@ void GraphView::mousePressEvent(QMouseEvent *event) {
 	QGraphicsView::mousePressEvent(event);
 }
 */
+
+inline const IFragmentConf *GraphView::findCorresponding(const GVEdge& edge) const {
+	for (int i = 0, ii = qMin(mModel->size(), MAXNODES); i < ii; ++i) {
+		const IFragmentConf& conf = mModel->get(i);
+
+		if (conf.index() == edge.id) {
+			return &conf;
+		}
+	}
+
+	return NULL;
+}

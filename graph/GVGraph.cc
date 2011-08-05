@@ -36,27 +36,63 @@ GVGraph::GVGraph(QString name, QString layout, int type, QFont font, double node
 
 GVGraph::~GVGraph() {
 	gvFreeLayout(mContext, mGraph);
+	clearNodes();
 	agclose(mGraph);
 	gvFreeContext(mContext);
 
 	qDebug() << "GVGraph::~GVGraph: ran";
 }
 
-void GVGraph::addNode(const QString& name) {
+/*
+void GVGraph::addNode(const QString& name, int id) {
 	if (!mNodes.contains(name)) {
 		// example
 		//_agset(node, "width", width);
 
+		//if (id != -1) mStringToIdMap.insert(name, id);
+
 		mNodes.insert(name, _agnode(mGraph, name));
 	}
 }
+*/
 
+void GVGraph::addNode(int id) {
+	if (!mNodes.contains(id)) {
+		// example
+		//_agset(node, "width", width);
+
+		//if (id != -1) mStringToIdMap.insert(name, id);
+
+		mNodes.insert(id, _agnode(mGraph, QString::number(id)));
+	}
+}
+
+void GVGraph::removeNode(int id) {
+	if (mNodes.contains(id)) {
+		// delete the edges this node is connected to
+		QList<NodeIdPair> keys = mEdges.uniqueKeys();
+
+		for (int i = 0; i < keys.size(); ++i) {
+			if (keys.at(i).first == id || keys.at(i).second == id) {
+				removeEdges(keys.at(i));
+			}
+		}
+
+		agdelete(mGraph, mNodes[id]);
+
+		mNodes.remove(id);
+	}
+}
+
+/*
 void GVGraph::addNodes(const QStringList& names) {
 	foreach (const QString& name, names) {
 		addNode(name);
 	}
 }
+*/
 
+/*
 void GVGraph::removeNode(const QString& name) {
 	if (mNodes.contains(name)) {
 		// delete the edges this node is connected to
@@ -73,9 +109,10 @@ void GVGraph::removeNode(const QString& name) {
 		mNodes.remove(name);
 	}
 }
+*/
 
 void GVGraph::clearNodes() {
-	QList<QString> keys = mNodes.keys();
+	QList<int> keys = mNodes.keys();
 
 	// free all location information added by a layout algorithm first (safe to call multiple times)
 	gvFreeLayout(mContext, mGraph);
@@ -91,21 +128,66 @@ void GVGraph::clearNodes() {
 	assert(mNodes.isEmpty());
 }
 
-void GVGraph::setRootNode(const QString& name) {
-    if (mNodes.contains(name)) {
-    	_agset(mGraph, "root", name);
+void GVGraph::setRootNode(int id) {
+    if (mNodes.contains(id)) {
+    	_agset(mGraph, "root", QString::number(id));
     }
 }
 
-void GVGraph::addEdge(const QString &source, const QString &target) {
+void GVGraph::addEdge(int sourceId, int targetId, int edgeId) {
+	NodeMap::const_iterator sourceNode = mNodes.constFind(sourceId);
+	NodeMap::const_iterator targetNode = mNodes.constFind(targetId);
+	NodeMap::const_iterator end = mNodes.constEnd();
+
+	if (sourceNode != end && targetNode != end) {
+		NodeIdPair key(sourceId, targetId);
+
+		GVEdgePrivate edge(agedge(mGraph, sourceNode.value(), targetNode.value()), edgeId);
+		//Agedge_t *edge = agedge(mGraph, sourceNode.value(), targetNode.value());
+
+		if (!mEdges.values(key).contains(edge)) {
+			mEdges.insertMulti(key, edge);
+		}
+	}
+}
+
+/*
+void GVGraph::removeEdge(int edgeId) {
+
+}
+*/
+
+void GVGraph::removeEdges(int sourceId, int targetId) {
+	removeEdges(NodeIdPair(sourceId, targetId));
+}
+
+void GVGraph::removeEdges(const QPair<int, int>& idPair) {
+	//qDebug() << "Attempting to delete edge:" << key << "there are" << mEdges.size() << "edges left";
+
+	if (mEdges.contains(idPair)) {
+		//qDebug() << key << "exists, there are" << mEdges.values(key).size() << "subedges";
+
+		foreach (const GVEdgePrivate& edge, mEdges.values(idPair)) {
+			//qDebug() << "Going to delete" << mGraph << edge;
+			agdelete(mGraph, edge.edge);
+		}
+
+		//qDebug() << "Foreach traversed!";
+
+		//agdelete(mGraph, mEdges[key]);
+
+		mEdges.remove(idPair);
+	}
+
+	//qDebug() << "succesfully terminated";
+}
+
+/*
+void GVGraph::addEdge(const QString &source, const QString &target, int id) {
 	if (mNodes.contains(source) && mNodes.contains(target)) {
 		QPair<QString, QString> key(source, target);
 
-		/*
-		if (!mEdges.contains(key)) {
-			mEdges.insert(key, agedge(mGraph, mNodes[source], mNodes[target]));
-		}
-		*/
+		//if (!mEdges.contains(key)) mEdges.insert(key, agedge(mGraph, mNodes[source], mNodes[target]));
 
 		Agedge_t *edge = agedge(mGraph, mNodes[source], mNodes[target]);
 
@@ -123,25 +205,26 @@ void GVGraph::removeEdges(const QString &source, const QString &target) {
 }
 
 void GVGraph::removeEdges(const QPair<QString, QString>& key) {
-	qDebug() << "Attempting to delete edge:" << key << "there are" << mEdges.size() << "edges left";
+	//qDebug() << "Attempting to delete edge:" << key << "there are" << mEdges.size() << "edges left";
 
 	if (mEdges.contains(key)) {
-		qDebug() << key << "exists, there are" << mEdges.values(key).size() << "subedges";
+		//qDebug() << key << "exists, there are" << mEdges.values(key).size() << "subedges";
 
 		foreach (Agedge_t *edge, mEdges.values(key)) {
-			qDebug() << "Going to delete" << mGraph << edge;
+			//qDebug() << "Going to delete" << mGraph << edge;
 			agdelete(mGraph, edge);
 		}
 
-		qDebug() << "Foreach traversed!";
+		//qDebug() << "Foreach traversed!";
 
 		//agdelete(mGraph, mEdges[key]);
 
 		mEdges.remove(key);
 	}
 
-	qDebug() << "succesfully terminated";
+	//qDebug() << "succesfully terminated";
 }
+*/
 
 void GVGraph::setFont(QFont font) {
     mFont = font;
@@ -158,6 +241,10 @@ void GVGraph::setFont(QFont font) {
 
 void GVGraph::setLayoutAlgorithm(const QString& algorithm) {
 	mLayoutAlgorithm = algorithm;
+}
+
+const QString& GVGraph::layoutAlgorithm() const {
+	return mLayoutAlgorithm;
 }
 
 void GVGraph::setGlobalNodeSize(double size) {
@@ -197,7 +284,7 @@ QList<GVNode> GVGraph::nodes() const {
 	const double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
 	const double upperRightY = mGraph->u.bb.UR.y;
 
-	for (NodeMap::const_iterator it = mNodes.begin(), end = mNodes.end(); it != end; ++it) {
+	for (NodeMap::const_iterator it = mNodes.constBegin(), end = mNodes.constEnd(); it != end; ++it) {
 		const Agnode_t *node = it.value();
 		GVNode object;
 
@@ -230,13 +317,15 @@ QList<GVEdge> GVGraph::edges() const {
 	const double dpi = _agget(mGraph, "dpi", "96,0").toDouble();
 	const double scale = (dpi / DotDefaultDPI);
 
-	for (EdgeMap::const_iterator it = mEdges.begin(), end = mEdges.end(); it != end; ++it) {
-		const Agedge_t *edge = it.value();
+	for (EdgeMap::const_iterator it = mEdges.constBegin(), end = mEdges.constEnd(); it != end; ++it) {
 		GVEdge object;
+
+		const Agedge_t *edge = it.value().edge;
 
 		//Fill the source and target node names
 		object.source = edge->tail->name;
 		object.target = edge->head->name;
+		object.id = it.value().id;
 
 		//Calculate the path from the spline (only one spline, as the graph is strict. If it
 		//wasn't, we would have to iterate over the first list too)

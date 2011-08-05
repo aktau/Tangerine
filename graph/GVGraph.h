@@ -19,6 +19,9 @@ namespace gv {
 
 /// A struct containing the information for a GVGraph's node
 struct GVNode {
+	/// an optional field by which you can efficiently identify the node later (without string compare), not used by GVGraph
+	int id;
+
     /// The unique identifier of the node in the graph
     QString name;
 
@@ -46,12 +49,25 @@ struct GVNode {
 };
 
 struct GVEdge {
+	/// an optional field by which you can efficiently identify the node later (without string compare), not used by GVGraph
+	int id;
+
     /// The source and target nodes of the edge
     QString source;
     QString target;
 
     /// Path of the edge's line
     QPainterPath path;
+};
+
+struct GVEdgePrivate {
+	gv::Agedge_t *edge;
+
+	int id;
+
+	GVEdgePrivate(gv::Agedge_t *_edge, int _id) : edge(_edge), id(_id) { }
+
+	bool operator==(const GVEdgePrivate& other) const { return edge == other.edge; }
 };
 
 class GVGraph {
@@ -69,22 +85,31 @@ class GVGraph {
 		~GVGraph();
 
 		/// Add and remove nodes
-		void addNode(const QString& name);
-		void addNodes(const QStringList& names);
-		void removeNode(const QString& name);
+		void addNode(int id);
+		void removeNode(int id);
+		//void addNode(const QString& name, int id = -1);
+		//void addNodes(const QStringList& names);
+		//void removeNode(const QString& name);
 		void clearNodes();
 
 		/// Add and remove edges
-		void addEdge(const QString& source, const QString& target);
-		void removeEdges(const QString& source, const QString& target);
-		void removeEdges(const QPair<QString, QString>& key);
+		void addEdge(int sourceId, int targetId, int edgeId);
+		//void removeEdge(int edgeId);
+		void removeEdges(int sourceId, int targetId);
+		void removeEdges(const QPair<int, int>& idPair);
+		//void addEdge(const QString& source, const QString& target, int id = -1);
+		//void removeEdges(const QString& source, const QString& target);
+		//void removeEdges(const QPair<QString, QString>& key);
 
 		/// Set the font to use in all the labels
 		void setFont(QFont font);
+
 		void setLayoutAlgorithm(const QString& algorithm);
+		const QString& layoutAlgorithm() const;
+
 		void setGlobalNodeSize(double size);
 
-		void setRootNode(const QString& name);
+		void setRootNode(int id);
 
 		// layouts
 		void applyLayout();
@@ -95,14 +120,22 @@ class GVGraph {
 		QList<GVEdge> edges() const;
 
 	private:
-		typedef QMap<QPair<QString, QString> , gv::Agedge_t*> EdgeMap;
-		typedef QMap<QString, gv::Agnode_t*> NodeMap;
+		typedef QPair<int, int> NodeIdPair;
+		typedef QMap<NodeIdPair, GVEdgePrivate> EdgeMap;
+		typedef QMap<int, gv::Agnode_t*> NodeMap;
+
+		//typedef QMap<QPair<QString, QString> , gv::Agedge_t*> EdgeMap;
+		//typedef QMap<QString, gv::Agnode_t*> NodeMap;
+
+		//typedef QMap<QString, int> StringToIdMap;
 
 		gv::GVC_t *mContext;
 		gv::Agraph_t *mGraph;
 		QFont mFont;
 		NodeMap mNodes;
 		EdgeMap mEdges;
+
+		//StringToIdMap mStringToIdMap;
 
 		QString mLayoutAlgorithm;
 };

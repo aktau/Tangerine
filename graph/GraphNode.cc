@@ -19,6 +19,8 @@ void GraphNode::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 
 	//resetTransform();
 
+	//scene()->addPixmap()
+
 	//translate();
 	//translate(pos().x(), pos().y());
 	scale(1.1, 1.1);

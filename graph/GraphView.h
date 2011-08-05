@@ -7,7 +7,13 @@
 
 // we're forward-declaring it to keep information about GVGraph as minimal as possible in the rest of the program
 class GVGraph;
+class GVEdge;
+class GVNode;
 class IMatchModel;
+
+namespace thera {
+	class IFragmentConf;
+}
 
 class GraphView : public QGraphicsView {
 		Q_OBJECT
@@ -36,6 +42,9 @@ class GraphView : public QGraphicsView {
 		void generate();
 		void draw();
 
+		const thera::IFragmentConf *findCorresponding(const GVEdge& edge) const;
+		//const thera::IFragmentConf& findCorresponding(const GVNode& node) const;
+
 	private:
 		QList<QAction *> mActions;
 
@@ -43,6 +52,19 @@ class GraphView : public QGraphicsView {
 		IMatchModel *mModel;
 
 		bool mDirty;
+
+		QString mThicknessModifierAttribute;
+		double mMinThicknessModifier, mMaxThicknessModifier;
+
+	private:
+		struct State {
+			bool drawProbabilities;
+			bool scaleThicknessByStatus;
+
+			State() : drawProbabilities(true), scaleThicknessByStatus(true) { }
+		};
+
+		State mState;
 };
 
 #endif /* GRAPHVIEW_H_ */
