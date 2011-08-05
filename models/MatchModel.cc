@@ -35,8 +35,6 @@ void MatchModel::setDatabase(SQLDatabase *db) {
 		mPar = ModelParameters(db);
 		mDb = db;
 
-		databaseModified();
-
 		if (mDb) {
 			connect(mDb, SIGNAL(matchCountChanged()), this, SLOT(databaseModified()));
 			connect(mDb, SIGNAL(databaseClosed()), this, SLOT(databaseModified()));
@@ -52,6 +50,8 @@ void MatchModel::setDatabase(SQLDatabase *db) {
 		else {
 			qDebug() << "MatchModel::setDatabase: passed database was NULL";
 		}
+
+		databaseModified();
 	}
 }
 
@@ -613,11 +613,16 @@ void MatchModel::databaseModified() {
 		emit modelChanged();
 	}
 	else if (mRealSize != 0 || mMatches.size() != 0) {
+		if (mDb) qDebug() << "MatchModel::databaseModified: closed database" << mDb->connectionName() << "but real size or matches size is not 0" << mRealSize << mMatches.size();
+		else qDebug() << "MatchModel::databaseModified: NULL database but real size or matches size is not 0" << mRealSize << mMatches.size();
+
 		mRealSize = 0;
 		mMatches.clear();
 
 		emit modelChanged();
 	}
 
-	qDebug() << "MatchModel::databaseModified: the database was modified, now available:" << size();
+	QString dbName = (mDb) ? mDb->connectionName() : "NULL pointer";
+
+	qDebug() << "MatchModel::databaseModified: the database" << dbName << "was modified, now available:" << size();
 }
