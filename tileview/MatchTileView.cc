@@ -541,6 +541,7 @@ void MatchTileView::markDuplicates() {
 			mWarningLabel->setPosition(WarningLabel::TopBarFull);
 			mWarningLabel->setLinger(true, 0.5);
 			mWarningLabel->fade();
+			mWarningLabel->show();
 
 			QApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor)); // will be restored once again in clicked()
 		}
