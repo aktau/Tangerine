@@ -714,7 +714,7 @@ inline void MatchTileView::updateThumbnailImageAndStatusOnly(int tidx, int fcidx
 
 		mThumbs[tidx]->setToolTip(QString());
 
-		QApplication::processEvents();
+		//QApplication::processEvents();
 	}
 }
 
@@ -759,7 +759,7 @@ inline void MatchTileView::updateThumbnailTooltip(int tidx, int fcidx) {
 
 		mThumbs[tidx]->setToolTip(tooltip);
 
-		QApplication::processEvents();
+		//QApplication::processEvents();
 	}
 }
 
@@ -1243,9 +1243,13 @@ void MatchTileView::refresh() {
 	// I believe. Suppose during the loading of the matches a new filter is instated (this is possible thanks to
 	// the extra events process). What will we do then? Should we just hope that the loading of thumbnails is
 	// more or less fast enough? Ouch...
-	static bool busy = false;
 
-	busy = true;
+	//mRefreshing = true;
+
+	//static bool busy = false;
+	//busy = true;
+
+	qDebug() << "REFRESHING";
 
 	int max = mModel->size();
 
@@ -1254,6 +1258,13 @@ void MatchTileView::refresh() {
 	s().total = max;
 	s().currentPosition = new_pos;
 
+	mRefreshIteration = 0;
+
+	QTimer::singleShot(0, this, SLOT(refreshItem()));
+
+	qDebug() << "ENDREFRESH";
+
+	/*
 	QElapsedTimer timer;
 	timer.start();
 
@@ -1279,10 +1290,43 @@ void MatchTileView::refresh() {
 	}
 
 	qDebug() << "MatchTileView::refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
+	*/
 
 	updateStatusBar();
 
-	busy = false;
+	//busy = false;
+}
+
+void MatchTileView::refreshItem() {
+	if (mRefreshIteration >= mNumThumbs * 2) return;
+	//else qDebug("MatchTileView::refreshItem: looping %d of %d", mRefreshIteration, mNumThumbs);
+
+	int thumbNailIndex = mRefreshIteration % mNumThumbs;
+	int modelIndex = s().currentPosition + thumbNailIndex;
+
+	if (s().total <= modelIndex) {
+		// fill 'em all up without recalling the timer because this is not expensive
+
+		while (thumbNailIndex < mNumThumbs) {
+			updateThumbnail(thumbNailIndex++, -1);
+		}
+
+		// not really necessary because no extra timer is launched but just to be safe
+		mRefreshIteration = mNumThumbs * 2;
+	}
+	else {
+		modelIndex = (s().total > modelIndex) ? modelIndex : -1;
+
+		if (mRefreshIteration >= 20) {
+			updateThumbnailTooltip(thumbNailIndex, modelIndex);
+		}
+		else {
+			updateThumbnailImageAndStatusOnly(thumbNailIndex, modelIndex);
+		}
+
+		if (++mRefreshIteration < mNumThumbs * 2) QTimer::singleShot(0, this, SLOT(refreshItem()));
+		//else qDebug() << "MatchTileView::refreshItem: Last refreshItem() called!";
+	}
 }
 
 int MatchTileView::modelToViewIndex(int modelIndex) const {

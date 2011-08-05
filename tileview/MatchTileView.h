@@ -106,6 +106,9 @@ class MatchTileView : public QScrollArea {
 
 		QString thumbName(const thera::IFragmentConf &conf) const;
 
+	private slots:
+		void refreshItem(); // for use by refresh only
+
 	private:
 		QList<QAction *> mActions;
 		QList<QAction *> mToolbarOnlyActions;
@@ -136,6 +139,8 @@ class MatchTileView : public QScrollArea {
 
 		int mNumThumbs;
 		float mScale;
+
+		int mRefreshIteration;
 
 #ifdef WITH_DETAILVIEW
 		// Detailed view in 3D
@@ -182,7 +187,8 @@ class MatchTileView : public QScrollArea {
 				currentPosition(0),
 				isSelectingMaster(false),
 				ignorePositionReset(false) {
-				tindices.resize(nt);
+				//tindices.resize(nt);
+				tindices.fill(-1, nt);
 			}
 		};
 
