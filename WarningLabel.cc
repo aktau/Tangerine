@@ -27,10 +27,12 @@ WarningLabel::~WarningLabel() {
 void WarningLabel::init() {
 	//setAttribute(Qt::WA_DeleteOnClose, true);
 
-	setStyleSheet("QWidget { background-color: black; } QLabel { color : white; }");
+	//setStyleSheet("QWidget { background-color: black; } QLabel { color : white; }");
 	mLabel = new QLabel();
 	mLabel->setAlignment(Qt::AlignCenter);
 	mLabel->setTextFormat(Qt::RichText);
+
+	setColors(Qt::black, Qt::white);
 
 	mEffect = new QGraphicsOpacityEffect(this);
 	setGraphicsEffect(mEffect);
@@ -42,13 +44,34 @@ void WarningLabel::init() {
 	hbox->addWidget(mLabel);
 	setLayout(hbox);
 
-	show();
+	//show();
+}
+
+void WarningLabel::setColors(const QColor& background, const QColor& foreground) {
+	const QString style = QString("QWidget { background-color: rgb(%1, %2, %3); } QLabel { color : rgb(%4, %5, %6); }")
+		.arg(background.red()).arg(background.green()).arg(background.blue()).arg(foreground.red()).arg(foreground.green()).arg(foreground.blue());
+
+	setStyleSheet(style);
 }
 
 void WarningLabel::setLinger(bool linger, float endOpacity) {
 	setAttribute(Qt::WA_DeleteOnClose, !linger);
 
 	mEndOpacity = endOpacity;
+}
+
+void WarningLabel::setBackground(const QColor& color) {
+	if (color.isValid()) {
+		mBackground = color;
+		setColors(mBackground, mForeground);
+	}
+}
+
+void WarningLabel::setForeground(const QColor& color) {
+	if (color.isValid()) {
+		mForeground = color;
+		setColors(mBackground, mForeground);
+	}
 }
 
 void WarningLabel::setPosition(WarningLabel::Position position) {
@@ -75,7 +98,14 @@ void WarningLabel::setPosition(WarningLabel::Position position) {
 				qDebug() << " WarningLabel::setPosition: unknown position" << position;
 		}
 
+		//QRect geom = parent->geometry();
+		//geom.setHeight(50);
+		//move(0,0);
+		//resize(parent->width(), 50);
 		setGeometry(newPos);
+		//setGeometry(geom);
+
+		//qDebug() << "WarningLabel::setPosition: parent =" << parent->rect() << "parent geom =" << parent->geometry() << "and this geometry" << geometry() << "this rect =" << rect();
 	}
 }
 
@@ -98,6 +128,8 @@ void WarningLabel::fade() {
 	mAnim->setEndValue(mEndOpacity);
 	mAnim->setDuration(mDuration);
 	mAnim->start();
+
+	qDebug() << "animation started!";
 }
 
 void WarningLabel::finished() {

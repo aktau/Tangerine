@@ -23,6 +23,9 @@ class WarningLabel : public QWidget {
 		// if linger is false, the widget will stay at the endOpacity until clicked, and will not be destroyed even when clicked
 		void setLinger(bool linger = true, float endOpacity = 0.5);
 
+		void setBackground(const QColor& color);
+		void setForeground(const QColor& color);
+
 		void setPosition(WarningLabel::Position position);
 		void setText(const QString& title, const QString& text, const QString& titleTag = "h1", const QString& textTag = "p", bool oneLine = false);
 		void setOneLine();
@@ -35,6 +38,8 @@ class WarningLabel : public QWidget {
 	private:
 		void init();
 
+		void setColors(const QColor& background, const QColor& foreground);
+
 	private slots:
 		void finished();
 
@@ -45,6 +50,9 @@ class WarningLabel : public QWidget {
 
 		QString mTitle;
 		QString mText;
+
+		QColor mBackground;
+		QColor mForeground;
 
 		int mDuration;
 		float mEndOpacity;
