@@ -573,10 +573,10 @@ bool MatchModel::setNameFilter(const QString& pattern, ModelParameters& p) {
 			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
 			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
 
-			normalizedFilter = normalizedFilter.replace("_","\\_").replace("%", "\\%");
+			normalizedFilter = normalizedFilter.replace("_","°_").replace("%", "°%");
 			normalizedFilter = normalizedFilter.replace("*","%").replace("?","_");
 
-			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '\\' OR target_name || source_name LIKE '%1' ESCAPE '\\'").arg(normalizedFilter));
+			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '°' OR target_name || source_name LIKE '%1' ESCAPE '°'").arg(normalizedFilter));
 		}
 		else {
 			p.filter.removeFilter("matchmodel_names");
