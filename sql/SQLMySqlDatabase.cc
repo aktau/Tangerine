@@ -34,7 +34,7 @@ QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
 }
 
 QString SQLMySqlDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
-	return QString("CREATE VIEW %1 AS %2").arg(viewName).arg(selectStatement);
+	return QString("CREATE OR REPLACE VIEW %1 AS (%2);").arg(viewName).arg(selectStatement);
 }
 
 bool SQLMySqlDatabase::transaction() const {

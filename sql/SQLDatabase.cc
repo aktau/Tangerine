@@ -779,13 +779,14 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
 	if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
 
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	// if there are no VIEW's as sort fields or as dependencies, we can make the query quite a lot faster by forcing a certain order of evaluation (mostly MySQL)
+	if (!(_preloadFields.toSet() & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(sortField) && (dependencies & mViewMatchFields).isEmpty()) return getPreloadedMatchesFast(_preloadFields, sortField, order, filter, offset, limit);
+
 	QList<SQLFragmentConf> list;
 
 	QStringList preloadFields = _preloadFields;
-
-	// join in dependencies
-	// << "source_name" << "target_name" << "transformation";
-	QSet<QString> dependencies = filter.dependencies().toSet();
 
 	// add all preloads to the dependencies
 	foreach (const QString& field, preloadFields) {
@@ -859,16 +860,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 				cache.insert(pair.first, query.value(pair.second));
 			}
 
-			/*
-			if (fragments[IFragmentConf::SOURCE] == -1 || fragments[IFragmentConf::TARGET] == -1) {
-				qDebug() << "SQLDatabase::getMatches: match with id" << query.value(0).toInt()
-					<< "was ignored because at least one of its fragments could not be found in the fragment database"
-					<< "\n\tSOURCE:" << query.value(1).toString() << "returned" << fragments[IFragmentConf::SOURCE]
-					<< "\n\tTARGET:" << query.value(2).toString() << "returned" << fragments[IFragmentConf::TARGET];
-				continue;
-			}
-			*/
-
 			QTextStream ts(query.value(3).toString().toAscii());
 			ts >> xf;
 
@@ -882,6 +873,146 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 
 	fillTime = timer.elapsed();
 	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec";
+
+	return list;
+}
+
+/**
+ * @pre
+ * 		Neither the sortField nor any dependency of the filter is a meta-attribute/view (but one of the preloadFields can be)
+ */
+QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
+	QList<SQLFragmentConf> list;
+
+	// maybe put some ASSERT's here to check the preconditions... (performance...)
+
+	// remove all VIEW tables from the preloadFields
+	QSet<QString> preloadFieldsSet = _preloadFields.toSet();
+	QStringList preloadFields = (preloadFieldsSet - mViewMatchFields).toList();
+	QStringList preloadMetaFields = (preloadFieldsSet - mNormalMatchFields).toList();
+
+	QSet<QString> dependencies = filter.dependencies().toSet();
+
+	// add all preloads to the dependencies
+	foreach (const QString& field, preloadFields) {
+		if (matchHasField(field)) {
+			dependencies << field;
+		}
+		else {
+			preloadFields.removeOne(field);
+		}
+	}
+
+	assert((mViewMatchFields & dependencies).isEmpty());
+
+	QString queryString = QString("SELECT matches.match_id, source_name, target_name, transformation, %1 FROM matches").arg(preloadFields.join(","));
+
+	if (!sortField.isEmpty()) {
+		if (matchHasField(sortField)) dependencies << sortField;
+		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
+	}
+
+	//join in dependencies
+	foreach (const QString& field, dependencies) {
+		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
+	}
+
+	// add filter clauses
+	if (!filter.isEmpty()) {
+		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
+	}
+
+	if (!sortField.isEmpty()) {
+		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
+	}
+
+	if (offset != -1 && limit != -1) {
+		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
+	}
+
+	QElapsedTimer timer;
+	timer.start();
+
+	qint64 viewCreateTime = 0, queryTime = 0, fillTime = 0;;
+
+	QSqlQuery q(database());
+	if (!q.exec("DROP VIEW IF EXISTS `matches_joined_temp`;")) {
+		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't drop view:" << q.lastError();
+	}
+	if (!q.exec(createViewQuery("matches_joined_temp", queryString))) {
+		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't create view:" << q.lastError();
+	}
+
+	viewCreateTime = timer.restart();
+
+	// query the newly created VIEW instead of the real tables
+	queryString = QString("SELECT matches_joined_temp.*, %1 FROM `matches_joined_temp`").arg(preloadMetaFields.join(", "));
+
+	foreach (const QString& field, preloadMetaFields) {
+		queryString += QString(" LEFT JOIN %1 ON matches_joined_temp.match_id = %1.match_id").arg(field);
+	}
+
+	/*
+	DROP VIEW IF EXISTS `matches_joined`;
+
+	CREATE VIEW `matches_joined` AS (
+	  SELECT matches.match_id, source_name, target_name, transformation, STATUS , volume, error, COMMENT
+	  FROM matches
+	  INNER JOIN STATUS ON matches.match_id = status.match_id
+	  INNER JOIN error ON matches.match_id = error.match_id
+	  INNER JOIN volume ON matches.match_id = volume.match_id
+	  INNER JOIN COMMENT ON matches.match_id = comment.match_id
+	  ORDER BY error.error
+	LIMIT 20, 20
+	);.
+
+	SELECT matches_joined.*, num_duplicates
+	FROM matches_joined
+	LEFT JOIN num_duplicates ON matches_joined.match_id = num_duplicates.match_id
+	*/
+
+	int fragments[IFragmentConf::MAX_FRAGMENTS];
+	XF xf;
+
+	QSqlQuery query(database());
+	query.setForwardOnly(true);
+
+	if (query.exec(queryString)) {
+		QSqlRecord rec = query.record();
+
+		typedef QPair<QString, int> StringIntPair;
+		QList<StringIntPair> fieldIndexList;
+		foreach (const QString& field, _preloadFields) {
+			//qDebug() << "Adding preload field for caching:" << StringIntPair(field, rec.indexOf(field));
+			fieldIndexList << StringIntPair(field, rec.indexOf(field));
+		}
+
+		queryTime = timer.restart();
+
+		while (query.next()) {
+			fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
+			fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
+
+			QMap<QString, QVariant> cache;
+			foreach (const StringIntPair& pair, fieldIndexList) {
+				qDebug() << "Caching fastpath: " << pair << "for id" << query.value(0).toInt();
+
+				cache.insert(pair.first, query.value(pair.second));
+			}
+
+			QTextStream ts(query.value(3).toString().toAscii());
+			ts >> xf;
+
+			list << SQLFragmentConf(this, cache, query.value(0).toInt(), fragments, 1.0f, xf);
+		}
+	}
+	else {
+		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
+				<< "\nQuery executed:" << query.lastQuery();
+	}
+
+	fillTime = timer.elapsed();
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec, query took" << queryTime << "msec and filling the list took" << fillTime << "msec";
 
 	return list;
 }
