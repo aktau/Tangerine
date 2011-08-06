@@ -944,9 +944,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 			<< "\n\tQUERY =" << q.lastQuery();
 	}
 	else {
-		qDebug() << "SQLDatabase::getPreloadedMatchesFast: succesfully create view:" << q.lastQuery();
-		qDebug() << q.exec("SHOW VARIABLES LIKE 'collation%';");
-		qDebug() << q.exec("SHOW VARIABLES LIKE 'vers%';");
+		//qDebug() << "SQLDatabase::getPreloadedMatchesFast: succesfully create view:" << q.lastQuery();
 	}
 
 	viewCreateTime = timer.restart();
@@ -1001,7 +999,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 
 			QMap<QString, QVariant> cache;
 			foreach (const StringIntPair& pair, fieldIndexList) {
-				qDebug() << "Caching fastpath: " << pair << "for id" << query.value(0).toInt();
+				//qDebug() << "Caching fastpath: " << pair << "for id" << query.value(0).toInt();
 
 				cache.insert(pair.first, query.value(pair.second));
 			}

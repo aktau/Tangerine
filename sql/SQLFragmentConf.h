@@ -39,6 +39,14 @@ namespace thera {
 
 			bool isValid() const;
 
+			// absorb the stored values of another fragment conf
+			// will return false if a value did not match with a value
+			// already stored in the object. Nevertheless, this fragment conf
+			// WILL absorb all values regardless of conflicts, unless the indices of the objects
+			// are different, in which case it will absorb nothing
+			// this method is mostly for usage by the models in their refresh signal emitters
+			virtual bool absorb(const SQLFragmentConf& other);
+
 		private:
 			template<typename T> T get(const QString &field, T deflt) const;
 			template<typename T> bool set(const QString &field, T value) const;
@@ -48,7 +56,7 @@ namespace thera {
 
 			// the cache is supposed to be transparant, so we can declare it mutable for some const-correctness
 			typedef QMap<QString, QVariant> CacheMap;
-			mutable QMap<QString, QVariant> mCache;
+			mutable CacheMap mCache;
 
 			int mId;
 	};

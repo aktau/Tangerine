@@ -6,6 +6,8 @@
 #include <QSettings>
 #include <QDir>
 
+#include "main.h"
+
 #include "Tangerine.h"
 #include "SQLiteDatabase.h"
 
@@ -70,7 +72,7 @@ int main(int argc, char *argv[]) {
     qDebug() << "Available SQL drivers:" << QSqlDatabase::drivers();
 
     QSettings settings;
-    QApplication application(argc, argv);
+    TangerineApplication application(argc, argv);
     QDir thumbDir = settings.value(SETTINGS_DB_IMAGECACHE_KEY, "C:\\Documents and Settings\\Administrator\\My Documents\\dump-sw50_3_16-20100606").toString();
 
     parseCommandLine(argc, argv, thumbDir);

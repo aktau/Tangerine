@@ -10,4 +10,26 @@
 #define MAJ_VERSION 0
 #define MIN_VERSION 5
 
+#include <QtGui/QApplication>
+#include <QEvent>
+#include <QtDebug>
+
+class TangerineApplication : public QApplication {
+	Q_OBJECT
+
+	public:
+		TangerineApplication(int argc, char * argv[]) : QApplication( argc, argv ) {}
+
+		bool event(QEvent * pEvent) {
+			if (pEvent->type() == QEvent::ApplicationActivate) {
+				qDebug() << "ApplicationActivate";
+			}
+			else if (pEvent->type() == QEvent::ApplicationDeactivate) {
+				qDebug() << "ApplicationDeactivate";
+			}
+
+			return QApplication::event(pEvent);
+		}
+};
+
 #endif /* MAIN_H_ */

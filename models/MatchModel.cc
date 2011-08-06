@@ -23,6 +23,12 @@ MatchModel::MatchModel(SQLDatabase *db, QObject *parent)
 	  mDirty(false),
 	  mPreload(false) {
 	setDatabase(db);
+
+	/*
+	QTimer *timer = new QTimer(this);
+	connect(timer, SIGNAL(timeout()), this, SLOT(refresh()));
+	timer->start(10000);
+	*/
 }
 
 MatchModel::~MatchModel() {
@@ -312,6 +318,8 @@ inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
 
 inline SQLFragmentConf *MatchModel::getSQL(int index) {
 	if (index < mWindowBegin || index > mWindowEnd) {
+		//qDebug() << "it seems we're outta window:" << mWindowBegin << "<" << index << "<" << mWindowEnd;
+
 		// if the index is outside of the window, request another window in which it fits
 		if (!requestWindow((index - mNextWindowOffset) / mWindowSize)) return NULL;
 	}
@@ -469,6 +477,43 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 		else {
 			c.setMetaData("duplicate", masterMatchId);
 		}
+	}
+}
+
+void MatchModel::refresh() {
+	if (mMatches.isEmpty()) return;
+
+	// TODO: do not refresh as often when the mMatches list is very big
+
+	QList<SQLFragmentConf> matches;
+
+	if (mPreload) {
+		matches = mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	}
+	else {
+		matches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	}
+
+	qDebug() << "MatchModel::refresh: refresh called with non-empty matches, let's see if anything needs updating..." << mMatches.size() << "and" << matches.size();
+
+	assert(matches.size() == mMatches.size());
+
+	// test if any value differs from an already cached value, if it does, prepare to send a refresh
+	QList<SQLFragmentConf>::const_iterator newConf = matches.constBegin();
+	QList<SQLFragmentConf>::iterator oldConf = mMatches.begin();
+
+	bool refreshNeeded = false;
+
+	for (; newConf != matches.constEnd(); ++newConf, ++oldConf) {
+		assert(oldConf->index() == newConf->index());
+
+		refreshNeeded |= !oldConf->absorb(*newConf);
+	}
+
+	if (refreshNeeded) {
+		qDebug() << "MatchModel::refresh: refresh was necessary, sending modelRefreshed() signal";
+
+		emit modelRefreshed();
 	}
 }
 

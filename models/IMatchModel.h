@@ -16,6 +16,8 @@ class ModelParameters;
  * VERY IMPORTANT: calling nearly any method on the model will invalidate the references obtained via get(). Luckily calling these functions will yield
  * the modelChanged() signals et cetera, so you always know when this happens. However, take care not to get references, call methods and then keep using those
  * references in the same method.
+ *
+ * NOTE: do NOT ignore the modelChanged() and orderChanged() signals, they singal an invalidating of the references
  */
 class IMatchModel : public QObject {
 		Q_OBJECT
@@ -78,7 +80,7 @@ class IMatchModel : public QObject {
 		// This would impede the smooth integration of the new SQL-layer with any past and future
 		// layers however... which would be sad. Currently I have no idea how to solve this.
 		//
-		// TODO: Fix this! (first proposal: (Qt) smart pointers)
+		// TODO: Fix this! (first proposal: (Qt) smart pointers)... well references only change after modelChanged() and orderChanged()
 		virtual thera::IFragmentConf& get(int index) = 0;
 
 		// used to get and restore the state of the model completely
@@ -96,8 +98,9 @@ class IMatchModel : public QObject {
 		virtual bool setMaster(int master) = 0;
 
 	signals:
-		void modelChanged();
-		void orderChanged();
+		void modelRefreshed(); // doesn't change the references, but signals that the metadata has been updated. All references are still valid, you can choose to ignore this
+		void modelChanged(); // the entire model could have changed, all old references are no longer valid
+		void orderChanged(); // the amount of matches hasn't changed, nor their values, but the order has changed, all references are no longer valid
 };
 
 #endif /* IMATCHMODEL_H_ */

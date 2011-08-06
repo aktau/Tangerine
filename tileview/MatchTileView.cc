@@ -150,6 +150,7 @@ void MatchTileView::setModel(IMatchModel *model) {
 
 		connect(mModel, SIGNAL(modelChanged()), this, SLOT(modelChanged()));
 		connect(mModel, SIGNAL(orderChanged()), this, SLOT(modelChanged()));
+		connect(mModel, SIGNAL(modelRefreshed()), this, SLOT(modelChanged()));
 
 		// clear stack
 		mStates.clear();
@@ -1261,44 +1262,18 @@ void MatchTileView::refresh() {
 	mRefreshIteration = 0;
 	mWindowLoadBenchmarkTimer.start();
 
+	for (int i = 0; i < mNumThumbs; ++i) {
+		int modelIndex = s().currentPosition + i;
+
+		s().tindices[i] = (modelIndex < s().total) ? modelIndex : -1;
+	}
+
 	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
 	mModel->preloadMatchData(true, QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates");
 
 	QTimer::singleShot(0, this, SLOT(refreshItem()));
 
-	//qDebug() << "ENDREFRESH";
-
-	/*
-	QElapsedTimer timer;
-	timer.start();
-
-	// reload thumbnails
-	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
-	for (int i = 0; i < mNumThumbs; ++i) {
-		// abort because another call of refresh() has superseded this one
-		if (!busy) return;
-
-		// if (i + new_pos) doesn't fit in valid.size(), load an empty thumbnail (-1)
-		//qDebug() << "MatchTileView::refresh:" << i << ((max > i + new_pos) ? i + new_pos : -1);
-		//updateThumbnail(i, (max > i + new_pos) ? i + new_pos : -1);
-		updateThumbnailImageAndStatusOnly(i, (max > i + new_pos) ? i + new_pos : -1);
-	}
-
-	qDebug() << "MatchTileView::refresh: updating all thumbnails image & status cost" << timer.restart() << "msec";
-
-	for (int i = 0; i < mNumThumbs; ++i) {
-		// abort because another call of refresh() has superseded this one
-		if (!busy) return;
-
-		updateThumbnailTooltip(i, (max > i + new_pos) ? i + new_pos : -1);
-	}
-
-	qDebug() << "MatchTileView::refresh: updating all thumbnails cost" << timer.elapsed() << "msec";
-	*/
-
 	updateStatusBar();
-
-	//busy = false;
 }
 
 void MatchTileView::refreshItem() {

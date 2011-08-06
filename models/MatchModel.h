@@ -82,6 +82,8 @@ class MatchModel : public IMatchModel {
 		//void matchCountChanged();
 		void databaseModified();
 
+		void refresh();
+
 	private:
 		SQLDatabase *mDb;
 
