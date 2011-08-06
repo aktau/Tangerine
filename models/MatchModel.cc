@@ -595,10 +595,22 @@ bool MatchModel::setNameFilter(const QString& pattern, ModelParameters& p) {
 			if (!normalizedFilter.startsWith('*')) normalizedFilter.prepend("*");
 			if (!normalizedFilter.endsWith('*')) normalizedFilter.append("*");
 
-			normalizedFilter = normalizedFilter.replace("_","°_").replace("%", "°%");
+			QString escape = mDb->escapeCharacter();
+			bool hasDefaultEscape = !escape.isEmpty();
+
+			if (!hasDefaultEscape) {
+				escape = "°";
+			}
+
+			normalizedFilter = normalizedFilter.replace("_", escape + "_").replace("%", escape + "%");
 			normalizedFilter = normalizedFilter.replace("*","%").replace("?","_");
 
-			p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '°' OR target_name || source_name LIKE '%1' ESCAPE '°'").arg(normalizedFilter));
+			if (!hasDefaultEscape) {
+				p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2' OR target_name || source_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+			}
+			else {
+				p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' OR target_name || source_name LIKE '%1'").arg(normalizedFilter));
+			}
 		}
 		else {
 			p.filter.removeFilter("matchmodel_names");

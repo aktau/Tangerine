@@ -13,6 +13,7 @@ class SQLMySqlDatabase : public SQLDatabase {
 		virtual QString makeCompatible(const QString& statement) const;
 	protected:
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
+		virtual QString escapeCharacter() const;
 		virtual void setPragmas();
 		virtual void setConnectOptions() const;
 		virtual bool transaction() const;

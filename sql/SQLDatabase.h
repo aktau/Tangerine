@@ -65,6 +65,7 @@ class SQLDatabase : public QObject {
 		// MySQL doesn't understand this, but does understand: CONCAT('foo','bar') = 'foobar'
 		// So makeCompatible will convert double pipes if the database is MySQL
 		virtual QString makeCompatible(const QString& statement) const;
+		virtual QString escapeCharacter() const; // will return an empty string if you have to define an escape character yourself (with ESCAPE '\' for example
 
 		bool matchHasField(const QString& field) const;
 		const QSet<QString>& matchFields() const;
@@ -120,10 +121,6 @@ class SQLDatabase : public QObject {
 		QSqlDatabase database() const;
 		void reset();
 		void setup(const QString& schemaFile);
-
-		// history methods
-		//void createHistory();
-
 
 		// only for use in getDb
 		void setConnectionName(const QString& connectionName);

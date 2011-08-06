@@ -940,7 +940,13 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't drop view:" << q.lastError();
 	}
 	if (!q.exec(createViewQuery("matches_joined_temp", queryString))) {
-		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't create view:" << q.lastError();
+		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't create view:" << q.lastError()
+			<< "\n\tQUERY =" << q.lastQuery();
+	}
+	else {
+		qDebug() << "SQLDatabase::getPreloadedMatchesFast: succesfully create view:" << q.lastQuery();
+		qDebug() << q.exec("SHOW VARIABLES LIKE 'collation%';");
+		qDebug() << q.exec("SHOW VARIABLES LIKE 'vers%';");
 	}
 
 	viewCreateTime = timer.restart();
@@ -1120,6 +1126,10 @@ const QDomDocument SQLDatabase::toXML() {
 	doc.appendChild(matches);
 
 	return doc;
+}
+
+QString SQLDatabase::escapeCharacter() const {
+	return QString();
 }
 
 int SQLDatabase::matchCount() const {

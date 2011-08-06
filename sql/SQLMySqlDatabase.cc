@@ -37,6 +37,10 @@ QString SQLMySqlDatabase::createViewQuery(const QString& viewName, const QString
 	return QString("CREATE OR REPLACE VIEW %1 AS (%2);").arg(viewName).arg(selectStatement);
 }
 
+QString SQLMySqlDatabase::escapeCharacter() const {
+	return QString("\\");
+}
+
 bool SQLMySqlDatabase::transaction() const {
 	// unfortunately the QMYSQL driver seems to have a problem with transactions so we forcibly disable autocommit
 	QSqlQuery autocommit(database());
@@ -63,10 +67,27 @@ bool SQLMySqlDatabase::commit() const {
 }
 
 void SQLMySqlDatabase::setPragmas() {
+	QSqlQuery q(database());
 
+	QString charset = "utf8";
+	QString collation = "utf8_general_ci";
+
+	/*
+	if (!q.exec(QString("set character_set_client=%1;").arg(charset))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	if (!q.exec(QString("set character_set_connection=%1;").arg(charset))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	if (!q.exec(QString("set character_set_results=%1;").arg(charset))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	//if (!q.exec("set character_set_system=latin1;")) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+
+	if (!q.exec(QString("set collation_connection=%1;").arg(collation))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	if (!q.exec(QString("set collation_database=%1;").arg(collation))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	if (!q.exec(QString("set collation_server=%1;").arg(collation))) qDebug() << "Error:" << q.lastQuery() << "\n\t" << q.lastError();
+	*/
 }
 
 void SQLMySqlDatabase::setConnectOptions() const {
+	//database().exec("set collation_connection=latin1;");
+
+	//database().exec("set collation_connection=utf8_general_ci;");
 	//database().setConnectOptions("MYSQL_OPT_RECONNECT=1");
 
 	//qDebug("SQLMySqlDatabase::setConnectOptions: tried to set connection options");
