@@ -22,14 +22,18 @@ class TangerineApplication : public QApplication {
 
 		bool event(QEvent * pEvent) {
 			if (pEvent->type() == QEvent::ApplicationActivate) {
-				qDebug() << "ApplicationActivate";
+				emit activated();
 			}
 			else if (pEvent->type() == QEvent::ApplicationDeactivate) {
-				qDebug() << "ApplicationDeactivate";
+				emit deactivated();
 			}
 
 			return QApplication::event(pEvent);
 		}
+
+	signals:
+		void activated();
+		void deactivated();
 };
 
 #endif /* MAIN_H_ */

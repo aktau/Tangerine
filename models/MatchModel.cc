@@ -6,10 +6,14 @@
 #include "SQLFilter.h"
 #include "MatchConflictChecker.h"
 
+#ifdef IS_TANGERINE
+#include "main.h"
+#endif
+
 using namespace thera;
 
 //MatchModel::MatchModel(SQLDatabase *db) : mDb(db), mFilter(db), mRealSize(0), mWindowSize(20), mWindowBegin(0), mWindowEnd(0) {
-MatchModel::MatchModel(SQLDatabase *db, QObject *parent)
+MatchModel::MatchModel(SQLDatabase *db, int refreshInterval, QObject *parent)
 	: IMatchModel(parent),
 	  mDb(NULL),
 	  mPar(db),
@@ -24,11 +28,20 @@ MatchModel::MatchModel(SQLDatabase *db, QObject *parent)
 	  mPreload(false) {
 	setDatabase(db);
 
-	/*
-	QTimer *timer = new QTimer(this);
-	connect(timer, SIGNAL(timeout()), this, SLOT(refresh()));
-	timer->start(10000);
-	*/
+	if (refreshInterval > 0) {
+		QTimer *timer = new QTimer(this);
+		connect(timer, SIGNAL(timeout()), this, SLOT(refresh()));
+		timer->start(refreshInterval);
+
+#ifdef IS_TANGERINE
+		TangerineApplication *app = qobject_cast<TangerineApplication *>(QApplication::instance());
+
+		if (app) {
+			connect(app, SIGNAL(activated()), timer, SLOT(start()));
+			connect(app, SIGNAL(deactivated()), timer, SLOT(stop()));
+		}
+#endif
+	}
 }
 
 MatchModel::~MatchModel() {
@@ -300,21 +313,6 @@ IFragmentConf& MatchModel::get(int index) {
 
 	return (conf) ? static_cast<IFragmentConf&>(*conf) : static_cast<IFragmentConf&>(mInvalidFragmentConf);
 }
-
-/*
-inline thera::SQLFragmentConf& MatchModel::getSQL(int index) {
-	//qDebug() << "Attempted pass:" << index << "<" << mWindowBegin << "||" << index << ">" << mWindowEnd << "| mMatches.size() =" << mMatches.size() << "and window size =" << mWindowSize;
-
-	if (index < mWindowBegin || index > mWindowEnd) {
-		// if the index is outside of the window, request another window in which it fits
-		requestWindow((index - mNextWindowOffset) / mWindowSize);
-	}
-
-	//qDebug("MatchModel::getSQL: (%d - %d) %% %d = %d, ", index, mWindowOffset, mMatches.size(), (index - mWindowOffset) % mMatches.size());
-
-	return mMatches[(index - mWindowOffset) % mMatches.size()];
-}
-*/
 
 inline SQLFragmentConf *MatchModel::getSQL(int index) {
 	if (index < mWindowBegin || index > mWindowEnd) {

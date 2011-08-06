@@ -3,6 +3,9 @@ include( $${REPOSDIR}/src/admin/app-common.pri )
 
 #---------------
 
+# only do this if the specific QApplication instance is a TangerineApplication
+DEFINES += IS_TANGERINE
+
 TARGET    = tangerine
 CONFIG   += qt
 CONFIG   -= app_bundle

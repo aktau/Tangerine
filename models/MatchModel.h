@@ -19,7 +19,9 @@ class MatchModel : public IMatchModel {
 		Q_OBJECT
 
 	public:
-		MatchModel(SQLDatabase *db, QObject *parent = NULL);
+		// refreshInterval specifies how many milliseconds it takes for the MatchModel to ask the database whether anything changed
+		// if 0, refreshing is disabled
+		MatchModel(SQLDatabase *db, int refreshInterval = 0, QObject *parent = NULL);
 		virtual ~MatchModel();
 
 		void setDatabase(SQLDatabase *db);

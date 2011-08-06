@@ -20,7 +20,7 @@ const QString Tangerine::CURRENT_DB_TEXT = "current database: %1";
 const int Tangerine::MIN_WIDTH = 1280;
 const int Tangerine::MIN_HEIGHT = 600;
 
-Tangerine::Tangerine(const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(NULL), mModel(NULL), mSelectionModel(NULL), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
+Tangerine::Tangerine(const QDir& thumbDir, QWidget *parent) : QMainWindow(parent), mDb(NULL), mModel(NULL, 5000), mSelectionModel(NULL), mThumbDir(thumbDir), mProgress(NULL), mNumberOfMatchesLabel(NULL) {
 	mSelectionModel = new MatchSelectionModel(&mModel, this);
 
 	setupWindow();
