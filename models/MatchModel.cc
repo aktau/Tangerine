@@ -476,8 +476,6 @@ bool MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	// QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
-	// QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
 	if (mPreload) {
 		mMatches = mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	}
@@ -485,7 +483,6 @@ bool MatchModel::populateModel() {
 		mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	}
 
-	//mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
 	if (mMatches.isEmpty()) {
@@ -605,6 +602,10 @@ bool MatchModel::setNameFilter(const QString& pattern, ModelParameters& p) {
 			normalizedFilter = normalizedFilter.replace("_", escape + "_").replace("%", escape + "%");
 			normalizedFilter = normalizedFilter.replace("*","%").replace("?","_");
 
+			// all this is necessary because in MySQL, when you compare an escaped string with LIKE inside a VIEW, it's difficult not to
+			// get collation errors. There appears to be no clean fix, I've tried many things (changing connection charset, etc). My dirty
+			// solution is to not provide an explicit ESCAPE because it already provides the backslash.
+			// MySQL wasted 3 hours of my precious time today...
 			if (!hasDefaultEscape) {
 				p.filter.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2' OR target_name || source_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
 			}
