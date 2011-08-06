@@ -96,9 +96,12 @@ void GraphView::generate() {
 
 	mGraph->clearNodes();
 
+	if (mModel->size() <= 0) return;
+
 	qDebug() << "GraphView::generate: adding nodes";
 
 	mModel->prefetchHint(0, qMin(mModel->size(), MAXNODES));
+	mModel->preloadMatchData(false);
 
 	mThicknessModifierAttribute = "error";
 	mMinThicknessModifier = std::numeric_limits<double>::max();
@@ -118,6 +121,9 @@ void GraphView::generate() {
 
 		mGraph->addEdge(conf.mFragments[IFragmentConf::SOURCE], conf.mFragments[IFragmentConf::TARGET], conf.index());
 	}
+
+	// be polite and turn it back on (actually, we don't know if it was ever on...)
+	mModel->preloadMatchData(true);
 
 	qDebug() << "GraphView::generate: applying layout" << mGraph->layoutAlgorithm();
 

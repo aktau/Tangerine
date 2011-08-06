@@ -21,6 +21,7 @@ class EmptyMatchModel : public IMatchModel {
 
 	public:
 		void prefetchHint(int, int) { qDebug() << "EmptyMatchModel::prefetchHint"; }
+		void preloadMatchData(bool, const QStringList&) { qDebug() << "EmptyMatchModel::preloadMatchData"; }
 
 		bool isValidIndex(int index) const { qDebug() << "EmptyMatchModel::isValidIndex: tried to check if index" << index << "was valid"; return false; }
 		int size() const { return 0; }

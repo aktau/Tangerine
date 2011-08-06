@@ -26,6 +26,7 @@ class MatchModel : public IMatchModel {
 
 	public:
 		virtual void prefetchHint(int start, int end);
+		virtual void preloadMatchData(bool preload, const QStringList& fields = QStringList()) ;
 
 		virtual void setWindowSize(int size);
 		virtual int getWindowSize() const;
@@ -95,6 +96,9 @@ class MatchModel : public IMatchModel {
 		int mWindowBegin, mWindowEnd;
 
 		bool mDelayed, mDirty;
+
+		bool mPreload;
+		QStringList mPreloadFields;
 };
 
 #endif /* MATCHMODEL_H_ */

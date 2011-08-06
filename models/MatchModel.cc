@@ -20,7 +20,8 @@ MatchModel::MatchModel(SQLDatabase *db, QObject *parent)
 	  mWindowBegin(0),
 	  mWindowEnd(0),
 	  mDelayed(false),
-	  mDirty(false) {
+	  mDirty(false),
+	  mPreload(false) {
 	setDatabase(db);
 }
 
@@ -62,6 +63,18 @@ void MatchModel::prefetchHint(int start, int end) {
 	mNextWindowOffset = start % mWindowSize;
 
 	//qDebug() << "Asked for prefetch of" << start << "to" << end << "(windowsize = " << mWindowSize << "and offset =" << mWindowOffset << ")";
+}
+
+void MatchModel::preloadMatchData(bool preload, const QStringList& fields) {
+	mPreload = preload;
+
+	if (preload && !fields.isEmpty()) {
+		mPreloadFields = fields;
+	}
+
+	if (preload && fields.isEmpty() && mPreloadFields.isEmpty()) {
+		mPreload = false;
+	}
 }
 
 void MatchModel::setWindowSize(int size) {
@@ -463,8 +476,15 @@ bool MatchModel::populateModel() {
 	QElapsedTimer timer;
 	timer.start();
 
-	//QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
-	mMatches = mDb->getPreloadedMatches(QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates", mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	// QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
+	// QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"
+	if (mPreload) {
+		mMatches = mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	}
+	else {
+		mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+	}
+
 	//mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 

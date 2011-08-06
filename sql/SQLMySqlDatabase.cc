@@ -53,10 +53,10 @@ bool SQLMySqlDatabase::transaction() const {
 bool SQLMySqlDatabase::commit() const {
 	QSqlQuery autocommit(database());
 	if (autocommit.exec("SET autocommit=1;")) {
-		qDebug() << "SQLMySqlDatabase::transaction: set autocommit to 0";
+		qDebug() << "SQLMySqlDatabase::transaction: set autocommit to 1";
 	}
 	else {
-		qDebug() << "SQLMySqlDatabase::transaction: setting autocommit to 0 failed:" << autocommit.lastError();
+		qDebug() << "SQLMySqlDatabase::transaction: setting autocommit to 1 failed:" << autocommit.lastError();
 	}
 
 	return database().commit();

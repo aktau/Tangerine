@@ -1261,6 +1261,9 @@ void MatchTileView::refresh() {
 	mRefreshIteration = 0;
 	mWindowLoadBenchmarkTimer.start();
 
+	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
+	mModel->preloadMatchData(true, QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates");
+
 	QTimer::singleShot(0, this, SLOT(refreshItem()));
 
 	//qDebug() << "ENDREFRESH";

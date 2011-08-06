@@ -44,7 +44,13 @@ class IMatchModel : public QObject {
 		virtual ~IMatchModel() { }
 
 	public:
+		// performance switch, doesn't affect functionality
 		virtual void prefetchHint(int start, int end) = 0; // some model types may completely ignore this
+
+		// performance switch, doesn't affect functionality
+		// some model types may completely ignore this, if no fields to preload are specified the preload list won't be updated (i.e.: the list from the last call will be used)
+		// temporarily disable preloading like this: preloadMatchData(false); ... get matches; preloadMatchData(true); <--- the same preload fields will be reinstated
+		virtual void preloadMatchData(bool preload, const QStringList& fields = QStringList()) = 0;
 
 		virtual bool isValidIndex(int index) const = 0;
 		virtual int size() const = 0;
