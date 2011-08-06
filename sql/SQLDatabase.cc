@@ -771,7 +771,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 	}
 
 	fillTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec";
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
 
 	return list;
 }
@@ -872,7 +872,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 	}
 
 	fillTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec";
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
 
 	return list;
 }
@@ -1016,7 +1016,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 	}
 
 	fillTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec, query took" << queryTime << "msec and filling the list took" << fillTime << "msec";
+	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec, query took" << queryTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
 
 	return list;
 }

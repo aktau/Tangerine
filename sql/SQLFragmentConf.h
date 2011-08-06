@@ -39,13 +39,19 @@ namespace thera {
 
 			bool isValid() const;
 
+			// the following 2 are const because they aren't supposed to alter the behaviour of the conf
+			// in any case, they're always at least making the behaviour more correct! (yes, yes, old and wise programmers spinning in graves generating electricity, I know)
+
 			// absorb the stored values of another fragment conf
 			// will return false if a value did not match with a value
 			// already stored in the object. Nevertheless, this fragment conf
 			// WILL absorb all values regardless of conflicts, unless the indices of the objects
 			// are different, in which case it will absorb nothing
 			// this method is mostly for usage by the models in their refresh signal emitters
-			virtual bool absorb(const SQLFragmentConf& other);
+			virtual bool absorb(const SQLFragmentConf& other) const;
+
+			// passing in an empty string will clear field
+			virtual void clearCache(const QString& field = QString()) const;
 
 		private:
 			template<typename T> T get(const QString &field, T deflt) const;

@@ -99,7 +99,7 @@ namespace thera {
     	return (mId != -1) && (mDb != NULL);
     }
 
-    bool SQLFragmentConf::absorb(const SQLFragmentConf& other) {
+    bool SQLFragmentConf::absorb(const SQLFragmentConf& other) const {
     	if (mId != other.mId) {
     		qDebug() << "SQLFragmentConf::absorb: Id's did not match:" << mId << "vs other" << other.mId;
 
@@ -140,5 +140,14 @@ namespace thera {
     	// if changed == true, then a conflicting value was merged in, and we return false
     	// if changed == false, then we have just a possibly larger cache with no different values, return true
     	return !changed;
+    }
+
+    void SQLFragmentConf::clearCache(const QString& field) const {
+    	if (field.isEmpty()) {
+    		mCache.clear();
+    	}
+    	else {
+    		mCache.remove(field);
+    	}
     }
 }

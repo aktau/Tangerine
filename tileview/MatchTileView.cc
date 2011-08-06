@@ -553,7 +553,7 @@ void MatchTileView::markAsMaster() {
 	int current = mSelectionModel->currentIndex();
 
 	if (mModel->isValidIndex(current)) {
-		mModel->setMaster(current);
+		if (mModel->setMaster(current)) refresh();
 	}
 }
 
@@ -1284,23 +1284,30 @@ void MatchTileView::refreshItem() {
 	int modelIndex = s().currentPosition + thumbNailIndex;
 
 	if (s().total <= modelIndex) {
-		// fill 'em all up without recalling the timer because this is not expensive
+		// skip all invalid ones for this round without recalling the timer because this is not expensive
 
 		while (thumbNailIndex < mNumThumbs) {
 			updateThumbnail(thumbNailIndex++, -1);
+			//qDebug("MatchTileView::refreshItem: skipping %d of %d", mRefreshIteration, mNumThumbs);
 		}
 
+		// there's possibly more rounds to go, let's leave it to the next bunch!
+		++mRefreshIteration;
+		QTimer::singleShot(0, this, SLOT(refreshItem()));
+
 		// not really necessary because no extra timer is launched but just to be safe
-		mRefreshIteration = mNumThumbs * 2;
+		//mRefreshIteration = mNumThumbs * 2;
 	}
 	else {
 		modelIndex = (s().total > modelIndex) ? modelIndex : -1;
 
 		if (mRefreshIteration >= 20) {
 			updateThumbnailTooltip(thumbNailIndex, modelIndex);
+			//qDebug("MatchTileView::refreshItem: tooltip %d of %d", mRefreshIteration, mNumThumbs);
 		}
 		else {
 			updateThumbnailImageAndStatusOnly(thumbNailIndex, modelIndex);
+			//qDebug("MatchTileView::refreshItem: image %d of %d", mRefreshIteration, mNumThumbs);
 		}
 
 		if (mRefreshIteration == 19) qDebug() << "MatchTileView::refreshItem: loaded all images and status in" << mWindowLoadBenchmarkTimer.restart() << "msec";

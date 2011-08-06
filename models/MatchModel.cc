@@ -40,6 +40,10 @@ MatchModel::MatchModel(SQLDatabase *db, int refreshInterval, QObject *parent)
 			connect(app, SIGNAL(activated()), timer, SLOT(start()));
 			connect(app, SIGNAL(deactivated()), timer, SLOT(stop()));
 		}
+
+		// restart the timer whenever we just checked manually
+		connect(this, SIGNAL(modelChanged()), timer, SLOT(start()));
+		connect(this, SIGNAL(orderChanged()), timer, SLOT(start()));
 #endif
 	}
 }
@@ -455,6 +459,22 @@ bool MatchModel::setMaster(int master) {
 		conf.setMetaData("duplicate", 0);
 
 		convertGroupToMaster(duplicateGroup, conf.index());
+
+		// num_duplicates will be stale after this
+		// someday, all of this will be automated, it will be a better world
+		// an idea for a start:
+		// all caches are managed by the SQLDatabase, the SQLFragmentConf request them when necessary like this:
+		// 		mDb->getCache(...)
+		// the db could scan all queries and invalidate caches on an automatic basis
+		//
+		// almost scratch that, even better: mDb->getMetaData(...), which already exists, could just fetch from a cache, right?
+		// But... how will the database know when to delete a cache? It can't keep smart pointers to all of its SQLFragmentConf's
+		// ---> true, but the caching system is supposed to be transparant, so it's not too bad if the db starts dropping caches as if they were smoldering
+		// 		when it has reached a certain limit. You know, LRU and stuff. Man... it sure feels like we're repeating stuff over here!
+		foreach (const SQLFragmentConf& c, mMatches) {
+			c.clearCache("duplicate");
+			c.clearCache("num_duplicates");
+		}
 	}
 
 	return true;
@@ -494,7 +514,11 @@ void MatchModel::refresh() {
 
 	qDebug() << "MatchModel::refresh: refresh called with non-empty matches, let's see if anything needs updating..." << mMatches.size() << "and" << matches.size();
 
-	assert(matches.size() == mMatches.size());
+	if (matches.size() != mMatches.size()) {
+		qDebug() << "MatchModel::refresh: can't refresh, the size of the resultset must have changed because of some external reason";
+
+		return;
+	}
 
 	// test if any value differs from an already cached value, if it does, prepare to send a refresh
 	QList<SQLFragmentConf>::const_iterator newConf = matches.constBegin();
@@ -503,9 +527,14 @@ void MatchModel::refresh() {
 	bool refreshNeeded = false;
 
 	for (; newConf != matches.constEnd(); ++newConf, ++oldConf) {
-		assert(oldConf->index() == newConf->index());
+		if (oldConf->index() == newConf->index()) {
+			refreshNeeded |= !oldConf->absorb(*newConf);
+		}
+		else {
+			qDebug() << "MatchModel::refresh: the resultset of the query apparently changed because of external reasons, not refreshing";
 
-		refreshNeeded |= !oldConf->absorb(*newConf);
+			return;
+		}
 	}
 
 	if (refreshNeeded) {
