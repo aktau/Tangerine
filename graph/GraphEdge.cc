@@ -15,7 +15,7 @@ GraphEdge::GraphEdge(const QPainterPath &path, const QPen &pen, const QBrush &br
 }
 
 GraphEdge::~GraphEdge() {
-	qDebug() << "~GraphEdge..." << mPopup;
+	//qDebug() << "~GraphEdge..." << mPopup;
 }
 
 void GraphEdge::init() {
