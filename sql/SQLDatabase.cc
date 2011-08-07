@@ -704,79 +704,9 @@ thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 }
 
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
-	QList<SQLFragmentConf> list;
+	QString queryString = synthesizeQuery(QStringList(), sortField, order, filter, offset, limit);
 
-	QString queryString = "SELECT matches.match_id, source_name, target_name, transformation FROM matches";
-
-	// join in dependencies
-	// << "source_name" << "target_name" << "transformation";
-	QSet<QString> dependencies = filter.dependencies().toSet();
-
-	if (!sortField.isEmpty()) {
-		if (matchHasField(sortField)) dependencies << sortField;
-		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
-	}
-
-	//join in dependencies
-	foreach (const QString& field, dependencies) {
-		queryString += QString(" INNER JOIN %1 ON matches.match_id = %1.match_id").arg(field);
-	}
-
-	// add filter clauses
-	if (!filter.isEmpty()) {
-		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
-	}
-
-	if (!sortField.isEmpty()) {
-		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
-	}
-
-	if (offset != -1 && limit != -1) {
-		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
-	}
-
-	int fragments[IFragmentConf::MAX_FRAGMENTS];
-	XF xf;
-
-	QSqlQuery query(database());
-	query.setForwardOnly(true);
-
-	QElapsedTimer timer;
-	timer.start();
-	qint64 queryTime = 0, fillTime = 0;
-
-	if (query.exec(queryString)) {
-		queryTime = timer.restart();
-
-		while (query.next()) {
-			fragments[IFragmentConf::SOURCE] = Database::entryIndex(query.value(1).toString());
-			fragments[IFragmentConf::TARGET] = Database::entryIndex(query.value(2).toString());
-
-			/*
-			if (fragments[IFragmentConf::SOURCE] == -1 || fragments[IFragmentConf::TARGET] == -1) {
-				qDebug() << "SQLDatabase::getMatches: match with id" << query.value(0).toInt()
-					<< "was ignored because at least one of its fragments could not be found in the fragment database"
-					<< "\n\tSOURCE:" << query.value(1).toString() << "returned" << fragments[IFragmentConf::SOURCE]
-					<< "\n\tTARGET:" << query.value(2).toString() << "returned" << fragments[IFragmentConf::TARGET];
-				continue;
-			}
-			*/
-
-			QTextStream ts(query.value(3).toString().toAscii());
-			ts >> xf;
-
-			list << SQLFragmentConf(this, query.value(0).toInt(), fragments, 1.0f, xf);
-		}
-	}
-	else {
-		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
-				<< "\nQuery executed:" << query.lastQuery();
-	}
-
-	fillTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
-
-	return list;
+	return fillFragments(queryString, QStringList());
 }
 
 QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
@@ -787,6 +717,10 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 	// if there are no VIEW's as sort fields or as dependencies, we can make the query quite a lot faster by forcing a certain order of evaluation (mostly MySQL)
 	if (!(_preloadFields.toSet() & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(sortField) && (dependencies & mViewMatchFields).isEmpty()) return getPreloadedMatchesFast(_preloadFields, sortField, order, filter, offset, limit);
 
+	QString queryString = synthesizeQuery(_preloadFields, sortField, order, filter, offset, limit);
+	return fillFragments(queryString, _preloadFields);
+
+	/*
 	QList<SQLFragmentConf> list;
 
 	QStringList preloadFields = _preloadFields;
@@ -883,6 +817,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList
 	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
 
 	return list;
+	*/
 }
 
 /**

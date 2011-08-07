@@ -447,6 +447,11 @@ bool MatchModel::setDuplicates(QList<int> duplicatelist, int master, DuplicateMo
 
 	conf.setMetaData("duplicate", 0);
 
+	foreach (const SQLFragmentConf& c, mMatches) {
+		c.clearCache("duplicate");
+		c.clearCache("num_duplicates");
+	}
+
 	refresh(true);
 
 	return true;
@@ -513,6 +518,11 @@ bool MatchModel::resetDuplicates(QList<int> duplicates) {
 			// this means the duplicate was the master of a group, in which case we'll have to convert its group as well
 			convertGroupToMaster(duplicate.index(), 0);
 		}
+	}
+
+	foreach (const SQLFragmentConf& c, mMatches) {
+		c.clearCache("duplicate");
+		c.clearCache("num_duplicates");
 	}
 
 	refresh(true);
