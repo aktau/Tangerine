@@ -96,6 +96,7 @@ class IMatchModel : public QObject {
 
 		virtual bool setDuplicates(QList<int> duplicates, int master, DuplicateMode mode = IMatchModel::ABSORB) = 0;
 		virtual bool setMaster(int master) = 0;
+		virtual bool resetDuplicates(QList<int> duplicates) = 0;
 
 	signals:
 		void modelRefreshed(); // doesn't change the references, but signals that the metadata has been updated. All references are still valid, you can choose to ignore this

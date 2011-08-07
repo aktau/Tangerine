@@ -101,7 +101,16 @@ class SQLDatabase : public QObject {
 		void close();
 
 	protected:
+		// for internal usage for now
+		typedef enum {
+			FORCE_INDEX_MYSQL // database can force specific index usage with MySQL syntax
+		} SpecialCapabilities;
+
+	protected:
 		QList<thera::SQLFragmentConf> getPreloadedMatchesFast(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+
+		virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
+		virtual QList<thera::SQLFragmentConf> fillFragments(const QString& query, const QStringList& cacheFields);
 
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);
 		virtual bool reopen();
@@ -111,12 +120,15 @@ class SQLDatabase : public QObject {
 		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
 
+		virtual QSet<SQLDatabase::SpecialCapabilities> supportedCapabilities() const;
+		virtual bool supports(SpecialCapabilities capability) const;
+
 		virtual void setPragmas() = 0;
 		virtual void setConnectOptions() const;
 
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const = 0;
 
-		virtual void createIndex(const QString& table, const QString& field);
+		virtual void createIndex(const QString& table, const QStringList& fields);
 
 		QSqlDatabase database() const;
 		void reset();

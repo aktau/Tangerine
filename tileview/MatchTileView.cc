@@ -96,6 +96,7 @@ MatchTileView::MatchTileView(const QDir& thumbDir, QWidget *parent, int rows, in
 	mDuplicatesMenu->addAction(mFindDuplicatesAction);
 	mDuplicatesMenu->addAction(mMarkAsDuplicateAction);
 	mDuplicatesMenu->addAction(mMarkAsMasterAction);
+	mDuplicatesMenu->addAction(mResetSelectedDupAction);
 	mStatusMenu->addAction(mAllNeighboursAction);
 	mStatusMenu->addAction(mFindConflictingAction);
 	mStatusMenu->addAction(mFindNonconflictingAction);
@@ -235,6 +236,15 @@ void MatchTileView::createActions() {
 	mActions << new QAction(tr("Separator"), this);
 	mActions.last()->setSeparator(true);
 
+	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/shape_ungroup.png"), tr("Show duplicates"), this);
+	mActions.last()->setStatusTip(tr("Toggle this button to see/hide duplicate matches"));
+	mActions.last()->setCheckable(true);
+	mActions.last()->setChecked(true);
+	connect(mActions.last(), SIGNAL(toggled(bool)), this, SLOT(showDuplicatesToggled(bool)));
+
+	mActions << new QAction(tr("Separator"), this);
+	mActions.last()->setSeparator(true);
+
 	mActions << new QAction(QIcon(":/rcc/fatcow/32x32/help.png"), tr("How to use / tutorial"), this);
 	mActions.last()->setStatusTip(tr("How to use this view? Includes information about handy shortcuts et cetera...."));
 	connect(mActions.last(), SIGNAL(triggered()), this, SLOT(help()));
@@ -298,6 +308,10 @@ void MatchTileView::createActions() {
 	mMarkAsMasterAction = new QAction(tr("Mark as master"), this);
 	mMarkAsMasterAction->setStatusTip(tr("Mark this match as being the master duplicate of it's group"));
 	connect(mMarkAsMasterAction, SIGNAL(triggered()), this, SLOT(markAsMaster()));
+
+	mResetSelectedDupAction = new QAction(tr("Reset selected"), this);
+	mResetSelectedDupAction->setStatusTip(tr("Disband all selected matches and their corresponding duplicate groups"));
+	connect(mResetSelectedDupAction, SIGNAL(triggered()), this, SLOT(resetSelectedDuplicates()));
 
 	mAllNeighboursAction = new QAction(QIcon(":/rcc/fatcow/32x32/sql_join_outer.png"), tr("Find all neighbours"), this);
 	mAllNeighboursAction->setStatusTip(tr("Display all matches that also contain any of the fragments that this match contains"));
@@ -553,8 +567,38 @@ void MatchTileView::markAsMaster() {
 	int current = mSelectionModel->currentIndex();
 
 	if (mModel->isValidIndex(current)) {
-		if (mModel->setMaster(current)) refresh();
+		if (mModel->setMaster(current)) {
+			refresh();
+		}
 	}
+}
+
+void MatchTileView::resetSelectedDuplicates() {
+	if (mModel->resetDuplicates(mSelectionModel->selectedIndexes())) {
+		refresh();
+	}
+}
+
+void MatchTileView::showDuplicatesToggled(bool checked) {
+	if (checked) {
+		// show duplicates now
+
+		mModel->genericFilter(
+			"duplicates",
+			QString()
+		);
+	}
+	else {
+		// hide them
+
+		// filter out all those whose duplicate is 0, which means they have none or are the master of a group
+		mModel->genericFilter(
+			"duplicates",
+			QString("duplicate = 0")
+		);
+	}
+
+	s().showDuplicates = checked;
 }
 
 void MatchTileView::listNeighbours() {
@@ -1053,8 +1097,11 @@ void MatchTileView::modelChanged() {
 
 	mFilterEdit->setText(mModel->getFilter());
 
+	// if the current position can be maintained, do so
+	s().currentPosition = (s().currentPosition < mModel->size()) ? s().currentPosition : 0;
+
 	if (!s().ignorePositionReset) {
-		s().currentPosition = 0;
+		//s().currentPosition = 0;
 	}
 	else {
 		s().ignorePositionReset = false;
@@ -1269,7 +1316,7 @@ void MatchTileView::refresh() {
 	}
 
 	mModel->prefetchHint(new_pos, new_pos + mNumThumbs - 1);
-	mModel->preloadMatchData(true, QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates");
+	mModel->preloadMatchData(true, QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates"); //<< "duplicate" << "num_duplicates"
 
 	QTimer::singleShot(0, this, SLOT(refreshItem()));
 

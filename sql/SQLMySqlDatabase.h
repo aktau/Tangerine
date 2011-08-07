@@ -12,6 +12,9 @@ class SQLMySqlDatabase : public SQLDatabase {
 
 		virtual QString makeCompatible(const QString& statement) const;
 	protected:
+		virtual QSet<SQLDatabase::SpecialCapabilities> supportedCapabilities() const;
+		virtual bool supports(SpecialCapabilities capability) const;
+
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual QString escapeCharacter() const;
 		virtual void setPragmas();
@@ -27,6 +30,7 @@ class SQLMySqlDatabase : public SQLDatabase {
 
 	private:
 		static const QString DB_TYPE;
+		static const QSet<SQLDatabase::SpecialCapabilities> SPECIAL_MYSQL;
 };
 
 #endif /* SQLMYSQLDATABASE_H_ */

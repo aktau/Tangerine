@@ -330,6 +330,15 @@ inline SQLFragmentConf *MatchModel::getSQL(int index) {
 
 	if (mMatches.isEmpty()) return NULL;
 
+	// in case we fetched a succesful but incomplete window AND the user is trying to fetch inside the incomplete part
+	if (mMatches.size() < mWindowSize && (((index - mWindowOffset) % mWindowSize) >= mMatches.size())) {
+		qDebug() << "MatchModel::getSQL: fetched unfilled part of incomplete window, returning invalid fragment" << index << "window has:" << mMatches.size() << "/" << mWindowSize;
+
+		return NULL;
+	}
+
+	// in general, mMatches.size() == mWindowSize, but in case it somehow gets desynced, it's safer (non-segmentation-faultier)
+	// to modulo this way
 	return &mMatches[(index - mWindowOffset) % mMatches.size()];
 }
 
@@ -438,7 +447,7 @@ bool MatchModel::setDuplicates(QList<int> duplicatelist, int master, DuplicateMo
 
 	conf.setMetaData("duplicate", 0);
 
-	refresh();
+	refresh(true);
 
 	return true;
 }
@@ -475,18 +484,38 @@ bool MatchModel::setMaster(int master) {
 		// But... how will the database know when to delete a cache? It can't keep smart pointers to all of its SQLFragmentConf's
 		// ---> true, but the caching system is supposed to be transparant, so it's not too bad if the db starts dropping caches as if they were smoldering
 		// 		when it has reached a certain limit. You know, LRU and stuff. Man... it sure feels like we're repeating stuff over here!
-		/*
 		foreach (const SQLFragmentConf& c, mMatches) {
 			c.clearCache("duplicate");
 			c.clearCache("num_duplicates");
 		}
-		*/
 
 		// in fact, for now it's just cheaper to just refresh EVERYTHING in one go, because clearing the cache for num_duplicates will cause 20 small queries
 		// 1 big one usually performs better, unless it's REALLY big (we hope not)
 		// TODO: we could make a refreh that doesn't emit a signal, and rely on the VIEW to reload itself when we return true
 		refresh();
 	}
+
+	return true;
+}
+
+bool MatchModel::resetDuplicates(QList<int> duplicates) {
+	// point all the matches referenced in the duplicates argument to the master
+	qDebug() << "MatchModel::resetDuplicates: resetting" << duplicates.size() << "matches:" << duplicates;
+	foreach (int modelId, duplicates) {
+		if (!isValidIndex(modelId)) { qDebug() << "MatchModel::resetDuplicates: model id wasn't valid"; continue; }
+
+		IFragmentConf& duplicate = get(modelId);
+		int duplicateGroup = duplicate.getInt("duplicate", 0);
+
+		duplicate.setMetaData("duplicate", 0);
+
+		if (duplicateGroup != 0) {
+			// this means the duplicate was the master of a group, in which case we'll have to convert its group as well
+			convertGroupToMaster(duplicate.index(), 0);
+		}
+	}
+
+	refresh(true);
 
 	return true;
 }
@@ -501,15 +530,17 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 
 	foreach (const SQLFragmentConf& c, list) {
 		if (c.index() == masterMatchId) {
+			qDebug() << "MatchModel::convertGroupToMaster: making pair" << c.index() << "the master of group" << masterMatchId;
 			c.setMetaData("duplicate", 0);
 		}
 		else {
+			qDebug() << "MatchModel::convertGroupToMaster: making pair" << c.index() << "a duplicate of" << masterMatchId;
 			c.setMetaData("duplicate", masterMatchId);
 		}
 	}
 }
 
-void MatchModel::refresh() {
+void MatchModel::refresh(bool forceReloadOnConflict) {
 	if (mMatches.isEmpty()) return;
 
 	QList<SQLFragmentConf> matches = fetchCurrentMatches();
@@ -518,6 +549,34 @@ void MatchModel::refresh() {
 
 	if (matches.size() != mMatches.size()) {
 		qDebug() << "MatchModel::refresh: can't refresh, the size of the resultset must have changed because of some external reason";
+
+		// the size of the resultset is not the same
+		// this is pretty serious business
+
+		if (forceReloadOnConflict) {
+			if (!matches.isEmpty()) {
+				// apparently we're still in a valid window
+
+				// should hopefully be cheap, as we just did that query with a LIMIT
+				requestRealSize();
+
+				// let's not reset the window, that would be superfluous as we already have the new window (we just fetched it)
+				// if the user doesn't like it he'll ask for a new window himself after the modelChanged() signal
+				//resetWindow();
+
+				// cans and cans of worms, basically if we don't set mWindowEnd to what it _should_ have
+				// been, then the model will try to request a new window and fail at it every time an index
+				// outside of the decreased window is tried, so in the end it will make no difference except that
+				// this way saves a lot of DB requests
+				mMatches = matches;
+				mWindowEnd = mWindowBegin + mWindowSize - 1;
+
+				emit modelChanged();
+			}
+			else {
+				// if it's empty, let's not do anything, could be dangerous (TODO: find an ACTUAL solution)
+			}
+		}
 
 		return;
 	}
@@ -533,7 +592,29 @@ void MatchModel::refresh() {
 			refreshNeeded |= !oldConf->absorb(*newConf);
 		}
 		else {
-			qDebug() << "MatchModel::refresh: the resultset of the query apparently changed because of external reasons, not refreshing";
+			if (!forceReloadOnConflict) {
+				qDebug() << "MatchModel::refresh: the resultset of the query apparently changed because of external reasons, not refreshing";
+			}
+			else {
+				// abort all this merging business and just replace it, stuff has gone haywire!
+
+				// it is dubitable whether this is a good idea, it probably wouldn't hurt too much if
+				// we didn't and we'd save another potentially horrible query
+				requestRealSize();
+
+				// let's not reset the window, that would be superfluous as we already have the new window (we just fetched it)
+				// if the user doesn't like it he'll ask for a new window himself after the modelChanged() signal
+				//resetWindow();
+
+				// cans and cans of worms, basically if we don't set mWindowEnd to what it _should_ have
+				// been, then the model will try to request a new window and fail at it every time an index
+				// outside of the decreased window is tried, so in the end it will make no difference except that
+				// this way saves a lot of DB requests
+				mMatches = matches;
+				mWindowEnd = mWindowBegin + mWindowSize - 1;
+
+				emit modelChanged();
+			}
 
 			return;
 		}
@@ -552,6 +633,7 @@ bool MatchModel::populateModel() {
 	// we should probably really check if this is correct, because the amount of matches returned could be smaller
 	// that said, I believe segmentation faults are no longer an issue because an InvalidFragmentConf will be returned instead
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
+	//mWindowEnd = mWindowBegin + mMatches.size() - 1;
 
 	if (mMatches.isEmpty()) {
 		if (mDb->detectClosedDb()) {
@@ -593,6 +675,7 @@ void MatchModel::resetWindow() {
 	mWindowBegin = 0;
 	mWindowEnd = -1;
 	//mWindowEnd = mWindowBegin + mWindowSize - 1;
+	mMatches.clear();
 }
 
 /**

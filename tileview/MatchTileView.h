@@ -64,6 +64,9 @@ class MatchTileView : public QScrollArea {
 	    void findDuplicates();
 	    void markDuplicates();
 	    void markAsMaster();
+	    void resetSelectedDuplicates();
+
+	    void showDuplicatesToggled(bool checked);
 
 	    // conflicts
 	    void listNeighbours();
@@ -123,7 +126,7 @@ class MatchTileView : public QScrollArea {
 		QAction *mSelectAllAction;
 		QAction *mCopyAction;
 		QAction *mCommentAction;
-		QAction *mFindDuplicatesAction, *mListDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction;
+		QAction *mFindDuplicatesAction, *mListDuplicatesAction, *mMarkAsDuplicateAction, *mMarkAsMasterAction, *mResetSelectedDupAction;
 		QAction *mAllNeighboursAction;
 		QAction *mFindConflictingAction;
 		QAction *mFindNonconflictingAction;
@@ -178,6 +181,8 @@ class MatchTileView : public QScrollArea {
 			// solution would be nice though
 			bool ignorePositionReset;
 
+			bool showDuplicates;
+
 			State(int nt) :
 				conflict_index(-1),
 				show_rejected(true),
@@ -187,7 +192,8 @@ class MatchTileView : public QScrollArea {
 				show_confirmed(true),
 				currentPosition(0),
 				isSelectingMaster(false),
-				ignorePositionReset(false) {
+				ignorePositionReset(false),
+				showDuplicates(true) {
 				//tindices.resize(nt);
 				tindices.fill(-1, nt);
 			}

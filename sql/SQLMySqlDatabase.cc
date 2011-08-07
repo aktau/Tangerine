@@ -1,6 +1,7 @@
 #include "SQLMySqlDatabase.h"
 
 const QString SQLMySqlDatabase::DB_TYPE = "QMYSQL";
+const QSet<SQLDatabase::SpecialCapabilities> SQLMySqlDatabase::SPECIAL_MYSQL = QSet<SQLDatabase::SpecialCapabilities>() << FORCE_INDEX_MYSQL;
 
 SQLMySqlDatabase::SQLMySqlDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) { }
 SQLMySqlDatabase::~SQLMySqlDatabase() { }
@@ -32,6 +33,9 @@ QString SQLMySqlDatabase::makeCompatible(const QString& statement) const {
 
 	return newStatement;
 }
+
+QSet<SQLDatabase::SpecialCapabilities> SQLMySqlDatabase::supportedCapabilities() const { return SPECIAL_MYSQL; }
+bool SQLMySqlDatabase::supports(SpecialCapabilities capability) const { return SPECIAL_MYSQL.contains(capability); }
 
 QString SQLMySqlDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
 	return QString("CREATE OR REPLACE VIEW %1 AS (%2);").arg(viewName).arg(selectStatement);

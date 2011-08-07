@@ -57,6 +57,7 @@ class MatchModel : public IMatchModel {
 
 		virtual bool setDuplicates(QList<int> duplicates, int master, DuplicateMode mode = IMatchModel::ABSORB);
 		virtual bool setMaster(int master);
+		virtual bool resetDuplicates(QList<int> duplicates);
 
 	private:
 		thera::SQLFragmentConf *getSQL(int index);
@@ -87,7 +88,7 @@ class MatchModel : public IMatchModel {
 		//void matchCountChanged();
 		void databaseModified();
 
-		void refresh();
+		void refresh(bool forceReloadOnConflict = false);
 
 	private:
 		SQLDatabase *mDb;
@@ -160,9 +161,13 @@ inline void MatchModel::autoAdjustRefreshTimer() {
 		qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, raised the refresh interval from"
 			<< (float(mRefreshTimer->interval()) / 1000.f) << "to" << (float(newInterval) / 1000.f)
 			<< "seconds because of slow database fetching (conserve resources)";
+
+		mRefreshTimer->setInterval(newInterval);
 	}
 	else {
 		// the query took more than half a second, that's too slow
+
+		qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, stopped refreshing until a cheaper query is made";
 
 		// put the interval to something ridiculously high because the fetching time was way too long
 		mRefreshTimer->setInterval(100000000); // that's right, a 100 million seconds

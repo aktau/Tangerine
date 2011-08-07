@@ -119,7 +119,7 @@ namespace thera {
     			//qDebug() << "SQLFragmentConf::absorb: Comparing" << mId << ":" << thisPair.key() << "->" << thisPair.value() << "and" << otherPair.key() << "->" << otherPair.value();
 
     			if (thisPair.value() != otherPair.value()) {
-    				//qDebug() << "SQLFragmentConf::absorb: CHANGE DETECTED!!!!!!!!!!!!!!!!!!!\n\n\n\n\n\nCHAAAAAAAAAAAAAANGE";
+    				//qDebug() << "SQLFragmentConf::absorb: CHANGE DETECTED!!!!!!!!!!!!!!!!!!!\n\n\n\n\n\nCHAAAAAAAAAAAAAANGE" << ":" << thisPair.key() << "->" << thisPair.value() << "and" << otherPair.key() << "->" << otherPair.value();
 
     				thisPair.value() = otherPair.value();
 
@@ -130,6 +130,7 @@ namespace thera {
     			// key not found, insert
     			// note that this DOESN'T imply changed == true, because we don't know what the value would have been
     			// it was just not in the cache
+    			//qDebug() << "SQLFragmentConf::absorb: NEW STUFF!" << mId << ":" << "and" << otherPair.key() << "->" << otherPair.value();
 
     			mCache.insert(otherPair.key(), otherPair.value());
     		}

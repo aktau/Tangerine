@@ -51,6 +51,7 @@ class EmptyMatchModel : public IMatchModel {
 
 		bool setDuplicates(QList<int>, int, DuplicateMode) { qDebug() << "EmptyMatchModel::setDuplicates"; return false; }
 		bool setMaster(int) { qDebug() << "EmptyMatchModel::setMaster"; return false; };
+		bool resetDuplicates(QList<int>) { return false; }
 
 	public:
 		// create one default instance that everyone can conveniently use
