@@ -25,26 +25,28 @@ MatchModel::MatchModel(SQLDatabase *db, int refreshInterval, QObject *parent)
 	  mWindowEnd(0),
 	  mDelayed(false),
 	  mDirty(false),
-	  mPreload(false) {
+	  mPreload(false),
+	  mRefreshTimer(new QTimer(this)),
+	  mBaseRefreshInterval(refreshInterval) {
 	setDatabase(db);
 
 	if (refreshInterval > 0) {
-		QTimer *timer = new QTimer(this);
-		connect(timer, SIGNAL(timeout()), this, SLOT(refresh()));
-		timer->start(refreshInterval);
+		//QTimer *timer = new QTimer(this);
+		connect(mRefreshTimer, SIGNAL(timeout()), this, SLOT(refresh()));
+		mRefreshTimer->start(refreshInterval);
 
 #ifdef IS_TANGERINE
 		TangerineApplication *app = qobject_cast<TangerineApplication *>(QApplication::instance());
 
 		if (app) {
-			connect(app, SIGNAL(activated()), timer, SLOT(start()));
-			connect(app, SIGNAL(deactivated()), timer, SLOT(stop()));
+			connect(app, SIGNAL(activated()), mRefreshTimer, SLOT(start()));
+			connect(app, SIGNAL(deactivated()), mRefreshTimer, SLOT(stop()));
 		}
+#endif
 
 		// restart the timer whenever we just checked manually
-		connect(this, SIGNAL(modelChanged()), timer, SLOT(start()));
-		connect(this, SIGNAL(orderChanged()), timer, SLOT(start()));
-#endif
+		connect(this, SIGNAL(modelChanged()), mRefreshTimer, SLOT(start()));
+		connect(this, SIGNAL(orderChanged()), mRefreshTimer, SLOT(start()));
 	}
 }
 
@@ -436,6 +438,8 @@ bool MatchModel::setDuplicates(QList<int> duplicatelist, int master, DuplicateMo
 
 	conf.setMetaData("duplicate", 0);
 
+	refresh();
+
 	return true;
 }
 
@@ -471,10 +475,17 @@ bool MatchModel::setMaster(int master) {
 		// But... how will the database know when to delete a cache? It can't keep smart pointers to all of its SQLFragmentConf's
 		// ---> true, but the caching system is supposed to be transparant, so it's not too bad if the db starts dropping caches as if they were smoldering
 		// 		when it has reached a certain limit. You know, LRU and stuff. Man... it sure feels like we're repeating stuff over here!
+		/*
 		foreach (const SQLFragmentConf& c, mMatches) {
 			c.clearCache("duplicate");
 			c.clearCache("num_duplicates");
 		}
+		*/
+
+		// in fact, for now it's just cheaper to just refresh EVERYTHING in one go, because clearing the cache for num_duplicates will cause 20 small queries
+		// 1 big one usually performs better, unless it's REALLY big (we hope not)
+		// TODO: we could make a refreh that doesn't emit a signal, and rely on the VIEW to reload itself when we return true
+		refresh();
 	}
 
 	return true;
@@ -501,16 +512,7 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 void MatchModel::refresh() {
 	if (mMatches.isEmpty()) return;
 
-	// TODO: do not refresh as often when the mMatches list is very big
-
-	QList<SQLFragmentConf> matches;
-
-	if (mPreload) {
-		matches = mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
-	}
-	else {
-		matches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
-	}
+	QList<SQLFragmentConf> matches = fetchCurrentMatches();
 
 	qDebug() << "MatchModel::refresh: refresh called with non-empty matches, let's see if anything needs updating..." << mMatches.size() << "and" << matches.size();
 
@@ -538,23 +540,17 @@ void MatchModel::refresh() {
 	}
 
 	if (refreshNeeded) {
-		qDebug() << "MatchModel::refresh: refresh was necessary, sending modelRefreshed() signal";
+		qDebug() << "MatchModel::refresh: refresh was necessary and completed succesfully, sending modelRefreshed() signal";
 
 		emit modelRefreshed();
 	}
 }
 
 bool MatchModel::populateModel() {
-	QElapsedTimer timer;
-	timer.start();
+	mMatches = fetchCurrentMatches();
 
-	if (mPreload) {
-		mMatches = mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
-	}
-	else {
-		mMatches = mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
-	}
-
+	// we should probably really check if this is correct, because the amount of matches returned could be smaller
+	// that said, I believe segmentation faults are no longer an issue because an InvalidFragmentConf will be returned instead
 	mWindowEnd = mWindowBegin + mWindowSize - 1;
 
 	if (mMatches.isEmpty()) {
@@ -579,11 +575,7 @@ bool MatchModel::populateModel() {
 		}
 	}
 
-	// without a window
-	//mMatches = mDb->getMatches(mSortField, mSortOrder, mFilter);
-	//mRealSize = mMatches.size();
-
-	qDebug() << "MatchModel::populateModel: Done repopulating model," << timer.elapsed() << "milliseconds";
+	qDebug() << "MatchModel::populateModel: Done repopulating model," << mLastQueryMsec << "milliseconds";
 
 	return true;
 }
