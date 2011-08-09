@@ -551,7 +551,7 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 }
 
 void MatchModel::refresh(bool forceReloadOnConflict) {
-	if (mMatches.isEmpty()) return;
+	if (mMatches.isEmpty() || mDelayed) return;
 
 	QList<SQLFragmentConf> matches = fetchCurrentMatches();
 
