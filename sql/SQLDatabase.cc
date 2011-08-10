@@ -322,7 +322,7 @@ bool SQLDatabase::commit() const {
 void SQLDatabase::createIndex(const QString& table, const QStringList& fields) {
 	QSqlQuery query(database());
 	if (query.exec(QString("CREATE INDEX %3_index ON %1(%2);").arg(table).arg(fields.join(",")).arg(fields.join("_")))) {
-		qDebug() << "SQLDatabase::createIndex: succesfully created index" << fields << "on" << table;
+		qDebug() << "SQLDatabase::createIndex: successfully created index on field(s)" << fields << "on table" << table;
 	}
 	else {
 		qDebug() << "SQLDatabase::createIndex: failed creating index" << fields << "on" << table << "->" << query.lastError();
@@ -421,7 +421,54 @@ void SQLDatabase::loadFromXML(const QString& XMLFile) {
 			addMatchField("duplicate", 0);
 			addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
 
+			//emit matchFieldsChanged(); <--- in general already called by the addMatchField calls (takes care of available attributes management and history creation)
+			emit matchCountChanged();
+
 			qDebug() << "SQLDatabase::loadFromXML: Done adding extra attributes, hopefully nothing went wrong";
+		}
+		else {
+			qDebug() << "Reading XML file" << XMLFile << "failed";
+		}
+	}
+	else {
+		qDebug() << "Could not open"  << XMLFile;
+	}
+}
+
+void SQLDatabase::stressTestFromXML(const QString& XMLFile, int factor, bool perturb) {
+	if (XMLFile == "" || !isOpen()) {
+		qDebug("SQLDatabase::loadFromXML: filename was empty or database is not open, aborting...");
+
+		return;
+	}
+
+	QFile file(XMLFile);
+
+	// open the file in read-only mode
+	if (file.open(QIODevice::ReadOnly)) {
+		QDomDocument doc;
+
+		bool succes = doc.setContent(&file);
+
+		file.close();
+
+		if (succes) {
+			QDomElement root(doc.documentElement());
+
+			qDebug() << "SQLDatabase::stressTestFromXML: Starting to parse XML";
+
+			parseXMLStressTest(root, factor, perturb);
+
+			qDebug() << "SQLDatabase::stressTestFromXML: Done parsing XML, adding extra attributes:";
+
+			addMatchField("comment", "");
+			addMatchField("duplicate", 0);
+			addMetaMatchField("num_duplicates", "SELECT duplicate AS match_id, COUNT(duplicate) AS num_duplicates FROM duplicate GROUP BY duplicate");
+
+			//emit matchFieldsChanged(); <--- in general already called by the addMatchField calls (takes care of available attributes management and history creation)
+			emit matchCountChanged();
+
+			qDebug() << "SQLDatabase::stressTestFromXML: Done adding extra attributes, hopefully nothing went wrong";
 		}
 		else {
 			qDebug() << "Reading XML file" << XMLFile << "failed";
@@ -872,7 +919,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 	}
 
 	viewCreateTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec";
+	qDebug() << "SQLDatabase::getPreloadedMatchesFast: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec";
 
 	// query the newly created VIEW instead of the real tables
 	queryString = QString("SELECT matches_joined_temp.*, %1 FROM `matches_joined_temp`").arg(preloadMetaFields.join(", "));
@@ -889,28 +936,33 @@ QString SQLDatabase::synthesizeQuery(const QStringList& _requiredFields, const Q
 
 	QString queryString;
 
-	if (_requiredFields.isEmpty()) {
+	QStringList requiredFields = _requiredFields;
+
+	// add all valid required fields to the dependencies and filter out the ones that don't exist
+	foreach (const QString& field, requiredFields) {
+		if (matchHasField(field)) {
+			dependencies << field;
+		}
+		else {
+			requiredFields.removeOne(field);
+		}
+	}
+
+	if (requiredFields.size() != _requiredFields.size()) {
+		qDebug() << "SQLDatabase::synthesizeQuery: One of the requested attributes was not available in the database:" << requiredFields << "->" << _requiredFields
+			<< "\n\tAll available attributes are:" << matchFields();
+	}
+
+	if (requiredFields.isEmpty()) {
 		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation FROM matches");
 	}
 	else {
-		QStringList requiredFields = _requiredFields;
-
-		// add all valid required fields to the dependencies and filter out the ones that don't exist
-		foreach (const QString& field, requiredFields) {
-			if (matchHasField(field)) {
-				dependencies << field;
-			}
-			else {
-				requiredFields.removeOne(field);
-			}
-		}
-
 		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation, %1 FROM matches").arg(requiredFields.join(","));
 	}
 
 	if (!sortField.isEmpty()) {
 		if (matchHasField(sortField)) dependencies << sortField;
-		else qDebug() << "SQLDatabase::getMatches: attempted to sort on field" << sortField << "which doesn't exist";
+		else qDebug() << "SQLDatabase::synthesizeQuery: attempted to sort on field" << sortField << "which doesn't exist";
 	}
 
 	//join in dependencies
@@ -1276,7 +1328,143 @@ void SQLDatabase::parseXML(const QDomElement &root) {
 	commit();
 
 	emit databaseOpEnded();
-	emit matchCountChanged();
+}
+
+void SQLDatabase::parseXMLStressTest(const QDomElement &root, int factor, bool perturb) {
+	QSqlDatabase db(database());
+
+	QStringList integerAttributes = QStringList() << "status";
+	QStringList floatAttributes = QStringList() << "error" << "overlap" << "volume" << "old_volume" << "probability";
+	QStringList stringAttributes = QStringList();
+
+	// create the attribute tables if they don't exist
+	foreach (const QString& attr, integerAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "INTEGER", "0");
+	}
+
+	foreach (const QString& attr, floatAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "REAL", "0");
+	}
+
+	foreach (const QString& attr, stringAttributes) {
+		if (!matchHasRealField(attr)) addMatchField(attr, "TEXT", "");
+	}
+
+	transaction();
+
+	// prepare queries
+	QSqlQuery matchesQuery(db);
+	matchesQuery.prepare(
+		"INSERT INTO matches (match_id, source_name,target_name, transformation) "
+		"VALUES (:match_id, :source_name, :target_name, :transformation)"
+	);
+
+	QSqlQuery conflictsQuery(db);
+	conflictsQuery.prepare(
+		"INSERT INTO conflicts (match_id, other_match_id) "
+		"VALUES (:match_id, :other_match_id)"
+	);
+
+	QSqlQuery statusQuery(db);
+	statusQuery.prepare(
+		"INSERT INTO status (match_id, status) "
+		"VALUES (:match_id, :status)"
+	);
+
+	QSqlQuery errorQuery(db);
+	errorQuery.prepare(
+		"INSERT INTO error (match_id, error) "
+		"VALUES (:match_id, :error)"
+	);
+
+	QSqlQuery overlapQuery(db);
+	overlapQuery.prepare(
+		"INSERT INTO overlap (match_id, overlap) "
+		"VALUES (:match_id, :overlap)"
+	);
+
+	QSqlQuery volumeQuery(db);
+	volumeQuery.prepare(
+		"INSERT INTO volume (match_id, volume) "
+		"VALUES (:match_id, :volume)"
+	);
+
+	QSqlQuery old_volumeQuery(db);
+	old_volumeQuery.prepare(
+		"INSERT INTO old_volume (match_id, old_volume) "
+		"VALUES (:match_id, :old_volume)"
+	);
+
+	QSqlQuery probabilityQuery(db);
+	probabilityQuery.prepare(
+		"INSERT INTO probability (match_id, probability) "
+		"VALUES (:match_id, :probability)"
+	);
+
+	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
+
+	int i = 0;
+	int idcounter = 0;
+
+	for (QDomElement match = root.firstChildElement("match"); !match.isNull(); match = match.nextSiblingElement()) {
+		//int matchId = match.attribute("id").toInt();
+		QString rawTransformation(match.attribute("xf", "1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1").toAscii());
+
+		bool hasProb = match.hasAttribute("Probability");
+
+		QString source = match.attribute("src");
+		QString target = match.attribute("tgt");
+		int status =  match.attribute("status", "0").toInt();
+		float error =  match.attribute("error", "0").toFloat();
+		float overlap =  match.attribute("overlap", "0").toFloat();
+		float volume =  match.attribute("volume", "0").toFloat();
+		float old_volume =  match.attribute("old_volume", "0").toFloat();
+		float probability = match.attribute("Probability", "0.0").toFloat();
+
+		for (int j = 0; j < factor; ++j, ++idcounter) {
+			matchesQuery.bindValue(":match_id", idcounter);
+			matchesQuery.bindValue(":source_name", source);
+			matchesQuery.bindValue(":target_name", target);
+			matchesQuery.bindValue(":transformation", rawTransformation);
+			matchesQuery.exec();
+
+			// update attribute tables
+			statusQuery.bindValue(":match_id", idcounter);
+			statusQuery.bindValue(":status", (status + qrand()) % 5);
+			statusQuery.exec();
+
+			errorQuery.bindValue(":match_id", idcounter);
+			errorQuery.bindValue(":error", error + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
+			errorQuery.exec();
+
+			overlapQuery.bindValue(":match_id", idcounter);
+			overlapQuery.bindValue(":overlap", overlap + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
+			overlapQuery.exec();
+
+			volumeQuery.bindValue(":match_id", idcounter);
+			volumeQuery.bindValue(":volume", volume + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
+			volumeQuery.exec();
+
+			old_volumeQuery.bindValue(":match_id", idcounter);
+			old_volumeQuery.bindValue(":old_volume", old_volume + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
+			old_volumeQuery.exec();
+
+			if (hasProb) {
+				probabilityQuery.bindValue(":match_id", idcounter);
+				probabilityQuery.bindValue(":probability", probability + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
+				probabilityQuery.exec();
+			}
+		}
+
+		emit databaseOpStepDone(i);
+
+		++i;
+	}
+
+	commit();
+
+	emit databaseOpEnded();
+	//emit matchCountChanged();
 }
 
 void SQLDatabase::reset() {
@@ -1320,12 +1508,14 @@ void SQLDatabase::createHistory() {
 	QSqlDatabase db = database();
 	QSqlQuery query(db);
 
-	// remove the history tables first (this would constitute a reset)
+	// optionally remove the history tables first (this would constitute a reset)
 	//foreach (const QString& field, mNormalMatchFields)
 	//	if (!query.exec(QString("DROP TABLE %1_history").arg(field))) qDebug() << "Couldn't remove history table for" << field << "error:" << query.lastError();
 
 	// retrieve ALL normal (== non-view) tables in the current database
 	QStringList t = tables();
+	QStringList created;
+	QStringList kept;
 
 	// this will by now contain all loaded fields, for each field create a history table if none exists
 	foreach (const QString& field, mNormalMatchFields) {
@@ -1334,15 +1524,20 @@ void SQLDatabase::createHistory() {
 		if (!t.contains(fieldHistoryTable)) {
 			createHistory(field);
 
+			created << field;
+
 			// perhaps fill with initial data (all current values with the user included)
 
 			//https://dev.mysql.com/doc/refman/5.1/en/create-table-select.html
 			//http://stackoverflow.com/questions/4007014/alter-column-in-sqlite
 		}
 		else {
-			qDebug() << "SQLDatabase::createHistory: history already existed for field" << field;
+			kept << field;
 		}
 	}
+
+	if (!created.isEmpty()) qDebug() << "SQLDatabase::createHistory: history created for fields" << created;
+	if (!kept.isEmpty()) qDebug() << "SQLDatabase::createHistory: history already existed for fields" << kept;
 }
 
 // generic method that should work for most SQL db's (doesn't work for SQLite so reimplemented in that specific sublass)

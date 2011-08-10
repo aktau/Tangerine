@@ -38,6 +38,12 @@ class SQLDatabase : public QObject {
 		virtual void loadFromXML(const QString& XMLFile);
 		virtual void saveToXML(const QString& XMLFile);
 
+		// this method will multiply the amount of input data by a factor, so that
+		// benchmarks on huge datasets can be ran (it can also perturb the data by a random factor
+		// when inserting so that not too many duplicate entries are made). You can use
+		// this in case you only possess small datasets
+		virtual void stressTestFromXML(const QString& XMLFile, int factor = 10, bool perturb = true);
+
 		virtual bool addMatchField(const QString& name, double defaultValue);
 		virtual bool addMatchField(const QString& name, const QString& defaultValue);
 		virtual bool addMatchField(const QString& name, int defaultValue);
@@ -149,6 +155,7 @@ class SQLDatabase : public QObject {
 
 	private:
 		void parseXML(const QDomElement &root);
+		void parseXMLStressTest(const QDomElement &root, int factor, bool perturb);
 		const QDomDocument toXML();
 
 		// doesn't send the matchFieldsChanged() singal, you have to do that yourself if necessary
