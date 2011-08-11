@@ -38,7 +38,7 @@ QSet<SQLDatabase::SpecialCapabilities> SQLMySqlDatabase::supportedCapabilities()
 bool SQLMySqlDatabase::supports(SpecialCapabilities capability) const { return SPECIAL_MYSQL.contains(capability); }
 
 QString SQLMySqlDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
-	return QString("CREATE OR REPLACE VIEW %1 AS (%2);").arg(viewName).arg(selectStatement);
+	return QString("CREATE OR REPLACE VIEW `%1` AS (%2);").arg(viewName).arg(selectStatement);
 }
 
 QString SQLMySqlDatabase::escapeCharacter() const {

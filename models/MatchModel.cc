@@ -831,6 +831,7 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 	int requestedWindowEnd = mWindowBegin + mWindowSize;
 
 	QList<thera::SQLFragmentConf> list;
+	SQLQueryParameters parameters = SQLQueryParameters((mPreload) ? mPreloadFields : QStringList(), mPar.sortField, mPar.sortOrder, mPar.filter);
 
 	if (!mMatches.isEmpty() && mWindowSize > 0 && !mPar.sortField.isEmpty()) {
 		qDebug("MatchModel::fetchCurrentMatches: [PAGINATION] moving window [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
@@ -840,9 +841,11 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 		if (mWindowBegin < mLoadedWindowBegin && requestedWindowEnd > loadedWindowEnd) {
 			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION -> STANDARD] fail, older window strictly smaller [%d,%d] than new window [%d,%d], switching to standard query", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
 
-			list = (mPreload) ?
-				mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
-				mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+			parameters.moveToAbsoluteWindow(mWindowBegin, mWindowSize);
+
+			//list = (mPreload) ?
+			//	mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
+			//	mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
 
 			qDebug("MatchModel::fetchCurrentMatches: [STANDARD] done");
 		}
@@ -865,6 +868,7 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 
 				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-FORWARD]: extreme values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
 
+				/*
 				list = mDb->getFastPaginatedPreloadedMatches(
 					mPreloadFields,
 					mPar.sortField,
@@ -876,6 +880,10 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 					true,
 					inclusive,
 					offset);
+				*/
+
+				//list = mDb->getMatches(parameters);
+				parameters.moveToRelativeWindow(conf, inclusive, true, offset, mWindowSize);
 			}
 			else if (requestedWindowEnd <= loadedWindowEnd) {
 				// can be fetched completely by backward searching
@@ -894,6 +902,7 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 
 				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-BACKWARD]: extreme values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
 
+				/*
 				list = mDb->getFastPaginatedPreloadedMatches(
 					mPreloadFields,
 					mPar.sortField,
@@ -905,6 +914,9 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 					false,
 					inclusive,
 					offset);
+				*/
+
+				parameters.moveToRelativeWindow(conf, inclusive, false, offset, mWindowSize);
 			}
 			else {
 				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION] shouldn't be here: [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
@@ -912,56 +924,22 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 
 			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: Done, got %d matches", list.size());
 		}
-
-		/*
-		if (mWindowBegin > mLoadedWindowBegin) {
-			// it appears we're moving forwards, the extreme value is the bottom-most match
-			int referenceIndex = qMin(loadedWindowEnd, mWindowBegin);
-
-			//qMax(mLoadedWindowBegin, qMin(loadedWindowEnd, mWindowBegin));
-
-			int offset = qMin(0, mWindowBegin - loadedWindowEnd);
-
-			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: referenceIndex = %d and offset = %d => (index - mWindowOffset) %% mMatches.size() = (%d - %d) %% %d)",
-				referenceIndex, offset, referenceIndex - 1, mWindowOffset, mMatches.size());
-
-			const thera::SQLFragmentConf &conf = mMatches.at((referenceIndex - 1 - mWindowOffset) % mMatches.size());
-
-			int matchIdExtremeValue = conf.index();
-			double sortFieldExtremeValue = conf.getDouble(mPar.sortField, 0.0);
-
-			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: reference values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
-
-			list = mDb->getFastPaginatedPreloadedMatches(
-				mPreloadFields,
-				mPar.sortField,
-				mPar.sortOrder,
-				mPar.filter,
-				mWindowSize,
-				matchIdExtremeValue,
-				sortFieldExtremeValue,
-				true,
-				offset);
-
-			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: Done, got %d matches", list.size());
-		}
-		else if (mWindowBegin > mLoadedWindowBegin) {
-			qDebug() << "MatchModel::fetchCurrentMatches: not implemented yet";
-		}
-		else {
-			qDebug() << "MatchModel::fetchCurrentMatches: shouldn't be here, new window appears to have the same beginning as the old window";
-		}
-		*/
 	}
 	else {
 		qDebug("MatchModel::fetchCurrentMatches: [NO] doing it the standard way because [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
 
+		parameters.moveToAbsoluteWindow(mWindowBegin, mWindowSize);
+
+		/*
 		list = (mPreload) ?
 			mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
 			mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+		*/
 
 		qDebug("MatchModel::fetchCurrentMatches: [NO] done");
 	}
+
+	list = mDb->getMatches(parameters);
 
 	mLastQueryMsec = timer.elapsed();
 

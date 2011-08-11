@@ -696,6 +696,20 @@ bool SQLDatabase::removeMatchField(const QString& name) {
 	return true;
 }
 
+QString SQLDatabase::extUuid() {
+	static QString extUuid;
+
+	if (extUuid.size() == 0) {
+		QString name(QCoreApplication::applicationName());
+		if (!name.size())  name = "anonymous";  // so it doesn't start with a dot
+		//extUuid = name + "_" + QUuid::createUuid().toString();
+		qsrand(QTime::currentTime().msec());
+		extUuid = name.toLower() + "_" + QString::number(qrand());
+	}
+
+	return extUuid;
+}
+
 int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
 	QString queryString = "SELECT Count(matches.match_id) FROM matches";
 
@@ -750,6 +764,105 @@ thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 	return SQLFragmentConf(db, matchId, fragments, 1.0f, xf);
 }
 
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parameters) {
+	// appropriate query and optimization choosing
+
+	QString queryString;
+
+	QSet<QString> dependencies = parameters.filter.dependencies().toSet();
+	QSet<QString> preloadFieldsSet = parameters.preloadFields.toSet();
+
+	// TODO: decision threshold is pretty coarse, but that's probably not a bad thing
+	// if (VIEW optimization possible && __necessary__) { ... } <--- maybe only necessary for MySQL
+	if (!(preloadFieldsSet & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(parameters.sortField) && (dependencies & mViewMatchFields).isEmpty()) {
+		parameters.preloadFields = (preloadFieldsSet - mViewMatchFields).toList(); // chop off the meta parameters
+		parameters.preloadMetaFields = (preloadFieldsSet - mNormalMatchFields).toList();
+
+		qDebug() << "SQLDatabase::getMatches: spliced out some meta-attributes that didn't have an ORDER BY or WHERE dependency:\n\t"
+			<< preloadFieldsSet
+			<< "\n\tinto:" << parameters.preloadFields
+			<< "\n\tand:" << parameters.preloadMetaFields;
+	}
+	else {
+		if (!parameters.preloadMetaFields.isEmpty()) {
+			//assert(!mViewMatchFields.contains(sortField));
+			//assert((mViewMatchFields & filter.dependencies().toSet()).isEmpty());
+
+			qDebug() << "SQLDatabase::getMatches: apparently meta-fields were already spliced off before this method, hopefully all the conditions were met\n\t" << parameters.preloadFields << parameters.preloadMetaFields;
+		}
+		else {
+			qDebug() << "SQLDatabase::getMatches: no (WHERE and ORDER BY)-free meta-fields need to be joined in, the rest of the metafields:" << (preloadFieldsSet & mViewMatchFields);
+		}
+	}
+
+	// todo remove the sortField restriction
+	if (parameters.isPaginated && !parameters.sortField.isEmpty()) {
+		queryString = synthesizeFastPaginatedQuery(
+			parameters.preloadFields,
+			parameters.sortField,
+			parameters.order,
+			parameters.filter,
+			parameters.limit,
+			parameters.extremeMatchId,
+			parameters.extremeSortValue,
+			parameters.forward,
+			parameters.inclusive,
+			parameters.offset
+		);
+	}
+	else {
+		queryString = synthesizeQuery(
+			parameters.preloadFields,
+			parameters.sortField,
+			parameters.order,
+			parameters.filter,
+			parameters.offset,
+			parameters.limit
+		);
+	}
+
+	// join in the rest if necessary
+	QString viewName = "matchopt_" + extUuid();
+	if (!parameters.preloadMetaFields.isEmpty()) {
+		// create VIEW
+		QElapsedTimer timer;
+		timer.start();
+
+		qint64 viewCreateTime = 0;
+
+		QSqlQuery q(database());
+		if (!q.exec(QString("DROP VIEW IF EXISTS `%1`;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
+		if (!q.exec(createViewQuery(viewName, queryString))) qDebug() << "SQLDatabase::getMatches: couldn't create view:" << q.lastError() << "\n\tQUERY =" << q.lastQuery();
+
+		viewCreateTime = timer.elapsed();
+		qDebug() << "SQLDatabase::getMatches: VIEW QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec";
+
+		// query the newly created VIEW instead of the real tables
+		queryString = QString("SELECT %2.*, %1 FROM `%2`").arg(parameters.preloadMetaFields.join(", ")).arg(viewName);
+
+		foreach (const QString& field, parameters.preloadMetaFields) {
+			queryString += QString(" LEFT JOIN `%1` ON %2.match_id = %1.match_id").arg(field).arg(viewName);
+		}
+	}
+
+	QList<thera::SQLFragmentConf> list = fillFragments(queryString, parameters.preloadFields << parameters.preloadMetaFields);
+
+	// clean-up the temporary view
+	if (!parameters.preloadMetaFields.isEmpty()) {
+		QSqlQuery q(database());
+		if (!q.exec(QString("DROP VIEW IF EXISTS `%1`;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
+	}
+
+	// reverse list if "looking back" relatively
+	if (parameters.isPaginated && !parameters.forward) {
+		for (int k = 0; k < (list.size() / 2); ++k) {
+			list.swap(k,list.size()-(1+k));
+		}
+	}
+
+	return list;
+}
+
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
 	QString queryString = synthesizeQuery(QStringList(), sortField, order, filter, offset, limit);
 
@@ -757,7 +870,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, 
 }
 
 QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
-	if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
+	//if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
 
 	QSet<QString> dependencies = filter.dependencies().toSet();
 
@@ -1065,12 +1178,12 @@ QList<thera::SQLFragmentConf> SQLDatabase::fillFragments(const QString& queryStr
 		}
 	}
 	else {
-		qDebug() << "SQLDatabase::getMatches query failed:" << query.lastError()
+		qDebug() << "SQLDatabase::fillFragments: query failed:" << query.lastError()
 				<< "\nQuery executed:" << query.lastQuery();
 	}
 
 	fillTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getMatches: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
+	qDebug() << "SQLDatabase::fillFragments: QUERY =" << queryString << "\n\tquery took" << queryTime << "msec and filling the list took" << fillTime << "msec (filled" << list.size() << "SQLFragmentConf's)";
 
 	return list;
 }

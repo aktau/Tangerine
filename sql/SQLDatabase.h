@@ -16,6 +16,61 @@
 
 #include "SQLRawTheraRecords.h"
 
+class SQLDatabase;
+
+struct SQLQueryParameters {
+	SQLQueryParameters(const QStringList& attributesToPreload = QStringList(), const QString& sortAttribute = QString(), Qt::SortOrder sortOrder = Qt::AscendingOrder, const SQLFilter& _filter = SQLFilter())
+		: preloadFields(attributesToPreload), sortField(sortAttribute), order(sortOrder), filter(_filter), offset(-1), limit(-1), isPaginated(false) {
+
+	}
+
+	// this can be very slow, but is necessary if you don't have a reference value for the current window
+	void moveToAbsoluteWindow(int offsetFromZero, int windowSize) {
+		isPaginated = false;
+
+		offset = offsetFromZero;
+		limit = windowSize;
+	}
+
+	// this will make the query relative, which basically means that it will use the pivot value
+	// to get the results faster
+	//
+	// if goForward is true, the relative window will be taken starting from the current pivot going forward
+	// else, it's taken going backwards
+	void moveToRelativeWindow(const thera::SQLFragmentConf& pivot, bool includePivot, bool goForward, int offsetFromCurrent, int windowSize) {
+		isPaginated = true;
+
+		offset = offsetFromCurrent;
+		limit = windowSize;
+
+		forward = goForward;
+
+		extremeMatchId = pivot.index();
+		extremeSortValue = (!sortField.isEmpty()) ? pivot.getDouble(sortField, 0.0) : 0.0;
+
+		inclusive = includePivot;
+	}
+
+private:
+	friend class SQLDatabase;
+
+	QStringList preloadFields;
+	QStringList preloadMetaFields;
+	QString sortField;
+	Qt::SortOrder order;
+	const SQLFilter& filter;
+	int offset;
+	int limit;
+
+	// pagination-only data
+	bool isPaginated;
+
+	int extremeMatchId;
+	double extremeSortValue;
+	bool forward;
+	bool inclusive;
+};
+
 class SQLDatabase : public QObject {
 		Q_OBJECT
 
@@ -55,6 +110,7 @@ class SQLDatabase : public QObject {
 		// example: Key = "error" -> Value = "error < 0.25 OR error > 0.50"
 		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
 		thera::SQLFragmentConf getMatch(int id);
+		QList<thera::SQLFragmentConf> getMatches(SQLQueryParameters& parameters);
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		QList<thera::SQLFragmentConf> getPreloadedMatches(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		QList<thera::SQLFragmentConf> getFastPaginatedPreloadedMatches(const QStringList& preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset);
@@ -114,6 +170,8 @@ class SQLDatabase : public QObject {
 		} SpecialCapabilities;
 
 	protected:
+		virtual QString extUuid();
+
 		QList<thera::SQLFragmentConf> getPreloadedMatchesFast(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 
 		virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
