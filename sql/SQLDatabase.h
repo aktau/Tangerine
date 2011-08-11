@@ -184,6 +184,7 @@ class SQLDatabase : public QObject {
 
 		virtual bool hasCorrectCapabilities() const;
 
+		virtual QString schemaName() const;
 		virtual QStringList tables(QSql::TableType type = QSql::Tables) const;
 		virtual QSet<QString> tableFields(const QString& tableName) const = 0;
 

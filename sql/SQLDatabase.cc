@@ -11,6 +11,7 @@
 
 #include "SQLiteDatabase.h"
 #include "SQLMySqlDatabase.h"
+#include "SQLPgDatabase.h"
 #include "SQLNullDatabase.h"
 
 #include "SQLConnectionDescription.h"
@@ -65,6 +66,11 @@ QSharedPointer<SQLDatabase> SQLDatabase::getDb(const QString& file, QObject *par
 			switch (dbd.getType()) {
 				case SQLConnectionDescription::MYSQL: {
 					db = QSharedPointer<SQLDatabase>(new SQLMySqlDatabase(parent));
+					db->open(connName, dbd.getDbname(), false, dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
+				} break;
+
+				case SQLConnectionDescription::POSTGRESQL: {
+					db = QSharedPointer<SQLDatabase>(new SQLPgDatabase(parent));
 					db->open(connName, dbd.getDbname(), false, dbd.getHost(), dbd.getUser(), dbd.getPassword(), dbd.getPort());
 				} break;
 
@@ -261,6 +267,11 @@ bool SQLDatabase::hasCorrectCapabilities() const {
 	);
 }
 
+QString SQLDatabase::schemaName() const {
+	// for db's that act like MySQL
+	return database().databaseName();
+}
+
 /**
  * This code will work for most SQL databases, SQLite is an exception though,
  * which is why this code is overriden in that specific sublass
@@ -294,7 +305,7 @@ QStringList SQLDatabase::tables(QSql::TableType type) const {
 
 	QSqlDatabase db = database();
 	QString queryString = QString("SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '%1' %2;")
-			.arg(db.databaseName())
+			.arg(schemaName())
 			.arg(typeSelector);
 	QSqlQuery query(db);
 	query.setForwardOnly(true);
@@ -560,7 +571,7 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
 	*/
 
-	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL)").arg(name).arg(sqlType));
+	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL DEFAULT 1)").arg(name).arg(sqlType));
 	if (success) {
 		// insert the default value everywhere
 		query.prepare(QString(
@@ -831,17 +842,17 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parame
 		qint64 viewCreateTime = 0;
 
 		QSqlQuery q(database());
-		if (!q.exec(QString("DROP VIEW IF EXISTS `%1`;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
+		if (!q.exec(QString("DROP VIEW IF EXISTS %1;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
 		if (!q.exec(createViewQuery(viewName, queryString))) qDebug() << "SQLDatabase::getMatches: couldn't create view:" << q.lastError() << "\n\tQUERY =" << q.lastQuery();
 
 		viewCreateTime = timer.elapsed();
 		qDebug() << "SQLDatabase::getMatches: VIEW QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec";
 
 		// query the newly created VIEW instead of the real tables
-		queryString = QString("SELECT %2.*, %1 FROM `%2`").arg(parameters.preloadMetaFields.join(", ")).arg(viewName);
+		queryString = QString("SELECT %2.*, %1 FROM %2").arg(parameters.preloadMetaFields.join(", ")).arg(viewName);
 
 		foreach (const QString& field, parameters.preloadMetaFields) {
-			queryString += QString(" LEFT JOIN `%1` ON %2.match_id = %1.match_id").arg(field).arg(viewName);
+			queryString += QString(" LEFT JOIN %1 ON %2.match_id = %1.match_id").arg(field).arg(viewName);
 		}
 	}
 
@@ -850,7 +861,7 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parame
 	// clean-up the temporary view
 	if (!parameters.preloadMetaFields.isEmpty()) {
 		QSqlQuery q(database());
-		if (!q.exec(QString("DROP VIEW IF EXISTS `%1`;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
+		if (!q.exec(QString("DROP VIEW IF EXISTS %1;").arg(viewName))) qDebug() << "SQLDatabase::getMatches: couldn't drop view:" << q.lastError();
 	}
 
 	// reverse list if "looking back" relatively
@@ -1026,7 +1037,8 @@ QString SQLDatabase::synthesizeQuery(const QStringList& _requiredFields, const Q
 	}
 
 	if (offset != -1 && limit != -1) {
-		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
+		queryString += QString(" LIMIT %2 OFFSET %1").arg(offset).arg(limit);
+		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
 	}
 
 	return queryString;
@@ -1128,7 +1140,8 @@ QString SQLDatabase::synthesizeFastPaginatedQuery(
 	}
 
 	if (offset != -1 && limit != -1) {
-		queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
+		queryString += QString(" LIMIT %2 OFFSET %1").arg(offset).arg(limit);
+		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
 	}
 
 	return queryString;
@@ -1489,26 +1502,18 @@ void SQLDatabase::parseXMLStressTest(const QDomElement &root, int factor, bool p
 		if (!matchHasRealField(attr)) addMatchField(attr, "TEXT", "");
 	}
 
-	transaction();
-
 	// prepare queries
 	QSqlQuery matchesQuery(db);
-	matchesQuery.prepare(
+	if (!matchesQuery.prepare(
 		"INSERT INTO matches (match_id, source_name,target_name, transformation) "
 		"VALUES (:match_id, :source_name, :target_name, :transformation)"
-	);
-
-	QSqlQuery conflictsQuery(db);
-	conflictsQuery.prepare(
-		"INSERT INTO conflicts (match_id, other_match_id) "
-		"VALUES (:match_id, :other_match_id)"
-	);
+	)) qDebug() << "SQLDatabase::parseXMLStressTest: could not prepare stmt:" << matchesQuery.lastError();
 
 	QSqlQuery statusQuery(db);
-	statusQuery.prepare(
+	if (!statusQuery.prepare(
 		"INSERT INTO status (match_id, status) "
 		"VALUES (:match_id, :status)"
-	);
+	)) qDebug() << "SQLDatabase::parseXMLStressTest: could not prepare status stmt:" << statusQuery.lastError();
 
 	QSqlQuery errorQuery(db);
 	errorQuery.prepare(
@@ -1540,10 +1545,34 @@ void SQLDatabase::parseXMLStressTest(const QDomElement &root, int factor, bool p
 		"VALUES (:match_id, :probability)"
 	);
 
+	/*
+	if (!commit() && !db.rollback()) {
+		qDebug() << "Something" << db.lastError();
+
+		if (!db.rollback()) qDebug() << "COULDNT ROLLBACK EITHER" << db.lastError();
+	}
+	*/
+
+	commit();
+	db.rollback();
+	commit();
+
+	if (!transaction()) qDebug() << "COULDN'T START TRANSACTION" << db.lastError();
+
+	qDebug() << "BLEEP:" << db.lastError();
+
 	emit databaseOpStarted(tr("Converting XML file to database"), root.childNodes().length());
 
 	int i = 0;
-	int idcounter = 0;
+	int idcounter = 1;
+
+	/*
+	commit();
+	db.rollback();
+	commit();
+	db.rollback();
+	commit();
+	*/
 
 	for (QDomElement match = root.firstChildElement("match"); !match.isNull(); match = match.nextSiblingElement()) {
 		//int matchId = match.attribute("id").toInt();
@@ -1565,33 +1594,81 @@ void SQLDatabase::parseXMLStressTest(const QDomElement &root, int factor, bool p
 			matchesQuery.bindValue(":source_name", source);
 			matchesQuery.bindValue(":target_name", target);
 			matchesQuery.bindValue(":transformation", rawTransformation);
-			matchesQuery.exec();
+			if (!matchesQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not insert match:" << matchesQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			// update attribute tables
 			statusQuery.bindValue(":match_id", idcounter);
 			statusQuery.bindValue(":status", (status + qrand()) % 5);
-			statusQuery.exec();
+			//statusQuery.exec();
+			if (!statusQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not insert status:" << statusQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			errorQuery.bindValue(":match_id", idcounter);
 			errorQuery.bindValue(":error", error + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
-			errorQuery.exec();
+			//errorQuery.exec();
+			if (!errorQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not insert error:" << errorQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			overlapQuery.bindValue(":match_id", idcounter);
 			overlapQuery.bindValue(":overlap", overlap + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
-			overlapQuery.exec();
+			//overlapQuery.exec();
+			if (!overlapQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not insert overlap:" << overlapQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			volumeQuery.bindValue(":match_id", idcounter);
 			volumeQuery.bindValue(":volume", volume + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
-			volumeQuery.exec();
+			//volumeQuery.exec();
+			if (!volumeQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not insert volume:" << volumeQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			old_volumeQuery.bindValue(":match_id", idcounter);
 			old_volumeQuery.bindValue(":old_volume", old_volume + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
-			old_volumeQuery.exec();
+			//old_volumeQuery.exec();
+			if (!old_volumeQuery.exec()) {
+				qDebug() << "SQLDatabase::parseXMLStressTest: could not old insert volume:" << old_volumeQuery.lastError();
+
+				emit databaseOpEnded();
+
+				return;
+			}
 
 			if (hasProb) {
 				probabilityQuery.bindValue(":match_id", idcounter);
 				probabilityQuery.bindValue(":probability", probability + (perturb && j != 0) ? (float(rand()) / float(RAND_MAX)) : 0);
-				probabilityQuery.exec();
+				//probabilityQuery.exec();
+				if (!probabilityQuery.exec()) {
+					qDebug() << "SQLDatabase::parseXMLStressTest: could not insert probability:" << probabilityQuery.lastError();
+
+					emit databaseOpEnded();
+
+					return;
+				}
 			}
 		}
 
@@ -1632,8 +1709,14 @@ void SQLDatabase::setup(const QString& schemaFile) {
 
 	transaction();
 	foreach (const QString &q, queries) {
-		query.exec(q);
-		qDebug() << "Executed query:" << q;
+		if (!q.isEmpty()) {
+			if (!query.exec(q)) {
+				qDebug() << "Problem with setup query:" << q << "->" << query.lastError();
+			}
+			else {
+				qDebug() << "Executed query:" << q;
+			}
+		}
 	}
 	commit();
 

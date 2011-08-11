@@ -22,6 +22,7 @@ class SQLConnectionDescription {
 		typedef enum {
 			MYSQL,
 			SQLITE,
+			POSTGRESQL,
 			NUM_DB_TYPES
 		} DbType;
 
@@ -76,6 +77,9 @@ QString SQLConnectionDescription::dbTypeToString(SQLConnectionDescription::DbTyp
 		case MYSQL:
 			return "MySQL";
 
+		case POSTGRESQL:
+			return "PostgreSQL";
+
 		default:
 			return "UNKNOWN_DB_TYPE";
 	}
@@ -86,6 +90,9 @@ SQLConnectionDescription::DbType SQLConnectionDescription::dbStringToType(const 
 
 	if (uType == "MYSQL") {
 		return MYSQL;
+	}
+	else if (uType == "POSTGRESQL") {
+		return POSTGRESQL;
 	}
 	else {
 		return NUM_DB_TYPES;
