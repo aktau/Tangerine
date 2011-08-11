@@ -57,6 +57,7 @@ class SQLDatabase : public QObject {
 		thera::SQLFragmentConf getMatch(int id);
 		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 		QList<thera::SQLFragmentConf> getPreloadedMatches(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+		QList<thera::SQLFragmentConf> getFastPaginatedPreloadedMatches(const QStringList& preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
 		bool historyAvailable() const;
@@ -116,6 +117,8 @@ class SQLDatabase : public QObject {
 		QList<thera::SQLFragmentConf> getPreloadedMatchesFast(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
 
 		virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
+		// the next one has a lot of arguments, they're commented in the method
+		virtual QString synthesizeFastPaginatedQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset) const;
 		virtual QList<thera::SQLFragmentConf> fillFragments(const QString& query, const QStringList& cacheFields);
 
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);

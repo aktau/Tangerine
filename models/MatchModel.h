@@ -97,6 +97,8 @@ class MatchModel : public IMatchModel {
 		ModelParameters mDelayedPar;
 
 		QList<thera::SQLFragmentConf> mMatches;
+		int mLoadedWindowBegin;
+
 		thera::InvalidFragmentConf mInvalidFragmentConf;
 
 		int mRealSize;
@@ -113,66 +115,5 @@ class MatchModel : public IMatchModel {
 
 		qint64 mLastQueryMsec;
 };
-
-// more likely inlining
-inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
-	QElapsedTimer timer;
-	timer.start();
-
-	QList<thera::SQLFragmentConf> list = (mPreload) ?
-		mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
-		mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
-
-	mLastQueryMsec = timer.elapsed();
-
-	// it's possibly this method gets called not by refresh(), in which case we'll also want to restart the timer, it makes no
-	// sense to refresh when we just fetched, also perhaps the interval needs some heuristic setting
-	autoAdjustRefreshTimer();
-
-	return list;
-}
-
-inline void MatchModel::autoAdjustRefreshTimer() {
-	if (!mRefreshTimer) return;
-
-	// start or restart
-	mRefreshTimer->start();
-
-	// if the database call took longer than 100 ms we're possibly having
-	// 		slow internet
-	// 		a slow query
-	//		database server overloaded
-	// --> the good thing to do is to throttle the amount of refreshes
-	// TODO: provide an option to disable throttling
-	if (mLastQueryMsec < 100) {
-		if (mRefreshTimer->interval() > mBaseRefreshInterval) {
-			// at some point in time the interval was set higher than the original interval because the db fetch was slow, it's fast again
-			// so let's return to the default interval
-			mRefreshTimer->setInterval(mBaseRefreshInterval);
-
-			qDebug() << "MatchModel::autoAdjustRefreshTimer: last query took < 100 msec, putting refresh timer back to normal = " << mBaseRefreshInterval << "msec";
-		}
-	}
-	else if (mLastQueryMsec < 500) {
-		// the db fetch was pretty slow (more than 100 msec might be noticeable and possibly a drain on external DB resources)
-		// but we're going to give it the benefit of the doubt and raise the refresh limit until it reaches once every 5 minutes
-		const int newInterval = qMin(1000 * 60 * 5, mRefreshTimer->interval() * 2); // 5 minutes max
-
-		qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, raised the refresh interval from"
-			<< (float(mRefreshTimer->interval()) / 1000.f) << "to" << (float(newInterval) / 1000.f)
-			<< "seconds because of slow database fetching (conserve resources)";
-
-		mRefreshTimer->setInterval(newInterval);
-	}
-	else {
-		// the query took more than half a second, that's too slow
-
-		qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, stopped refreshing until a cheaper query is made";
-
-		// put the interval to something ridiculously high because the fetching time was way too long
-		mRefreshTimer->setInterval(100000000); // that's right, a 100 million seconds
-		mRefreshTimer->stop(); // we can't stop it indefinitely because focusing the TangerineApplication could restart it, it doesn't matter with such an interval though
-	}
-}
 
 #endif /* MATCHMODEL_H_ */

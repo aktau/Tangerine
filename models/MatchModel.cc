@@ -17,6 +17,7 @@ MatchModel::MatchModel(SQLDatabase *db, int refreshInterval, QObject *parent)
 	: IMatchModel(parent),
 	  mDb(NULL),
 	  mPar(db),
+	  mLoadedWindowBegin(0),
 	  mRealSize(0),
 	  mWindowSize(20),
 	  mNextWindowOffset(0),
@@ -817,4 +818,204 @@ void MatchModel::databaseModified() {
 	QString dbName = (mDb) ? mDb->connectionName() : "NULL pointer";
 
 	qDebug() << "MatchModel::databaseModified: the database" << dbName << "was modified, now available:" << size();
+}
+
+// more likely inlining
+inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
+	QElapsedTimer timer;
+	timer.start();
+
+	//int limit, int extremeMatchId, int extremeSortValue, bool forward, int offset
+
+	int loadedWindowEnd = mLoadedWindowBegin + mMatches.size();
+	int requestedWindowEnd = mWindowBegin + mWindowSize;
+
+	QList<thera::SQLFragmentConf> list;
+
+	if (!mMatches.isEmpty() && mWindowSize > 0 && !mPar.sortField.isEmpty()) {
+		qDebug("MatchModel::fetchCurrentMatches: [PAGINATION] moving window [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
+		// find the reference fragment
+
+		// detect special case where the old window is inside of the new window (and the new window is bigger on both sides)
+		if (mWindowBegin < mLoadedWindowBegin && requestedWindowEnd > loadedWindowEnd) {
+			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION -> STANDARD] fail, older window strictly smaller [%d,%d] than new window [%d,%d], switching to standard query", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
+
+			list = (mPreload) ?
+				mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
+				mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+
+			qDebug("MatchModel::fetchCurrentMatches: [STANDARD] done");
+		}
+		else {
+			// in all the other cases, we can request the new window in one go
+			if (mWindowBegin >= mLoadedWindowBegin) {
+				// can be fetched completely by forward searching (looking ahead)
+				bool inclusive = mWindowBegin == mLoadedWindowBegin;
+
+				int referenceIndex = qMin(loadedWindowEnd, mWindowBegin) - 1 + inclusive;
+				int offset = qMax(0, mWindowBegin - loadedWindowEnd);
+
+				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-FORWARD]: referenceIndex = %d, offset = %d, inclusive = %d => (index - mWindowOffset) %% mMatches.size() = (%d - %d) %% %d)",
+								referenceIndex, offset, inclusive, referenceIndex, mWindowOffset, mMatches.size());
+
+				const thera::SQLFragmentConf &conf = mMatches.at((referenceIndex - mWindowOffset) % mMatches.size());
+
+				int matchIdExtremeValue = conf.index();
+				double sortFieldExtremeValue = conf.getDouble(mPar.sortField, 0.0);
+
+				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-FORWARD]: extreme values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
+
+				list = mDb->getFastPaginatedPreloadedMatches(
+					mPreloadFields,
+					mPar.sortField,
+					mPar.sortOrder,
+					mPar.filter,
+					mWindowSize,
+					matchIdExtremeValue,
+					sortFieldExtremeValue,
+					true,
+					inclusive,
+					offset);
+			}
+			else if (requestedWindowEnd <= loadedWindowEnd) {
+				// can be fetched completely by backward searching
+				bool inclusive = requestedWindowEnd == loadedWindowEnd;
+
+				int referenceIndex = qMax(mLoadedWindowBegin, requestedWindowEnd) - inclusive;
+				int offset = qMax(0, mLoadedWindowBegin - requestedWindowEnd);
+
+				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-BACKWARD]: referenceIndex = %d, offset = %d, inclusive = %d => (index - mWindowOffset) %% mMatches.size() = (%d - %d) %% %d)",
+					referenceIndex, offset, inclusive, referenceIndex, mWindowOffset, mMatches.size());
+
+				const thera::SQLFragmentConf &conf = mMatches.at((referenceIndex - mWindowOffset) % mMatches.size());
+
+				int matchIdExtremeValue = conf.index();
+				double sortFieldExtremeValue = conf.getDouble(mPar.sortField, 0.0);
+
+				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION-BACKWARD]: extreme values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
+
+				list = mDb->getFastPaginatedPreloadedMatches(
+					mPreloadFields,
+					mPar.sortField,
+					mPar.sortOrder,
+					mPar.filter,
+					mWindowSize,
+					matchIdExtremeValue,
+					sortFieldExtremeValue,
+					false,
+					inclusive,
+					offset);
+			}
+			else {
+				qDebug("MatchModel::fetchCurrentMatches: [PAGINATION] shouldn't be here: [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
+			}
+
+			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: Done, got %d matches", list.size());
+		}
+
+		/*
+		if (mWindowBegin > mLoadedWindowBegin) {
+			// it appears we're moving forwards, the extreme value is the bottom-most match
+			int referenceIndex = qMin(loadedWindowEnd, mWindowBegin);
+
+			//qMax(mLoadedWindowBegin, qMin(loadedWindowEnd, mWindowBegin));
+
+			int offset = qMin(0, mWindowBegin - loadedWindowEnd);
+
+			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: referenceIndex = %d and offset = %d => (index - mWindowOffset) %% mMatches.size() = (%d - %d) %% %d)",
+				referenceIndex, offset, referenceIndex - 1, mWindowOffset, mMatches.size());
+
+			const thera::SQLFragmentConf &conf = mMatches.at((referenceIndex - 1 - mWindowOffset) % mMatches.size());
+
+			int matchIdExtremeValue = conf.index();
+			double sortFieldExtremeValue = conf.getDouble(mPar.sortField, 0.0);
+
+			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: reference values for referenceIndex %d [match: %d, sort: %f]", referenceIndex, matchIdExtremeValue, sortFieldExtremeValue);
+
+			list = mDb->getFastPaginatedPreloadedMatches(
+				mPreloadFields,
+				mPar.sortField,
+				mPar.sortOrder,
+				mPar.filter,
+				mWindowSize,
+				matchIdExtremeValue,
+				sortFieldExtremeValue,
+				true,
+				offset);
+
+			qDebug("MatchModel::fetchCurrentMatches: [PAGINATION]: Done, got %d matches", list.size());
+		}
+		else if (mWindowBegin > mLoadedWindowBegin) {
+			qDebug() << "MatchModel::fetchCurrentMatches: not implemented yet";
+		}
+		else {
+			qDebug() << "MatchModel::fetchCurrentMatches: shouldn't be here, new window appears to have the same beginning as the old window";
+		}
+		*/
+	}
+	else {
+		qDebug("MatchModel::fetchCurrentMatches: [NO] doing it the standard way because [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
+
+		list = (mPreload) ?
+			mDb->getPreloadedMatches(mPreloadFields, mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize) :
+			mDb->getMatches(mPar.sortField, mPar.sortOrder, mPar.filter, mWindowBegin, mWindowSize);
+
+		qDebug("MatchModel::fetchCurrentMatches: [NO] done");
+	}
+
+	mLastQueryMsec = timer.elapsed();
+
+	// save which window is currently active
+	mLoadedWindowBegin = mWindowBegin;
+
+	// it's possibly this method gets called not by refresh(), in which case we'll also want to restart the timer, it makes no
+	// sense to refresh when we just fetched, also perhaps the interval needs some heuristic setting
+	autoAdjustRefreshTimer();
+
+	return list;
+}
+
+inline void MatchModel::autoAdjustRefreshTimer() {
+	if (!mRefreshTimer) return;
+
+	// start or restart
+	mRefreshTimer->start();
+
+	// if the database call took longer than 100 ms we're possibly having
+	// 		slow internet
+	// 		a slow query
+	//		database server overloaded
+	// --> the good thing to do is to throttle the amount of refreshes
+	// TODO: provide an option to disable throttling
+	if (mLastQueryMsec < 100) {
+		if (mRefreshTimer->interval() > mBaseRefreshInterval) {
+			// at some point in time the interval was set higher than the original interval because the db fetch was slow, it's fast again
+			// so let's return to the default interval
+			mRefreshTimer->setInterval(mBaseRefreshInterval);
+
+			qDebug() << "MatchModel::autoAdjustRefreshTimer: last query took < 100 msec, putting refresh timer back to normal = " << mBaseRefreshInterval << "msec";
+		}
+	}
+	else if (mLastQueryMsec < 500) {
+		// the db fetch was pretty slow (more than 100 msec might be noticeable and possibly a drain on external DB resources)
+		// but we're going to give it the benefit of the doubt and raise the refresh limit until it reaches once every 5 minutes
+		const int newInterval = qMin(1000 * 60 * 5, mRefreshTimer->interval() * 2); // 5 minutes max
+
+		if (newInterval != mRefreshTimer->interval()) {
+			qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, raised the refresh interval from"
+				<< (float(mRefreshTimer->interval()) / 1000.f) << "to" << (float(newInterval) / 1000.f)
+				<< "seconds because of slow database fetching (conserve resources)";
+
+			mRefreshTimer->setInterval(newInterval);
+		}
+	}
+	else {
+		// the query took more than half a second, that's too slow
+
+		qDebug() << "MatchModel::autoAdjustRefreshTimer: (last query took" << mLastQueryMsec << "msec, stopped refreshing until a cheaper query is made";
+
+		// put the interval to something ridiculously high because the fetching time was way too long
+		mRefreshTimer->setInterval(100000000); // that's right, a 100 million seconds
+		mRefreshTimer->stop(); // we can't stop it indefinitely because focusing the TangerineApplication could restart it, it doesn't matter with such an interval though
+	}
 }
