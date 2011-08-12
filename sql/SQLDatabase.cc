@@ -201,6 +201,8 @@ QString SQLDatabase::connectionName() const {
 
 SQLDatabase::SQLDatabase(QObject *parent, const QString& type, bool trackHistory)
 	: QObject(parent), mType(type), mTrackHistory(trackHistory) {
+	setOptions(UseLateRowLookup | UseViewEncapsulation);
+
 	//QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(createHistory()));
@@ -721,6 +723,25 @@ QString SQLDatabase::extUuid() {
 	return extUuid;
 }
 
+void SQLDatabase::setOptions(SQLDatabase::Options options) {
+	mOptions = options;
+
+	qDebug() << "SQLDatabase::setOptions: options changed, now:" << mOptions;
+}
+
+void SQLDatabase::setOption(SQLDatabase::Option option, bool enable) {
+	if (enable)
+		mOptions |= option;
+	else
+		mOptions &= ~option;
+
+	qDebug() << "SQLDatabase::setOption: options changed" << option << "->" << enable << ", now:" << mOptions;
+}
+
+SQLDatabase::Options SQLDatabase::options() const {
+	return mOptions;
+}
+
 int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
 	QString queryString = "SELECT Count(matches.match_id) FROM matches";
 
@@ -776,6 +797,27 @@ thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 }
 
 QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parameters) {
+	Options options = mOptions;
+
+	if (parameters.forceEarlyRowLookup && options.testFlag(UseLateRowLookup)) {
+		qDebug() << "SQLDatabase::getMatches: forcefully turning off late row lookup";
+
+		options &= ~(UseLateRowLookup);
+	}
+
+	if (parameters.forceLateRowLookup && !options.testFlag(UseLateRowLookup)) {
+		qDebug() << "SQLDatabase::getMatches: forcefully turning on late row lookup";
+
+		options |= UseLateRowLookup;
+	}
+
+	// late row lookup can't be combined with view encapsulation in MySQL, but it performs better, so it takes precedence
+	if (options.testFlag(UseLateRowLookup) && options.testFlag(UseViewEncapsulation)) {
+		qDebug() << "SQLDatabase::getMatches: can't use late row lookup and view encapsulation together, disabling views";
+
+		options &= ~ UseViewEncapsulation;
+	}
+
 	// appropriate query and optimization choosing
 
 	QString queryString;
@@ -785,7 +827,8 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parame
 
 	// TODO: decision threshold is pretty coarse, but that's probably not a bad thing
 	// if (VIEW optimization possible && __necessary__) { ... } <--- maybe only necessary for MySQL
-	if (!(preloadFieldsSet & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(parameters.sortField) && (dependencies & mViewMatchFields).isEmpty()) {
+
+	if (options.testFlag(UseViewEncapsulation) && !(preloadFieldsSet & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(parameters.sortField) && (dependencies & mViewMatchFields).isEmpty()) {
 		parameters.preloadFields = (preloadFieldsSet - mViewMatchFields).toList(); // chop off the meta parameters
 		parameters.preloadMetaFields = (preloadFieldsSet - mNormalMatchFields).toList();
 
@@ -806,31 +849,9 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parame
 		}
 	}
 
-	// todo remove the sortField restriction
-	if (parameters.isPaginated && !parameters.sortField.isEmpty()) {
-		queryString = synthesizeFastPaginatedQuery(
-			parameters.preloadFields,
-			parameters.sortField,
-			parameters.order,
-			parameters.filter,
-			parameters.limit,
-			parameters.extremeMatchId,
-			parameters.extremeSortValue,
-			parameters.forward,
-			parameters.inclusive,
-			parameters.offset
-		);
-	}
-	else {
-		queryString = synthesizeQuery(
-			parameters.preloadFields,
-			parameters.sortField,
-			parameters.order,
-			parameters.filter,
-			parameters.offset,
-			parameters.limit
-		);
-	}
+	// TODO: remove the sortField restriction
+	//parameters.forceLateRowLookup = false;
+	queryString = synthesizeQuery(parameters, options);
 
 	// join in the rest if necessary
 	QString viewName = "matchopt_" + extUuid();
@@ -979,6 +1000,155 @@ QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QString
 	return fillFragments(queryString, _preloadFields);
 }
 
+QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase::Options options) {
+	QString queryString;
+	QString primaryTable = "matches";
+	QString from = primaryTable;
+	QStringList requiredFields = parameters.preloadFields;
+
+	// collect dependencies
+	QSet<QString> dependencies = parameters.filter.dependencies().toSet();
+
+	if (!parameters.sortField.isEmpty()) {
+		if (matchHasField(parameters.sortField)) dependencies << parameters.sortField;
+		else qDebug() << "SQLDatabase::synthesizeQuery: attempted to sort on field" << parameters.sortField << "which doesn't exist";
+	}
+
+	foreach (const QString& field, requiredFields) {
+		if (matchHasField(field)) {
+			dependencies << field;
+		}
+		else {
+			requiredFields.removeOne(field);
+		}
+	}
+
+	if (requiredFields.size() != parameters.preloadFields.size()) {
+		qDebug() << "SQLDatabase::synthesizeQuery: One of the requested attributes was not available in the database:" << requiredFields << "->" << parameters.preloadFields
+			<< "\n\tAll available attributes are:" << matchFields();
+	}
+
+	if (options.testFlag(UseLateRowLookup) && parameters.forceLateRowLookupPass) {
+		// in case we're doing the late row lookup pass (the inner query), we don't need to fetch the required fields
+		// and we might even be able to just query the sorting table for a good win
+
+		if (parameters.sortField.isEmpty()) {
+			primaryTable = "matches";
+			from = primaryTable;
+		}
+		else {
+			primaryTable = parameters.sortField;
+			from = primaryTable + (supports(FORCE_INDEX_MYSQL) ? QString(" FORCE INDEX (%1_index) ").arg(parameters.sortField) : QString(" "));
+
+			if (parameters.filter.checkForDependency("source_name") || parameters.filter.checkForDependency("target_name") || parameters.filter.checkForDependency("transformation")) {
+				// if this is the case we'll have to include "matches" as well for sure, unfortunately
+				dependencies << "matches";
+			}
+
+			// remove the sort field from the dependencies
+			dependencies -= parameters.sortField;
+		}
+	}
+
+	if (options.testFlag(UseLateRowLookup) && !parameters.forceLateRowLookupPass) {
+		// remove the dependencies that are going to be taken care off in the inner query
+		QSet<QString> innerDependencies = parameters.filter.dependencies().toSet();
+		innerDependencies << parameters.sortField;
+		dependencies -= innerDependencies;
+		dependencies << "matches"; // we'll have to join with matches instead of having it as a primary table
+
+		SQLQueryParameters innerParameters = parameters;
+
+		// no preloading of fields we don't need in the inner query, all the ones we do need are going to be loaded
+		// so we might as well just pass 'em on, saves a few lookups (although those should be cheap too)
+		innerParameters.preloadFields = (innerParameters.preloadFields.toSet() & innerDependencies).toList();
+		innerParameters.forceLateRowLookupPass = true;
+
+		from = "(\n\t" + synthesizeQuery(innerParameters, options) + "\n) AS q\n";
+		primaryTable = "q";
+
+		// clear the filter on the current parameters set, because we've already filtered in the inner pass
+		parameters.filter.clear();
+
+		// we no longer have to limit/offset
+		parameters.limit = -1;
+		parameters.offset = -1;
+	}
+
+	if (options.testFlag(UseLateRowLookup) && parameters.forceLateRowLookupPass) {
+		queryString = QString("SELECT %1.match_id%3 FROM %2").arg(primaryTable).arg(from).arg(requiredFields.isEmpty() ? QString() : QString(", ") + requiredFields.join(", "));
+	}
+	else {
+		if (requiredFields.isEmpty()) {
+			queryString = QString("SELECT %1.match_id, source_name, target_name, transformation FROM %2").arg(primaryTable).arg(from);
+		}
+		else {
+			queryString = QString("SELECT %2.match_id, source_name, target_name, transformation, %1 FROM %3").arg(requiredFields.join(",")).arg(primaryTable).arg(from);
+		}
+	}
+
+	/*
+	if (parameters.forceLateRowLookup && !parameters.forceLateRowLookupPass) {
+		// from now on we can refer to our primary table as q
+		primaryTable = "q";
+	}
+	*/
+
+	//join in dependencies
+	foreach (const QString& field, dependencies) {
+		if (mViewMatchFields.contains(field)) {
+			queryString += QString(" LEFT JOIN %1 ON %2.match_id = %1.match_id").arg(field).arg(primaryTable);
+		}
+		else {
+			// if the JOIN table is also the on we're sorting on, it's usually advantageous to let MySQL know
+			// that we'd appreciate it if it used that tables index instead of anything else. This saves a temporary table and a filesort
+			QString force = (field == parameters.sortField && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (%1_index) ").arg(field) : QString(" ");
+
+			queryString += QString(" INNER JOIN %1%2ON %3.match_id = %1.match_id").arg(field).arg(force).arg(primaryTable);
+		}
+	}
+
+	// this is where the fast pagination magic happens
+	QString realSortOrder = parameters.order == Qt::AscendingOrder ? "ASC" : "DESC";
+	QString whereConnector = " WHERE ";
+	QString sortPrefix = (dependencies.contains(parameters.sortField)) ? parameters.sortField : primaryTable;
+
+	if (parameters.isPaginated) {
+		realSortOrder = "DESC";
+		QString op = "<";
+
+		if ((parameters.order == Qt::AscendingOrder && parameters.forward) || (parameters.order == Qt::DescendingOrder && !parameters.forward)) {
+			realSortOrder = "ASC";
+			op = ">";
+		}
+
+		if (!options.testFlag(UseLateRowLookup) || (options.testFlag(UseLateRowLookup) && parameters.forceLateRowLookupPass)) {
+			if (!parameters.sortField.isEmpty()) {
+				queryString += QString(" WHERE (%6.%1 %3= %2) AND (%6.match_id %3%5 %4 OR %6.%1 %3 %2)").arg(parameters.sortField).arg(parameters.extremeSortValue).arg(op).arg(parameters.extremeMatchId).arg(parameters.inclusive ? "=" : "").arg(sortPrefix);
+			}
+			else {
+				queryString += QString(" WHERE (%1.match_id %3%4 %2)").arg(sortPrefix).arg(parameters.extremeMatchId).arg(op).arg(parameters.inclusive ? "=" : "");
+			}
+
+			// change the where connector because we've already instated a where
+			whereConnector = " AND ";
+		}
+	}
+
+	if (!parameters.filter.isEmpty()) queryString += whereConnector + "(" + parameters.filter.clauses().join(") AND (") + ")";
+
+	queryString += " ORDER BY ";
+	if (!parameters.sortField.isEmpty()) queryString += QString("%3.%1 %2, ").arg(parameters.sortField).arg(realSortOrder).arg(sortPrefix);
+	queryString += QString("%1.match_id %2").arg(sortPrefix).arg(realSortOrder);
+
+	if (parameters.offset != -1 && parameters.limit != -1) {
+		queryString += QString(" LIMIT %2 OFFSET %1").arg(parameters.offset).arg(parameters.limit);
+		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
+	}
+
+	return queryString;
+}
+
 QString SQLDatabase::synthesizeQuery(const QStringList& _requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const {
 	QSet<QString> dependencies = filter.dependencies().toSet();
 
@@ -1103,8 +1273,6 @@ QString SQLDatabase::synthesizeFastPaginatedQuery(
 	}
 
 	// this is where the fast pagination magic happens
-	//QString op = (order == Qt::AscendingOrder && forward || order == Qt::DescendingOrder && !forward) ? ">" : "<";
-
 	QString realSortOrder = "DESC";
 	QString op = "<";
 
@@ -1117,18 +1285,6 @@ QString SQLDatabase::synthesizeFastPaginatedQuery(
 	QString valueClamper = QString(" WHERE (%1.%1 %3= %2) AND (%1.match_id %3%5 %4 OR %1.%1 %3 %2)").arg(sortField).arg(extremeSortValue).arg(op).arg(extremeMatchId).arg(inclusive ? "=" : "");
 
 	queryString += valueClamper;
-
-	/*
-	// going to a next page if initially ascending
-	WHERE (
-		error.error >= 0.0408032
-	) AND (
-		error.match_id >37432
-		OR error.error > 0.0408032
-	)
-		ORDER BY error.error ASC , error.match_id ASC
-		LIMIT 20
-	*/
 
 	// add filter clauses
 	if (!filter.isEmpty()) {
@@ -1157,6 +1313,8 @@ QList<thera::SQLFragmentConf> SQLDatabase::fillFragments(const QString& queryStr
 
 	int fragments[IFragmentConf::MAX_FRAGMENTS];
 	XF xf;
+
+	//qDebug() << "SQLDatabase::fillFragments: going to execute:" << queryString;
 
 	QSqlQuery query(database());
 	query.setForwardOnly(true);

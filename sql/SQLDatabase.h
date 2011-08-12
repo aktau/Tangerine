@@ -20,8 +20,16 @@ class SQLDatabase;
 
 struct SQLQueryParameters {
 	SQLQueryParameters(const QStringList& attributesToPreload = QStringList(), const QString& sortAttribute = QString(), Qt::SortOrder sortOrder = Qt::AscendingOrder, const SQLFilter& _filter = SQLFilter())
-		: preloadFields(attributesToPreload), sortField(sortAttribute), order(sortOrder), filter(_filter), offset(-1), limit(-1), isPaginated(false) {
+		: preloadFields(attributesToPreload), sortField(sortAttribute), order(sortOrder), filter(_filter), offset(-1), limit(-1), isPaginated(false), forceLateRowLookup(false), forceEarlyRowLookup(false), forceLateRowLookupPass(false) {
 
+	}
+
+	// enables temporarily overriding the dabatase option UseLateRowLookup
+	// true = late lookup
+	// false = early lookup
+	void overrideLateLookup(bool late) {
+		forceLateRowLookup = late;
+		forceEarlyRowLookup = !late;
 	}
 
 	// this can be very slow, but is necessary if you don't have a reference value for the current window
@@ -58,7 +66,7 @@ private:
 	QStringList preloadMetaFields;
 	QString sortField;
 	Qt::SortOrder order;
-	const SQLFilter& filter;
+	SQLFilter filter;
 	int offset;
 	int limit;
 
@@ -69,10 +77,30 @@ private:
 	double extremeSortValue;
 	bool forward;
 	bool inclusive;
+
+	// optimization stuff
+	bool forceLateRowLookup;
+	bool forceEarlyRowLookup;
+
+	// really, what? optimizations inside of optimizations?
+	bool forceLateRowLookupPass;
 };
 
 class SQLDatabase : public QObject {
 		Q_OBJECT
+
+	public:
+		enum Option {
+			NoOptions = 0x0000,
+			UseViewEncapsulation = 0x0001, // Performs view encapsulation when meta-attributes are requested but not present as a seperate dependency
+			UseLateRowLookup = 0x0002,  // An optimization that works especially well with MySQL, can't usually be combined with UseViewEncapsulation, forces the database to only look up rows after collecting id's
+			//OptionC = 0x2,  // 0x000010
+			//OptionD = 0x4,  // 0x000100
+			//OptionE = 0x8,  // 0x001000
+			//OptionE = 0x10 // 0x010000
+			// ... some more options with value which is a power of two
+		 };
+		 Q_DECLARE_FLAGS(Options, Option)
 
 	public:
 		SQLDatabase(QObject *parent, const QString& type, bool trackHistory = true);
@@ -136,9 +164,6 @@ class SQLDatabase : public QObject {
 		bool matchHasRealField(const QString& field) const;
 		const QSet<QString>& realMatchFields() const;
 
-		//bool historyHasField(const QString& field) const;
-		//const QSet<QString>& historyFields() const;
-
 		int matchCount() const;
 
 		virtual bool transaction() const;
@@ -150,6 +175,10 @@ class SQLDatabase : public QObject {
 		// the fragment conf will be invalid if the query failed (index == -1)
 		virtual thera::SQLFragmentConf addMatch(const QString& sourceName, const QString& targetName, const thera::XF& xf, int id = -1);
 		// virtual thera::SQLFragmentConf addMatch(const thera::IfragmentConf& conf);
+
+		virtual void setOptions(SQLDatabase::Options options);
+		virtual void setOption(SQLDatabase::Option option, bool enable = true);
+		virtual SQLDatabase::Options options() const;
 
 	signals:
 		void databaseOpened();
@@ -173,6 +202,8 @@ class SQLDatabase : public QObject {
 		virtual QString extUuid();
 
 		QList<thera::SQLFragmentConf> getPreloadedMatchesFast(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+
+		virtual QString synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase::Options options);
 
 		virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
 		// the next one has a lot of arguments, they're commented in the method
@@ -234,6 +265,8 @@ class SQLDatabase : public QObject {
 		SQLDatabase& operator=(const SQLDatabase&);
 
 	protected:
+		Options mOptions;
+
 		QString mConnectionName;
 		QString mType;
 
@@ -264,6 +297,8 @@ class SQLDatabase : public QObject {
 	private:
 		friend class thera::SQLFragmentConf;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(SQLDatabase::Options)
 
 inline const QSet<QString>& SQLDatabase::matchFields() const {
 	return mMatchFields;
