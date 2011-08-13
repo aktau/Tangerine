@@ -94,10 +94,7 @@ class SQLDatabase : public QObject {
 			NoOptions = 0x0000,
 			UseViewEncapsulation = 0x0001, // Performs view encapsulation when meta-attributes are requested but not present as a seperate dependency
 			UseLateRowLookup = 0x0002,  // An optimization that works especially well with MySQL, can't usually be combined with UseViewEncapsulation, forces the database to only look up rows after collecting id's
-			//OptionC = 0x2,  // 0x000010
-			//OptionD = 0x4,  // 0x000100
-			//OptionE = 0x8,  // 0x001000
-			//OptionE = 0x10 // 0x010000
+			ForcePrimaryIndex = 0x0004 // Generally only possible for MySQL, will force the primary index if no sorting field is used
 			// ... some more options with value which is a power of two
 		 };
 		 Q_DECLARE_FLAGS(Options, Option)
@@ -138,10 +135,10 @@ class SQLDatabase : public QObject {
 		// example: Key = "error" -> Value = "error < 0.25 OR error > 0.50"
 		// other example: Key = "source_name, target_name" -> Value = "(source_name || target_name) LIKE %WDC_0043%"
 		thera::SQLFragmentConf getMatch(int id);
-		QList<thera::SQLFragmentConf> getMatches(SQLQueryParameters& parameters);
-		QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
-		QList<thera::SQLFragmentConf> getPreloadedMatches(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
-		QList<thera::SQLFragmentConf> getFastPaginatedPreloadedMatches(const QStringList& preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset);
+		QList<thera::SQLFragmentConf> getMatches(const SQLQueryParameters& parameters = SQLQueryParameters());
+		//QList<thera::SQLFragmentConf> getMatches(const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+		//QList<thera::SQLFragmentConf> getPreloadedMatches(const QStringList& preloadFields, const QString& sortField = QString(), Qt::SortOrder order = Qt::AscendingOrder, const SQLFilter& filter = SQLFilter(), int offset = -1, int limit = -1);
+		//QList<thera::SQLFragmentConf> getFastPaginatedPreloadedMatches(const QStringList& preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset);
 		int getNumberOfMatches(const SQLFilter& filter = SQLFilter()) const;
 
 		bool historyAvailable() const;
@@ -168,6 +165,10 @@ class SQLDatabase : public QObject {
 
 		virtual bool transaction() const;
 		virtual bool commit() const;
+
+		// depending on the database implementations, this will materialize the views of the meta-attributes,
+		// also, it might make them smart views, which keep themselves up to date, or not
+		virtual bool materializeMetaAttributes();
 
 		// if the 'id' parameters is -1, a new id is created
 		//		WARNING: if an id is specified and a configuration with the same id already existed, the results are UNDEFINED
@@ -205,9 +206,9 @@ class SQLDatabase : public QObject {
 
 		virtual QString synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase::Options options);
 
-		virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
+		//virtual QString synthesizeQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const;
 		// the next one has a lot of arguments, they're commented in the method
-		virtual QString synthesizeFastPaginatedQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset) const;
+		//virtual QString synthesizeFastPaginatedQuery(const QStringList& requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset) const;
 		virtual QList<thera::SQLFragmentConf> fillFragments(const QString& query, const QStringList& cacheFields);
 
 		virtual bool open(const QString& connName, const QString& dbname, bool dbnameOnly, const QString& host = QString(), const QString& user = QString(), const QString& pass = QString(), int port = 0);

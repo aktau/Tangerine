@@ -16,6 +16,7 @@ class SQLPgDatabase : public SQLDatabase {
 		virtual QSet<QString> tableFields(const QString& tableName) const;
 		virtual QString schemaName() const;
 		virtual void createHistory(const QString& table);
+		virtual bool materializeMetaAttributes();
 
 	private:
 		// disabling copy-constructor and copy-assignment for now

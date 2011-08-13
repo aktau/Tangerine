@@ -245,7 +245,9 @@ inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, Neighbou
 			SQLFilter filter(mDb);
 			filter.setFilter("filter", allNeighboursFilter);
 
-			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
+			SQLQueryParameters parameters = SQLQueryParameters((mPreload) ? mPreloadFields : QStringList(), mPar.sortField, mPar.sortOrder, filter);
+			QList<SQLFragmentConf> list = mDb->getMatches(parameters);
+			//QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
 
 			MatchConflictChecker checker(match, list);
 
@@ -261,7 +263,9 @@ inline void MatchModel::neighbours(const thera::SQLFragmentConf& match, Neighbou
 			SQLFilter filter(mDb);
 			filter.setFilter("filter", allNeighboursFilter);
 
-			QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
+			SQLQueryParameters parameters = SQLQueryParameters((mPreload) ? mPreloadFields : QStringList(), mPar.sortField, mPar.sortOrder, filter);
+			QList<SQLFragmentConf> list = mDb->getMatches(parameters);
+			//QList<SQLFragmentConf> list = mDb->getMatches("error", Qt::AscendingOrder, filter);
 
 			MatchConflictChecker checker(match, list);
 
@@ -537,7 +541,9 @@ void MatchModel::convertGroupToMaster(int groupMatchId, int masterMatchId) {
 	SQLFilter filter(mDb);
 	filter.setFilter("filter", QString("duplicate = %1 OR matches.match_id = %1").arg(groupMatchId));
 
-	QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
+	SQLQueryParameters parameters = SQLQueryParameters(QStringList(), QString(), Qt::AscendingOrder, filter);
+	QList<SQLFragmentConf> list = mDb->getMatches(parameters);
+	//QList<SQLFragmentConf> list = mDb->getMatches(QString(), Qt::AscendingOrder, filter);
 
 	foreach (const SQLFragmentConf& c, list) {
 		if (c.index() == masterMatchId) {
@@ -833,7 +839,7 @@ inline const QList<thera::SQLFragmentConf> MatchModel::fetchCurrentMatches() {
 	QList<thera::SQLFragmentConf> list;
 	SQLQueryParameters parameters = SQLQueryParameters((mPreload) ? mPreloadFields : QStringList(), mPar.sortField, mPar.sortOrder, mPar.filter);
 
-	if (!mMatches.isEmpty() && mWindowSize > 0 && !mPar.sortField.isEmpty()) {
+	if (!mMatches.isEmpty() && mWindowSize > 0) {
 		qDebug("MatchModel::fetchCurrentMatches: [PAGINATION] moving window [%d,%d] to window [%d,%d]", mLoadedWindowBegin, loadedWindowEnd, mWindowBegin, requestedWindowEnd);
 		// find the reference fragment
 

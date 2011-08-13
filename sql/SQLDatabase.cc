@@ -201,7 +201,7 @@ QString SQLDatabase::connectionName() const {
 
 SQLDatabase::SQLDatabase(QObject *parent, const QString& type, bool trackHistory)
 	: QObject(parent), mType(type), mTrackHistory(trackHistory) {
-	setOptions(UseLateRowLookup | UseViewEncapsulation);
+	setOptions(UseLateRowLookup | UseViewEncapsulation | ForcePrimaryIndex);
 
 	//QObject::connect(this, SIGNAL(databaseClosed()), this, SLOT(resetQueries()));
 	QObject::connect(this, SIGNAL(matchFieldsChanged()), this, SLOT(makeFieldsSet()));
@@ -573,7 +573,7 @@ template<typename T> bool SQLDatabase::addMatchField(const QString& name, const 
 	else qDebug() << "SQLDatabase::addMatchField can't start transaction:" << query.lastError();
 	*/
 
-	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY, %1 %2, confidence REAL DEFAULT 1)").arg(name).arg(sqlType));
+	success = query.exec(QString("CREATE TABLE %1 (match_id INTEGER PRIMARY KEY AUTOINCREMENT, %1 %2 NOT NULL DEFAULT %3, confidence REAL NOT NULL DEFAULT 1)").arg(name).arg(sqlType).arg(defaultValue));
 	if (success) {
 		// insert the default value everywhere
 		query.prepare(QString(
@@ -768,6 +768,10 @@ int SQLDatabase::getNumberOfMatches(const SQLFilter& filter) const {
 	}
 }
 
+bool SQLDatabase::materializeMetaAttributes() {
+	return false;
+}
+
 thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 	const QString queryString = QString("SELECT matches.match_id, source_name, target_name, transformation FROM matches WHERE match_id = %1").arg(id);
 
@@ -796,7 +800,9 @@ thera::SQLFragmentConf SQLDatabase::getMatch(int id) {
 	return SQLFragmentConf(db, matchId, fragments, 1.0f, xf);
 }
 
-QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parameters) {
+QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const SQLQueryParameters& _parameters) {
+	SQLQueryParameters parameters = _parameters;
+
 	Options options = mOptions;
 
 	if (parameters.forceEarlyRowLookup && options.testFlag(UseLateRowLookup)) {
@@ -895,45 +901,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getMatches(SQLQueryParameters& parame
 	return list;
 }
 
-QList<thera::SQLFragmentConf> SQLDatabase::getMatches(const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
-	QString queryString = synthesizeQuery(QStringList(), sortField, order, filter, offset, limit);
-
-	return fillFragments(queryString, QStringList());
-}
-
-QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
-	//if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
-
-	QSet<QString> dependencies = filter.dependencies().toSet();
-
-	// if there are no VIEW's as sort fields or as dependencies, we can make the query quite a lot faster by forcing a certain order of evaluation (mostly MySQL)
-	if (!(_preloadFields.toSet() & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(sortField) && (dependencies & mViewMatchFields).isEmpty()) return getPreloadedMatchesFast(_preloadFields, sortField, order, filter, offset, limit);
-
-	QString queryString = synthesizeQuery(_preloadFields, sortField, order, filter, offset, limit);
-	return fillFragments(queryString, _preloadFields);
-}
-
-QList<thera::SQLFragmentConf> SQLDatabase::getFastPaginatedPreloadedMatches(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset) {
-	//if (_preloadFields.isEmpty()) return getMatches(sortField, order, filter, offset, limit);
-
-	//QSet<QString> dependencies = filter.dependencies().toSet();
-
-	// if there are no VIEW's as sort fields or as dependencies, we can make the query quite a lot faster by forcing a certain order of evaluation (mostly MySQL)
-	//if (!(_preloadFields.toSet() & mViewMatchFields).isEmpty() && !mViewMatchFields.contains(sortField) && (dependencies & mViewMatchFields).isEmpty()) return getPreloadedMatchesFast(_preloadFields, sortField, order, filter, offset, limit);
-
-	QString queryString = synthesizeFastPaginatedQuery(_preloadFields, sortField, order, filter, limit, extremeMatchId, extremeSortValue, forward, inclusive, offset);
-
-	QList<thera::SQLFragmentConf> list = fillFragments(queryString, _preloadFields);
-
-	if (!forward) {
-		for (int k = 0; k < (list.size() / 2); ++k) {
-			list.swap(k,list.size()-(1+k));
-		}
-	}
-
-	return list;
-}
-
 /**
  * This is definitely much faster for MySQL when VIEW-joins are at play, doesn't hurt SQLite either (other DB systems untested)
  *
@@ -959,46 +926,6 @@ QList<thera::SQLFragmentConf> SQLDatabase::getFastPaginatedPreloadedMatches(cons
 	FROM matches_joined
 	LEFT JOIN num_duplicates ON matches_joined.match_id = num_duplicates.match_id
  */
-QList<thera::SQLFragmentConf> SQLDatabase::getPreloadedMatchesFast(const QStringList& _preloadFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) {
-	// maybe put some ASSERT's here to check the preconditions... (performance...)
-	assert(!mViewMatchFields.contains(sortField));
-	assert((mViewMatchFields & filter.dependencies().toSet()).isEmpty());
-
-	// remove all VIEW tables from the preloadFields
-	QSet<QString> preloadFieldsSet = _preloadFields.toSet();
-	QStringList preloadFields = (preloadFieldsSet - mViewMatchFields).toList();
-	QStringList preloadMetaFields = (preloadFieldsSet - mNormalMatchFields).toList();
-
-	if ((preloadFieldsSet & mViewMatchFields).isEmpty()) qDebug() << "SQLDatabase::getPreloadedMatchesFast: the fast path was wrongly chosen, no meta-attribute needs to be retrieved";
-
-	QString queryString = synthesizeQuery(preloadFields, sortField, order, filter, offset, limit);
-
-	QElapsedTimer timer;
-	timer.start();
-
-	qint64 viewCreateTime = 0;
-
-	QSqlQuery q(database());
-	if (!q.exec("DROP VIEW IF EXISTS `matches_joined_temp`;")) {
-		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't drop view:" << q.lastError();
-	}
-	if (!q.exec(createViewQuery("matches_joined_temp", queryString))) {
-		qDebug() << "SQLDatabase::getPreloadedMatchesFast: couldn't create view:" << q.lastError()
-			<< "\n\tQUERY =" << q.lastQuery();
-	}
-
-	viewCreateTime = timer.elapsed();
-	qDebug() << "SQLDatabase::getPreloadedMatchesFast: QUERY =" << queryString << "\n\tcreating view took" << viewCreateTime << "msec";
-
-	// query the newly created VIEW instead of the real tables
-	queryString = QString("SELECT matches_joined_temp.*, %1 FROM `matches_joined_temp`").arg(preloadMetaFields.join(", "));
-
-	foreach (const QString& field, preloadMetaFields) {
-		queryString += QString(" LEFT JOIN %1 ON matches_joined_temp.match_id = %1.match_id").arg(field);
-	}
-
-	return fillFragments(queryString, _preloadFields);
-}
 
 QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase::Options options) {
 	QString queryString;
@@ -1034,7 +961,7 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 
 		if (parameters.sortField.isEmpty()) {
 			primaryTable = "matches";
-			from = primaryTable;
+			from = primaryTable + ((options.testFlag(ForcePrimaryIndex) && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (PRIMARY) ") : QString(" "));
 		}
 		else {
 			primaryTable = parameters.sortField;
@@ -1064,6 +991,12 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 		innerParameters.preloadFields = (innerParameters.preloadFields.toSet() & innerDependencies).toList();
 		innerParameters.forceLateRowLookupPass = true;
 
+		// if we have a valid sortfield and we're not preloading it we'll have to request it explicitly from the inner query
+		if (matchHasField(parameters.sortField) && !innerParameters.preloadFields.contains(parameters.sortField)) {
+			//qDebug() << "ADDING IN THE SORTFIELD TO THE INNER QUERY:" << parameters.sortField;
+			innerParameters.preloadFields << parameters.sortField;
+		}
+
 		from = "(\n\t" + synthesizeQuery(innerParameters, options) + "\n) AS q\n";
 		primaryTable = "q";
 
@@ -1087,13 +1020,6 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 		}
 	}
 
-	/*
-	if (parameters.forceLateRowLookup && !parameters.forceLateRowLookupPass) {
-		// from now on we can refer to our primary table as q
-		primaryTable = "q";
-	}
-	*/
-
 	//join in dependencies
 	foreach (const QString& field, dependencies) {
 		if (mViewMatchFields.contains(field)) {
@@ -1103,6 +1029,9 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 			// if the JOIN table is also the on we're sorting on, it's usually advantageous to let MySQL know
 			// that we'd appreciate it if it used that tables index instead of anything else. This saves a temporary table and a filesort
 			QString force = (field == parameters.sortField && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (%1_index) ").arg(field) : QString(" ");
+
+			// this is so dirty, but MySQL is really forcing my hand here, 10000-fold decrease in query time
+			if (!matchHasField(parameters.sortField)) force = ((options.testFlag(ForcePrimaryIndex) && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (PRIMARY) ") : QString(" "));
 
 			queryString += QString(" INNER JOIN %1%2ON %3.match_id = %1.match_id").arg(field).arg(force).arg(primaryTable);
 		}
@@ -1143,160 +1072,6 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 
 	if (parameters.offset != -1 && parameters.limit != -1) {
 		queryString += QString(" LIMIT %2 OFFSET %1").arg(parameters.offset).arg(parameters.limit);
-		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
-	}
-
-	return queryString;
-}
-
-QString SQLDatabase::synthesizeQuery(const QStringList& _requiredFields, const QString& sortField, Qt::SortOrder order, const SQLFilter& filter, int offset, int limit) const {
-	QSet<QString> dependencies = filter.dependencies().toSet();
-
-	QString queryString;
-
-	QStringList requiredFields = _requiredFields;
-
-	// add all valid required fields to the dependencies and filter out the ones that don't exist
-	foreach (const QString& field, requiredFields) {
-		if (matchHasField(field)) {
-			dependencies << field;
-		}
-		else {
-			requiredFields.removeOne(field);
-		}
-	}
-
-	if (requiredFields.size() != _requiredFields.size()) {
-		qDebug() << "SQLDatabase::synthesizeQuery: One of the requested attributes was not available in the database:" << requiredFields << "->" << _requiredFields
-			<< "\n\tAll available attributes are:" << matchFields();
-	}
-
-	if (requiredFields.isEmpty()) {
-		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation FROM matches");
-	}
-	else {
-		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation, %1 FROM matches").arg(requiredFields.join(","));
-	}
-
-	if (!sortField.isEmpty()) {
-		if (matchHasField(sortField)) dependencies << sortField;
-		else qDebug() << "SQLDatabase::synthesizeQuery: attempted to sort on field" << sortField << "which doesn't exist";
-	}
-
-	//join in dependencies
-	foreach (const QString& field, dependencies) {
-		if (mViewMatchFields.contains(field)) {
-			queryString += QString(" LEFT JOIN %1 ON matches.match_id = %1.match_id").arg(field);
-		}
-		else {
-			// if the JOIN table is also the on we're sorting on, it's usually advantageous to let MySQL know
-			// that we'd appreciate it if it used that tables index instead of anything else. This saves a temporary table and a filesort
-			QString force = (field == sortField && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (%1_index) ").arg(field) : QString(" ");
-
-			queryString += QString(" INNER JOIN %1%2ON matches.match_id = %1.match_id").arg(field).arg(force);
-		}
-	}
-
-	// add filter clauses
-	if (!filter.isEmpty()) {
-		queryString += " WHERE (" + filter.clauses().join(") AND (") + ")";
-	}
-
-	if (!sortField.isEmpty()) {
-		queryString += QString(" ORDER BY %1.%1 %2").arg(sortField).arg(order == Qt::AscendingOrder ? "ASC" : "DESC");
-	}
-
-	if (offset != -1 && limit != -1) {
-		queryString += QString(" LIMIT %2 OFFSET %1").arg(offset).arg(limit);
-		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
-	}
-
-	return queryString;
-}
-
-/**
- * Pagination optimizations... quite experimental
- *
- * if going backwards this will put all the fragments in reverse order (for now)
- */
-QString SQLDatabase::synthesizeFastPaginatedQuery(
-		const QStringList& _requiredFields,
-		const QString& sortField,
-		Qt::SortOrder order,
-		const SQLFilter& filter,
-		int limit, int extremeMatchId, double extremeSortValue, bool forward, bool inclusive, int offset) const {
-	QSet<QString> dependencies = filter.dependencies().toSet();
-
-	QString queryString;
-
-	QStringList requiredFields = _requiredFields;
-
-	// add all valid required fields to the dependencies and filter out the ones that don't exist
-	foreach (const QString& field, requiredFields) {
-		if (matchHasField(field)) {
-			dependencies << field;
-		}
-		else {
-			requiredFields.removeOne(field);
-		}
-	}
-
-	if (requiredFields.size() != _requiredFields.size()) {
-		qDebug() << "SQLDatabase::synthesizeQuery: One of the requested attributes was not available in the database:" << requiredFields << "->" << _requiredFields
-			<< "\n\tAll available attributes are:" << matchFields();
-	}
-
-	if (requiredFields.isEmpty()) {
-		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation FROM matches");
-	}
-	else {
-		queryString = QString("SELECT matches.match_id, source_name, target_name, transformation, %1 FROM matches").arg(requiredFields.join(","));
-	}
-
-	if (!sortField.isEmpty()) {
-		if (matchHasField(sortField)) dependencies << sortField;
-		else qDebug() << "SQLDatabase::synthesizeQuery: attempted to sort on field" << sortField << "which doesn't exist";
-	}
-
-	//join in dependencies
-	foreach (const QString& field, dependencies) {
-		if (mViewMatchFields.contains(field)) {
-			queryString += QString(" LEFT JOIN %1 ON matches.match_id = %1.match_id").arg(field);
-		}
-		else {
-			// if the JOIN table is also the on we're sorting on, it's usually advantageous to let MySQL know
-			// that we'd appreciate it if it used that tables index instead of anything else. This saves a temporary table and a filesort
-			QString force = (field == sortField && supports(FORCE_INDEX_MYSQL)) ? QString(" FORCE INDEX (%1_index) ").arg(field) : QString(" ");
-
-			queryString += QString(" INNER JOIN %1%2ON matches.match_id = %1.match_id").arg(field).arg(force);
-		}
-	}
-
-	// this is where the fast pagination magic happens
-	QString realSortOrder = "DESC";
-	QString op = "<";
-
-	if ((order == Qt::AscendingOrder && forward) || (order == Qt::DescendingOrder && !forward)) {
-		realSortOrder = "ASC";
-		op = ">";
-	}
-
-	// only if sortField is not empty
-	QString valueClamper = QString(" WHERE (%1.%1 %3= %2) AND (%1.match_id %3%5 %4 OR %1.%1 %3 %2)").arg(sortField).arg(extremeSortValue).arg(op).arg(extremeMatchId).arg(inclusive ? "=" : "");
-
-	queryString += valueClamper;
-
-	// add filter clauses
-	if (!filter.isEmpty()) {
-		queryString += " AND (" + filter.clauses().join(") AND (") + ")";
-	}
-
-	if (!sortField.isEmpty()) {
-		queryString += QString(" ORDER BY %1.%1 %2, %1.match_id %2").arg(sortField).arg(realSortOrder);
-	}
-
-	if (offset != -1 && limit != -1) {
-		queryString += QString(" LIMIT %2 OFFSET %1").arg(offset).arg(limit);
 		//queryString += QString(" LIMIT %1, %2").arg(offset).arg(limit);
 	}
 
@@ -1432,7 +1207,9 @@ const QDomDocument SQLDatabase::toXML() {
 	QDomElement matches = doc.createElement(MATCHES_ROOTTAG);
 	matches.setAttribute("version", MATCHES_VERSION);
 
-	const QList<thera::SQLFragmentConf> configurations = getMatches();
+	SQLQueryParameters parameters = SQLQueryParameters(mNormalMatchFields.toList());
+	const QList<SQLFragmentConf> configurations = getMatches(parameters);
+	//const QList<thera::SQLFragmentConf> configurations = getMatches();
 	const QStringList fields = matchFields().toList();
 
 	foreach (const thera::SQLFragmentConf& conf, configurations) {

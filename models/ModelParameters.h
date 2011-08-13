@@ -44,12 +44,13 @@ struct ModelParameters {
 	}
 
 	QString toString() const {
-		return QString("filter = ?, name filter = %1, sort field = %2, sort order = %3, neighbour id = %4, neighbour mode = %5")
+		return QString("filter = %6, name filter = %1, sort field = %2, sort order = %3, neighbour id = %4, neighbour mode = %5")
 			.arg(matchNameFilter)
 			.arg(sortField)
 			.arg(sortOrder)
 			.arg(neighbourMatchId)
-			.arg(neighbourMode);
+			.arg(neighbourMode)
+			.arg(filter.toString());
 	}
 };
 

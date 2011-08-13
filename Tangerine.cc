@@ -12,6 +12,8 @@
 #include "MatchMerger.h"
 #include "AttributeMerger.h"
 
+#include "SQLDatabaseBenchmarker.h"
+
 using namespace thera;
 
 const QString Tangerine::MATCH_COUNT_TEXT = "%1 total matches loaded";
@@ -295,6 +297,212 @@ void Tangerine::updateStatusBar() {
 	mNumberOfMatchesLabel->setText(matches + ", " + connection);
 }
 
+void Tangerine::keyPressEvent(QKeyEvent *event) {
+	switch (event->key()) {
+		case Qt::Key_B: {
+			qDebug() << "Performing a database benchmark";
+
+			if (event->modifiers().testFlag(Qt::ShiftModifier) && event->modifiers().testFlag(Qt::ControlModifier)) {
+				/*
+				{
+					SQLDatabaseBenchmarker benchmarker(mDb.data());
+
+					QList<QStringList> preloadConfigurations;
+					preloadConfigurations
+						<< QStringList()
+						<< (QStringList() << "status" << "volume" << "error" << "comment")
+						<< (QStringList() << "status" << "volume" << "error" << "comment" << "num_duplicates");
+					benchmarker.setPreloadConfigurations(preloadConfigurations);
+
+					QList<ModelParameters> parameterConfigurations;
+					parameterConfigurations << ModelParameters();
+					parameterConfigurations << ModelParameters(SQLFilter(mDb.data()), QString(), "error", Qt::AscendingOrder);
+
+					{
+						SQLFilter filt(mDb.data());
+						filt.setFilter("x", "duplicate = 0");
+						parameterConfigurations << ModelParameters(filt, QString(), QString(), Qt::AscendingOrder);
+					}
+
+					{
+						SQLFilter filt(mDb.data());
+						filt.setFilter("x", "duplicate = 0");
+						parameterConfigurations << ModelParameters(filt, QString(), "error", Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), QString(), Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), "error", Qt::AscendingOrder);
+					}
+
+					typedef QPair<int, int> WindowPair;
+					typedef QList<WindowPair> WindowList;
+					QList<WindowList> repetitionConfigurations;
+
+					repetitionConfigurations << (WindowList() << WindowPair(0,20) << WindowPair(20,20) << WindowPair(100, 20));
+
+					benchmarker.setPreloadConfigurations(preloadConfigurations);
+					benchmarker.setParameterConfigurations(parameterConfigurations);
+					benchmarker.setRepetitionConfigurations(repetitionConfigurations);
+
+					benchmarker.start("bench/bench-expensive-where.txt");
+				}
+				*/
+
+				{
+					SQLDatabaseBenchmarker benchmarker(mDb.data());
+
+					QList<QStringList> preloadConfigurations;
+					preloadConfigurations
+						<< QStringList()
+						<< (QStringList() << "status" << "volume" << "probability" << "comment")
+						<< (QStringList() << "status" << "volume" << "probability" << "comment" << "num_duplicates");
+					benchmarker.setPreloadConfigurations(preloadConfigurations);
+
+					QList<ModelParameters> parameterConfigurations;
+					parameterConfigurations << ModelParameters();
+					parameterConfigurations << ModelParameters(SQLFilter(mDb.data()), QString(), "probability", Qt::AscendingOrder);
+
+					{
+						SQLFilter filt(mDb.data());
+						filt.setFilter("x", "duplicate = 0");
+						parameterConfigurations << ModelParameters(filt, QString(), "probability", Qt::AscendingOrder);
+					}
+
+					/*
+					{
+						SQLFilter filt(mDb.data());
+						filt.setFilter("x", "duplicate = 0");
+						filt.setFilter("tileview_statuses", QString("status NOT IN (1,3)"));
+						parameterConfigurations << ModelParameters(filt, QString(), "probability", Qt::AscendingOrder);
+					}
+					*/
+
+					/*
+					{
+						SQLFilter filt(mDb.data());
+						filt.setFilter("x", "duplicate = 0");
+						filt.setFilter("tileview_statuses", QString("status NOT IN (1,3)"));
+						parameterConfigurations << ModelParameters(filt, QString(), QString(), Qt::AscendingOrder);
+					}
+					*/
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), QString(), Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), "probability", Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), "probability", Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						tfilt.setFilter("x", "duplicate = 0");
+						tfilt.setFilter("tileview_statuses", QString("status NOT IN (1,3)"));
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), QString(), Qt::AscendingOrder);
+					}
+
+					{
+						QString escape = mDb->escapeCharacter();
+						bool hasDefaultEscape = !escape.isEmpty();
+						if (!hasDefaultEscape) escape = "°";
+
+						QString normalizedFilter = "%WDC13%";
+
+						SQLFilter tfilt(mDb.data());
+						tfilt.setFilter("x", "duplicate = 0");
+						tfilt.setFilter("tileview_statuses", QString("status NOT IN (1,3)"));
+						if (!hasDefaultEscape) tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1' ESCAPE '%2'").arg(normalizedFilter).arg(escape));
+						else tfilt.setFilter("matchmodel_names", QString("source_name || target_name LIKE '%1'").arg(normalizedFilter));
+						parameterConfigurations << ModelParameters(tfilt, QString(), "probability", Qt::AscendingOrder);
+					}
+
+					typedef QPair<int, int> WindowPair;
+					typedef QList<WindowPair> WindowList;
+					QList<WindowList> repetitionConfigurations;
+
+					repetitionConfigurations << (WindowList() << WindowPair(0,20) << WindowPair(20,20) << WindowPair(1000, 20) << WindowPair(2000,20) << WindowPair(10000,20) << WindowPair(10020,20) << WindowPair(10040,20));
+
+					WindowList largeStride;
+					for (int i = 0; i < 4; ++i) largeStride << WindowPair(10000 + i * 20, 20);
+					for (int i = 0; i < 4; ++i) largeStride << WindowPair(10000 + i * 1000, 20);
+					//for (int i = 0; i < 4; ++i) largeStride << WindowPair(15000 + i * 20, 20);
+
+					//repetitionConfigurations << largeStride;
+
+					benchmarker.setPreloadConfigurations(preloadConfigurations);
+					benchmarker.setParameterConfigurations(parameterConfigurations);
+					benchmarker.setRepetitionConfigurations(repetitionConfigurations);
+
+					benchmarker.start("bench/bench.txt");
+				}
+			}
+		} break;
+	}
+
+	QMainWindow::keyPressEvent(event);
+}
+
 void Tangerine::loadFragmentDatabase() {
 	if (mFragDbLocations.isEmpty()) {
 		QString path = QFileDialog::getExistingDirectory(
@@ -485,6 +693,7 @@ void Tangerine::importDatabase() {
 	QString fileName = QFileDialog::getSaveFileName(this, tr("Choose an XML file to import"), QString(), tr("XML files (*.xml)"), 0, QFileDialog::DontConfirmOverwrite);
 
 	if (fileName != "") {
+		// if there is no current database, create a SQLite one
 		if (mDb == NULL || !mDb->isOpen()) {
 			// turn this into a dialog where the user can decide where to store the imported db
 			QFileInfo fi(fileName);
@@ -492,7 +701,8 @@ void Tangerine::importDatabase() {
 			setMainDatabase(fi.absolutePath() + "/" + fi.baseName() + ".db");
 		}
 
-		mDb->loadFromXML(fileName);
+		mDb->stressTestFromXML(fileName, 5, true);
+		//mDb->loadFromXML(fileName);
 	}
 }
 

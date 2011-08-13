@@ -35,6 +35,9 @@ class Tangerine : public QMainWindow {
 	signals:
 		void thumbDirectoryChanged(QDir thumbDir);
 
+	protected:
+		void keyPressEvent(QKeyEvent *event);
+
 	private:
 		void setupWindow();
 		void createActions();

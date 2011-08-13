@@ -10,8 +10,7 @@ class SQLDatabase;
 
 class SQLFilter {
 	public:
-		SQLFilter();
-		SQLFilter(SQLDatabase *db);
+		SQLFilter(SQLDatabase *db = NULL);
 		virtual ~SQLFilter();
 
 		// all the fields upon which the collection of filters is dependent
@@ -34,8 +33,14 @@ class SQLFilter {
 		virtual void removeFilter(const QString& key);
 		virtual void clear();
 
+		// this method will look inside of all the currently installed filter to see if substring is mentioned anywhere
+		// if yes, it will return true
+		virtual bool checkForDependency(const QString& substring) const;
+
 		virtual bool operator==(const SQLFilter& other) const;
 		virtual bool operator!=(const SQLFilter& other) const;
+
+		virtual QString toString() const;
 
 	protected slots:
 		virtual void updateDependencyInfo();
