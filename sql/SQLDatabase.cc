@@ -1053,7 +1053,9 @@ QString SQLDatabase::synthesizeQuery(SQLQueryParameters& parameters, SQLDatabase
 
 		if (!options.testFlag(UseLateRowLookup) || (options.testFlag(UseLateRowLookup) && parameters.forceLateRowLookupPass)) {
 			if (!parameters.sortField.isEmpty()) {
-				queryString += QString(" WHERE (%6.%1 %3= %2) AND (%6.match_id %3%5 %4 OR %6.%1 %3 %2)").arg(parameters.sortField).arg(parameters.extremeSortValue).arg(op).arg(parameters.extremeMatchId).arg(parameters.inclusive ? "=" : "").arg(sortPrefix);
+				//QString sf = (supports(NEED_TYPECAST_NUMERIC_POSTGRESQL)) ? parameters.sortField + "::numeric" : parameters.sortField;
+				QString cv = (supports(NEED_TYPECAST_NUMERIC_POSTGRESQL)) ? QString::number(parameters.extremeSortValue) + "::real" : QString::number(parameters.extremeSortValue);
+				queryString += QString(" WHERE (%6.%1 %3= %2) AND (%6.match_id %3%5 %4 OR %6.%1 %3 %2)").arg(parameters.sortField).arg(cv).arg(op).arg(parameters.extremeMatchId).arg(parameters.inclusive ? "=" : "").arg(sortPrefix);
 			}
 			else {
 				queryString += QString(" WHERE (%1.match_id %3%4 %2)").arg(sortPrefix).arg(parameters.extremeMatchId).arg(op).arg(parameters.inclusive ? "=" : "");

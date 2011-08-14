@@ -11,6 +11,9 @@ class SQLPgDatabase : public SQLDatabase {
 		virtual ~SQLPgDatabase();
 
 	protected:
+		virtual QSet<SQLDatabase::SpecialCapabilities> supportedCapabilities() const;
+		virtual bool supports(SpecialCapabilities capability) const;
+
 		virtual QString createViewQuery(const QString& viewName, const QString& selectStatement) const;
 		virtual void setPragmas();
 		virtual QSet<QString> tableFields(const QString& tableName) const;
@@ -25,6 +28,7 @@ class SQLPgDatabase : public SQLDatabase {
 
 	private:
 		static const QString DB_TYPE;
+		static const QSet<SQLDatabase::SpecialCapabilities> SPECIAL_POSTGRESQL;
 };
 
 #endif /* SQLPGDATABASE_H_ */

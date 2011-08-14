@@ -1,6 +1,7 @@
 #include "SQLPgDatabase.h"
 
 const QString SQLPgDatabase::DB_TYPE = "QPSQL";
+const QSet<SQLDatabase::SpecialCapabilities> SQLPgDatabase::SPECIAL_POSTGRESQL = QSet<SQLDatabase::SpecialCapabilities>() << NEED_TYPECAST_NUMERIC_POSTGRESQL;
 
 SQLPgDatabase::SQLPgDatabase(QObject *parent) : SQLDatabase(parent, DB_TYPE) {
 	// TODO Auto-generated constructor stub
@@ -18,6 +19,9 @@ SQLPgDatabase::~SQLPgDatabase() {
 		}
 	}
 }
+
+QSet<SQLDatabase::SpecialCapabilities> SQLPgDatabase::supportedCapabilities() const { return SPECIAL_POSTGRESQL; }
+bool SQLPgDatabase::supports(SpecialCapabilities capability) const { return SPECIAL_POSTGRESQL.contains(capability); }
 
 QString SQLPgDatabase::createViewQuery(const QString& viewName, const QString& selectStatement) const {
 	return QString("CREATE OR REPLACE VIEW %1 AS (%2);").arg(viewName).arg(selectStatement);

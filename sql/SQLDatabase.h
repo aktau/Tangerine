@@ -196,7 +196,8 @@ class SQLDatabase : public QObject {
 	protected:
 		// for internal usage for now
 		typedef enum {
-			FORCE_INDEX_MYSQL // database can force specific index usage with MySQL syntax
+			FORCE_INDEX_MYSQL, // database can force specific index usage with MySQL syntax
+			NEED_TYPECAST_NUMERIC_POSTGRESQL // PostgreSQL's typing systems seems to need a conversion to numeric when dealing with real's and exact comparison
 		} SpecialCapabilities;
 
 	protected:
